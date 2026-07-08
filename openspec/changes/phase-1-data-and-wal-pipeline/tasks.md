@@ -6,10 +6,10 @@
 
 ## 2. Ingestion Pipeline & MasterOHLCV Parameterization
 
-- [ ] 2.1 Refactor `run_report_pipeline.py` and subsystem data connectors to import and route database connections through `db_connector.get_wal_connection()`
-- [ ] 2.2 Migrate raw or unparameterized SQL queries in the ingestion loop to `cursor.execute("INSERT OR REPLACE INTO master_ohlcv VALUES (?, ?, ?, ?, ?, ?)", (...))` parameterized format
-- [ ] 2.3 Implement and verify `CausalFilter` index check ($t-1$ or `date <= current_utc_date()`) inside `run_report_pipeline.py` before inserting bars into `master_ohlcv` and `unified_daily_analytics`
-- [ ] 2.4 Commit pipeline refactoring adhering to Conventional Commits (`quant: enforce parameterized queries and causal filter in data ingestion pipeline`)
+- [x] 2.1 Refactor `run_report_pipeline.py` and subsystem data connectors to import and route database connections through `db_connector.get_wal_connection()`
+- [x] 2.2 Migrate raw or unparameterized SQL queries in the ingestion loop to `cursor.execute("INSERT OR REPLACE INTO master_ohlcv VALUES (?, ?, ?, ?, ?, ?)", (...))` parameterized format
+- [x] 2.3 Implement and verify `CausalFilter` index check ($t-1$ or `date <= current_utc_date()`) inside `run_report_pipeline.py` before inserting bars into `master_ohlcv` and `unified_daily_analytics`
+- [x] 2.4 Commit pipeline refactoring adhering to Conventional Commits (`quant: enforce parameterized queries and causal filter in data ingestion pipeline`)
 
 ## 3. Automated Verification & Phase 1 Handoff
 
