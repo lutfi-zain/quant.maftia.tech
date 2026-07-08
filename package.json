@@ -1,0 +1,26 @@
+{
+  "name": "quant-maftia-tech-unified",
+  "version": "2.0.0",
+  "description": "Unified Quantitative & Statistical Bitcoin Intelligence Platform (4-System Multi-Layered Quantitative Defense & High-End Financial Terminal)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:api": "tsx watch src/api/server.ts",
+    "start:api": "tsx src/api/server.ts",
+    "bun:dev:api": "/home/ubuntu/.bun/bin/bun run --watch src/api/index.ts",
+    "bun:start:api": "/home/ubuntu/.bun/bin/bun run src/api/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "better-sqlite3": "^11.8.1",
+    "hono": "^4.6.15",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/bun": "latest",
+    "@types/node": "^22.10.9",
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.19.2"
+  }
+}
