@@ -1,0 +1,19 @@
+## 1. Schema & Database Persistence Layer
+
+- [x] 1.1 Create `UnifiedDailyAnalytics` (`unified_daily_analytics`) table in `maftia_quant.db` inside `/home/ubuntu/projects/run_report_pipeline.py` using parameterized queries (`?-style`) and SQLite WAL concurrency (`PRAGMA journal_mode=WAL;`). Commit via Conventional Commits (`feat: add unified_daily_analytics schema to run_report_pipeline.py`).
+- [x] 1.2 Create `UnifiedComponentSignals` (`unified_component_signals`) table in `maftia_quant.db` inside `/home/ubuntu/projects/run_report_pipeline.py` using parameterized queries (`?-style`) with primary key `(date, system_source, component_name)`. Commit via Conventional Commits (`feat: add unified_component_signals schema to run_report_pipeline.py`).
+- [x] 1.3 Add extraction logic in `run_report_pipeline.py` to extract bounded daily outputs (`ValuationComposite`, `LTTDRegime`, `MTTDIntegratedOscillator`, `IchimokuDenoisedOscillator`) and explicit column mapping tuples for `unified_daily_analytics`. Commit via Conventional Commits (`feat: extract 4-system daily metrics for unified analytics`).
+- [x] 1.4 Implement synchronized upsert (`INSERT OR REPLACE INTO unified_daily_analytics (...) VALUES (...)`) in `run_report_pipeline.py` specifying all column names and using `?-style` parameterized queries over SQLite WAL connections. Commit via Conventional Commits (`feat: upsert 4-system daily records into unified_daily_analytics`).
+- [x] 1.5 Implement component-level extraction and upserts for `unified_component_signals` in `run_report_pipeline.py` (`VALUATION`, `LTTD`, `MTTD` signal components) using `?-style` parameterized queries over SQLite WAL connections. Commit via Conventional Commits (`feat: persist granular component scores in unified_component_signals`).
+
+## 2. Interlocking Circuit Breakers & Macro Override Layer
+
+- [x] 2.1 Implement LTTD `SIDEWAYS` Macro Override check in `run_report_pipeline.py`: when `LTTDRegime == SIDEWAYS` and posterior probability $P_{\text{Sideways}} > 0.60$, override and force `mttd_position = 0.0` and `ichimoku_position = 0.0` before writing to `unified_daily_analytics`. Commit via Conventional Commits (`quant: enforce LTTD sideways macro override on mttd and ichimoku positions`).
+- [x] 2.2 Implement Valuation Macro Bubble & Deep Discount `CircuitBreakerFilter` in `run_report_pipeline.py`: flag macro top risk and restrict new long entries across mid-term systems when `valuation_composite >= +1.50`, and flag deep discount status when `valuation_composite <= -1.00`. Commit via Conventional Commits (`quant: enforce valuation circuit breaker filter hooks in orchestration`).
+- [x] 2.3 Enforce strict $t-1$ `CausalFilter` verification on all upserted timestamps in `run_report_pipeline.py` to ensure zero lookahead bias across mathematical transformations and normalizations. Commit via Conventional Commits (`quant: enforce causal filter validation for unified analytics upserts`).
+
+## 3. Verification & Testing Layer
+
+- [x] 3.1 Execute `python3 run_report_pipeline.py` to verify all 4 quant systems (`quant-btc-valuation-system`, `quant-btc-lttd-system`, `quant-btc-mttd-system`, `quant-lttd-ichimoku`) run and upsert cleanly into `unified_daily_analytics` and `unified_component_signals` without lock contention (`database is locked`) or column count mismatch errors.
+- [x] 3.2 Verify record counts and causal integrity in `unified_daily_analytics` and `unified_component_signals` inside `maftia_quant.db` using Python SQL inspection script, confirming that `LTTD SIDEWAYS` overrides correctly force `0.0` position exposure on `mttd_position` and `ichimoku_position`.
+- [x] 3.3 Execute full pipeline regression test by running `python3 run_report_pipeline.py` a second time to verify idempotent upsert behavior and verify that `latest_week_scores_report.md` is correctly generated alongside database records.
