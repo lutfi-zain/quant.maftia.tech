@@ -14,7 +14,7 @@ const server = serve({
 
 // Attach WebSocket handler if running under Node http server
 server.on('upgrade', (request, socket, head) => {
-  if (request.url?.includes('/ws/v1/stream')) {
+  if (request.url?.includes('/ws/')) {
     wsServer.handleUpgrade(request, socket, head, (ws) => {
       wsServer.emit('connection', ws, request)
     })

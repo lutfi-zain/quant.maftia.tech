@@ -1,7 +1,7 @@
 import { DailyAnalyticsPoint, CircuitBreakersResponse, ComponentSignal, HealthResponse } from './types';
 
-// Use environment proxy or direct API Gateway port :8765
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://0.0.0.0:8765';
+// Use environment proxy or same-origin relative path (`/api/...`) routed to API Gateway
+const API_BASE = import.meta.env.VITE_API_BASE_URL !== undefined ? import.meta.env.VITE_API_BASE_URL : '';
 
 /**
  * Ensures strict t-1 CausalFilter verification on incoming time-series data.
@@ -22,7 +22,7 @@ export const quantClient = {
   },
 
   async getDailyAnalytics(limit?: number): Promise<DailyAnalyticsPoint[]> {
-    const url = new URL(`${API_BASE}/api/v1/analytics/daily`);
+    const url = new URL(`${API_BASE}/api/v1/analytics/daily`, window.location.origin);
     if (limit) url.searchParams.set('limit', limit.toString());
     
     const res = await fetch(url.toString());
@@ -38,7 +38,7 @@ export const quantClient = {
   },
 
   async getComponents(systemSource?: string, date?: string): Promise<ComponentSignal[]> {
-    const url = new URL(`${API_BASE}/api/v1/analytics/components`);
+    const url = new URL(`${API_BASE}/api/v1/analytics/components`, window.location.origin);
     if (systemSource) url.searchParams.set('system', systemSource);
     if (date) url.searchParams.set('date', date);
 

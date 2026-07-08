@@ -25,8 +25,19 @@ app.get('/', (c) => {
   })
 })
 
+import { bunWebSocketHandlers } from './websocket.js'
+
 export default {
   port: 8765,
   hostname: '0.0.0.0',
-  fetch: app.fetch,
+  fetch(req: Request, server: any) {
+    if (new URL(req.url).pathname.startsWith('/ws/')) {
+      if (server.upgrade(req)) {
+        return undefined
+      }
+      return new Response('WebSocket upgrade failed', { status: 400 })
+    }
+    return app.fetch(req, server)
+  },
+  websocket: bunWebSocketHandlers,
 }
