@@ -1,20 +1,44 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Repository: quant.maftia.tech
+  Domain: Unified Quantitative & Statistical Bitcoin Intelligence Platform (4-System Multi-Layered Quantitative Defense & High-End Financial Terminal)
+  
+  Tech Stack:
+  - Python 3.11+ (Data ingestion, core quant & statistical engines, Gaussian HMM, PCA, VIF pruning, Ehlers SuperSmoother IIR)
+  - JavaScript / TypeScript Runtime: Bun v1.0+ (`/home/ubuntu/.bun/bin/bun`)
+  - Backend API Gateway: Hono v4 + Bun (`api.quant.maftia.tech` on port `:8765`)
+  - Frontend SPA: React 19 + Vite + TypeScript + Lightweight Charts v5.2
+  - Database: SQLite with Write-Ahead Logging (`WAL`) mode (`maftia_quant.db` and subsystem `.db` files)
+  
+  The 4 Unified Systems (Under `/home/ubuntu/projects/`):
+  1. quant-btc-valuation-system: 17-indicator piecewise linear interpolated valuation score `[-2.0, +2.0]` & macro CircuitBreakerFilter (`>= +1.50`).
+  2. quant-btc-lttd-system: 3-State Gaussian HMM (`BULL`, `BEAR`, `SIDEWAYS`) regime classifier using log returns and 20-day volatility (`SIDEWAYS` override forces `0.0` exposure).
+  3. quant-btc-mttd-system: Multi-principle consensus oscillator `[-1.0, +1.0]` across 10 statistical families with Efficiency Ratio Gate (`>= 0.20`), Shannon Entropy Gate (`<= 2.30`), and Chikou Momentum Exit (`< -0.30`).
+  4. quant-lttd-ichimoku: Denoised bounded $\tanh$ oscillator `[-1.0, +1.0]` filtered via Ehlers 2-pole SuperSmoother IIR transfer function.
+  
+  Note: `quant-technical-indicator-bank` (`05. Indicator Bank`) has been explicitly removed and deprecated. Never reference or re-introduce it.
+  
+  Ubiquitous Language (DDD):
+  Always adhere to exact domain entities: `MasterOHLCV` (`master_ohlcv`), `ValuationComposite` (`valuation_composite`), `LTTDRegime` (`lttd_regime`), `MTTDIntegratedOscillator` (`mttd_imo`), `IchimokuDenoisedOscillator` (`ichimoku_imo`), `UnifiedDailyAnalytics` (`unified_daily_analytics`), and `UnifiedComponentSignals` (`unified_component_signals`).
+  
+  Canonical Gold Standard References:
+  - Architecture: UNIFIED_SYSTEM_ARCHITECTURE.md
+  - Orchestration & Data Sync Pipeline: /home/ubuntu/projects/run_report_pipeline.py
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Explicitly state which of the 4 unified quantitative systems (Valuation, LTTD, MTTD, Ichimoku) are impacted by the proposed change.
+    - Confirm zero lookahead bias (causal filtering strictly at t-1 stamp verification) for any mathematical transformation or strategy logic.
+    - Always include a "Non-goals" section specifying what is out of scope (including ensuring deprecated components like `quant-technical-indicator-bank` are untouched).
+  specs:
+    - Use strict Ubiquitous Language domain terms (`MasterOHLCV`, `ValuationComposite`, `LTTDRegime`, `MTTDIntegratedOscillator`, `IchimokuDenoisedOscillator`, `UnifiedDailyAnalytics`, `UnifiedComponentSignals`).
+    - Reference canonical patterns in `UNIFIED_SYSTEM_ARCHITECTURE.md` and `run_report_pipeline.py` before defining new schema modifications or data pipelines.
+    - Enforce parameterized SQL queries (`?-style`) and SQLite Write-Ahead Logging (`WAL`) mode concurrency across all database operations.
+  design:
+    - For frontend charting components (`Lightweight Charts v5.2`), strictly mandate locking the right price/oscillator Y-axis width to `85px` and implement real-time Vertical Crosshair Synchronization across all subplots.
+    - For cross-system queries and data feeds, route strictly through the single unified Hono v4 + Bun API Gateway (`:8765`). Never spin up ad-hoc temporary backend servers on random ports.
+  tasks:
+    - Break implementation tasks into modular chunks aligned with the 4-system boundary structure.
+    - Include automated pipeline verification using `python3 /home/ubuntu/projects/run_report_pipeline.py` as the final acceptance criterion for data/quant changes.
+    - Specify that commits must adhere to Conventional Commits specification (`feat:`, `fix:`, `quant:`, `refactor:`, `docs:`, `test:`).
