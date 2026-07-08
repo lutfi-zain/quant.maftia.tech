@@ -32,7 +32,8 @@ export default {
   hostname: '0.0.0.0',
   fetch(req: Request, server: any) {
     if (new URL(req.url).pathname.startsWith('/ws/')) {
-      if (server.upgrade(req)) {
+      const id = `bun-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+      if (server.upgrade(req, { data: { id, topics: new Set(), lastPong: Date.now() } })) {
         return undefined
       }
       return new Response('WebSocket upgrade failed', { status: 400 })

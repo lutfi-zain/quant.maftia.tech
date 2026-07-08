@@ -1,7 +1,6 @@
 import { DailyAnalyticsPoint, CircuitBreakersResponse, ComponentSignal, HealthResponse } from './types';
 
-// Use environment proxy or same-origin relative path (`/api/...`) routed to API Gateway
-const API_BASE = import.meta.env.VITE_API_BASE_URL !== undefined ? import.meta.env.VITE_API_BASE_URL : '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL !== undefined ? import.meta.env.VITE_API_BASE_URL : (window.location.protocol + '//' + window.location.hostname + ':8765');
 
 /**
  * Ensures strict t-1 CausalFilter verification on incoming time-series data.

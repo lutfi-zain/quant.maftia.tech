@@ -79,7 +79,8 @@ export const ValuationStudio: React.FC = () => {
     };
   }, [dailyData]);
 
-  const latestValScore = dailyData.length ? dailyData[dailyData.length - 1].valuation_composite : 0;
+  const toNum = (val: any): number => typeof val === 'object' && val !== null ? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0) : Number(val ?? 0);
+  const latestValScore = dailyData.length ? toNum(dailyData[dailyData.length - 1].valuation_composite) : 0;
   const isBubble = latestValScore >= 1.50;
   const isDiscount = latestValScore <= -1.00;
 
@@ -90,13 +91,13 @@ export const ValuationStudio: React.FC = () => {
   }).map(([name, meta]) => {
     const signal = components.find(c => c.component_name === name);
     // Simulate piecewise linear score [-2, +2] if signal score is normalized [-1, 1]
-    const score = signal ? signal.normalized_score * 2 : (Math.sin(name.length) * 1.5);
+    const score = signal ? toNum(signal.normalized_score) * 2 : (Math.sin(name.length) * 1.5);
     return {
       name,
       category: meta.category,
       description: meta.description,
-      score,
-      direction: score >= 1.0 ? 1 : score <= -0.8 ? -1 : 0
+      score: toNum(score),
+      direction: toNum(score) >= 1.0 ? 1 : toNum(score) <= -0.8 ? -1 : 0
     };
   });
 

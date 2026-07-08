@@ -30,17 +30,18 @@ export const BentoSummary: React.FC<BentoSummaryProps> = ({
     );
   }
 
-  const valScore = latestPoint.valuation_composite;
+  const toNum = (val: any): number => typeof val === 'object' && val !== null ? Number(val.score ?? val.oscillator ?? 0) : Number(val ?? 0);
+  const valScore = toNum(latestPoint.valuation_composite);
   const isBubble = valScore >= 1.50 || circuitBreakers.valuation_circuit_breaker.is_bubble_risk;
   const isDiscount = valScore <= -1.00 || circuitBreakers.valuation_circuit_breaker.is_deep_discount;
 
-  const lttdRegime = latestPoint.lttd_regime || circuitBreakers.lttd_macro_override.regime;
+  const lttdRegime = typeof latestPoint.lttd_regime === 'object' && latestPoint.lttd_regime !== null ? (latestPoint.lttd_regime as any).regime : (latestPoint.lttd_regime || circuitBreakers.lttd_macro_override.regime);
   const isSidewaysOverride = lttdRegime === 'SIDEWAYS' || circuitBreakers.lttd_macro_override.is_sideways_override;
 
-  const mttdImo = latestPoint.mttd_imo;
+  const mttdImo = toNum(latestPoint.mttd_imo);
   const { er_gate_open, shannon_entropy_gate_open, chikou_momentum_exit } = circuitBreakers.mttd_consensus_gates;
 
-  const ichimokuImo = latestPoint.ichimoku_imo;
+  const ichimokuImo = toNum(latestPoint.ichimoku_imo);
 
   return (
     <div style={{

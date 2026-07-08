@@ -127,19 +127,20 @@ export const LttdLab: React.FC = () => {
     };
   }, [dailyData]);
 
+  const toNum = (val: any): number => typeof val === 'object' && val !== null ? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0) : Number(val ?? 0);
   const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
-  const currentRegime = latestPoint?.lttd_regime || circuitBreakers?.lttd_macro_override.regime || 'SIDEWAYS';
+  const currentRegime = typeof latestPoint?.lttd_regime === 'object' && latestPoint?.lttd_regime !== null ? (latestPoint?.lttd_regime as any).regime : (latestPoint?.lttd_regime || circuitBreakers?.lttd_macro_override.regime || 'SIDEWAYS');
   const isSidewaysOverride = currentRegime === 'SIDEWAYS' || (circuitBreakers?.lttd_macro_override.is_sideways_override ?? false);
 
   const displayComponents = Object.entries(LTTD_COMPONENT_METADATA).map(([name, meta]) => {
     const signal = components.find(c => c.component_name === name);
-    const score = signal ? signal.normalized_score : (Math.cos(name.length) * 0.7);
+    const score = signal ? toNum(signal.normalized_score) : (Math.cos(name.length) * 0.7);
     return {
       name,
       category: meta.category,
       description: meta.description,
-      score,
-      direction: score > 0.3 ? 1 : score < -0.3 ? -1 : 0
+      score: toNum(score),
+      direction: toNum(score) > 0.3 ? 1 : toNum(score) < -0.3 ? -1 : 0
     };
   });
 
@@ -192,7 +193,7 @@ export const LttdLab: React.FC = () => {
         <div className="glass-card" style={{ padding: '16px' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>P(SIDEWAYS) THRESHOLD</div>
           <div style={{ fontSize: '22px', fontWeight: 700, color: isSidewaysOverride ? 'var(--accent-gold)' : 'var(--text-main)', marginTop: '6px', fontFamily: 'JetBrains Mono' }}>
-            {((latestPoint?.lttd_prob_sideways ?? (isSidewaysOverride ? 0.82 : 0.24)) * 100).toFixed(1)}% {isSidewaysOverride ? '> 60.0%' : '≤ 60.0%'}
+            {((toNum(latestPoint?.lttd_prob_sideways ?? (isSidewaysOverride ? 0.82 : 0.24))) * 100).toFixed(1)}% {isSidewaysOverride ? '> 60.0%' : '≤ 60.0%'}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '4px' }}>Governs macro exposure override</div>
         </div>

@@ -115,14 +115,15 @@ export const MttdConsole: React.FC = () => {
     };
   }, [dailyData]);
 
+  const toNum = (val: any): number => typeof val === 'object' && val !== null ? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0) : Number(val ?? 0);
   const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
-  const latestImo = latestPoint?.mttd_imo ?? 0;
+  const latestImo = toNum(latestPoint?.mttd_imo);
   const gates = circuitBreakers?.mttd_consensus_gates || {
-    er_gate_open: latestImo !== 0 && (latestPoint?.mttd_er_ratio ?? 0.28) >= 0.20,
-    shannon_entropy_gate_open: (latestPoint?.mttd_shannon_entropy ?? 2.1) <= 2.30,
+    er_gate_open: latestImo !== 0 && toNum(latestPoint?.mttd_er_ratio ?? 0.28) >= 0.20,
+    shannon_entropy_gate_open: toNum(latestPoint?.mttd_shannon_entropy ?? 2.1) <= 2.30,
     chikou_momentum_exit: latestImo < -0.30,
-    efficiency_ratio: latestPoint?.mttd_er_ratio ?? 0.28,
-    shannon_entropy: latestPoint?.mttd_shannon_entropy ?? 2.1
+    efficiency_ratio: toNum(latestPoint?.mttd_er_ratio ?? 0.28),
+    shannon_entropy: toNum(latestPoint?.mttd_shannon_entropy ?? 2.1)
   };
 
   const allGatesPassed = gates.er_gate_open && gates.shannon_entropy_gate_open && !gates.chikou_momentum_exit;
@@ -132,14 +133,14 @@ export const MttdConsole: React.FC = () => {
     return meta.category === selectedFamily;
   }).map(([name, meta]) => {
     const signal = components.find(c => c.component_name === name);
-    const score = signal ? signal.normalized_score : (Math.sin(name.length * 2) * 0.85);
+    const score = signal ? toNum(signal.normalized_score) : (Math.sin(name.length * 2) * 0.85);
     return {
       name,
       category: meta.category,
       description: meta.description,
       gate: meta.gate,
-      score,
-      direction: score >= 0.2 ? 1 : score <= -0.2 ? -1 : 0
+      score: toNum(score),
+      direction: toNum(score) >= 0.2 ? 1 : toNum(score) <= -0.2 ? -1 : 0
     };
   });
 

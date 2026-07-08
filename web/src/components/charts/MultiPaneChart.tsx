@@ -291,19 +291,21 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 
   const displayPoint = hoveredPoint || (data.length > 0 ? data[data.length - 1] : null);
 
+  const toNum = (val: any): number => typeof val === 'object' && val !== null ? Number(val.score ?? val.oscillator ?? 0) : Number(val ?? 0);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Top Synchronized Tooltip Bar */}
       <div className="glass-card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'JetBrains Mono', fontSize: '13px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <span style={{ color: 'var(--text-muted)' }}>DATE: <strong style={{ color: 'var(--text-main)' }}>{displayPoint?.date || 'N/A'}</strong></span>
-          <span style={{ color: 'var(--text-muted)' }}>CLOSE: <strong style={{ color: '#10b981' }}>${displayPoint?.close.toLocaleString() || 'N/A'}</strong></span>
-          <span style={{ color: 'var(--text-muted)' }}>VAL COMP: <strong style={{ color: (displayPoint?.valuation_composite ?? 0) >= 1.5 ? 'var(--status-danger)' : 'var(--accent-cyan)' }}>{displayPoint?.valuation_composite.toFixed(4) || '0.00'}</strong></span>
+          <span style={{ color: 'var(--text-muted)' }}>CLOSE: <strong style={{ color: '#10b981' }}>${toNum(displayPoint?.close).toLocaleString() || 'N/A'}</strong></span>
+          <span style={{ color: 'var(--text-muted)' }}>VAL COMP: <strong style={{ color: toNum(displayPoint?.valuation_composite) >= 1.5 ? 'var(--status-danger)' : 'var(--accent-cyan)' }}>{toNum(displayPoint?.valuation_composite).toFixed(4)}</strong></span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <span style={{ color: 'var(--text-muted)' }}>LTTD: <strong style={{ color: displayPoint?.lttd_regime === 'BULL' ? '#10b981' : displayPoint?.lttd_regime === 'BEAR' ? '#ff2a5f' : '#ffb800' }}>{displayPoint?.lttd_regime || 'SIDEWAYS'}</strong></span>
-          <span style={{ color: 'var(--text-muted)' }}>MTTD IMO: <strong style={{ color: '#a855f7' }}>{displayPoint?.mttd_imo.toFixed(4) || '0.00'}</strong></span>
-          <span style={{ color: 'var(--text-muted)' }}>ICHIMOKU: <strong style={{ color: '#0055ff' }}>{displayPoint?.ichimoku_imo.toFixed(4) || '0.00'}</strong></span>
+          <span style={{ color: 'var(--text-muted)' }}>LTTD: <strong style={{ color: displayPoint?.lttd_regime === 'BULL' ? '#10b981' : displayPoint?.lttd_regime === 'BEAR' ? '#ff2a5f' : '#ffb800' }}>{typeof displayPoint?.lttd_regime === 'object' && displayPoint?.lttd_regime !== null ? (displayPoint?.lttd_regime as any).regime : (displayPoint?.lttd_regime || 'SIDEWAYS')}</strong></span>
+          <span style={{ color: 'var(--text-muted)' }}>MTTD IMO: <strong style={{ color: '#a855f7' }}>{toNum(displayPoint?.mttd_imo).toFixed(4)}</strong></span>
+          <span style={{ color: 'var(--text-muted)' }}>ICHIMOKU: <strong style={{ color: '#0055ff' }}>{toNum(displayPoint?.ichimoku_imo).toFixed(4)}</strong></span>
         </div>
       </div>
 

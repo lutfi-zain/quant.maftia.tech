@@ -118,20 +118,21 @@ export const IchimokuTerminal: React.FC = () => {
     };
   }, [dailyData]);
 
+  const toNum = (val: any): number => typeof val === 'object' && val !== null ? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0) : Number(val ?? 0);
   const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
-  const latestImo = latestPoint?.ichimoku_imo ?? 0;
+  const latestImo = toNum(latestPoint?.ichimoku_imo);
   const cloudState = latestImo > 0.15 ? 'BULL CLOUD' : latestImo < -0.15 ? 'BEAR CLOUD' : 'NEUTRAL CLOUD';
 
   const displayComponents = Object.entries(ICHIMOKU_COMPONENTS_METADATA).map(([name, meta]) => {
     const signal = components.find(c => c.component_name === name);
-    const score = signal ? signal.normalized_score : (name.includes('IMO') ? latestImo : Math.sin(name.length * 3) * 0.75);
+    const score = signal ? toNum(signal.normalized_score) : (name.includes('IMO') ? latestImo : Math.sin(name.length * 3) * 0.75);
     return {
       name,
       category: meta.category,
       description: meta.description,
       formula: meta.formula,
-      score,
-      direction: score > 0.15 ? 1 : score < -0.15 ? -1 : 0
+      score: toNum(score),
+      direction: toNum(score) > 0.15 ? 1 : toNum(score) < -0.15 ? -1 : 0
     };
   });
 
