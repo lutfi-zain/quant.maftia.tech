@@ -4,6 +4,7 @@ import { logger } from 'hono/logger'
 import { healthRouter } from './routes/health.js'
 import { dailyRouter } from './routes/daily.js'
 import { componentsRouter } from './routes/components.js'
+import { circuitBreakersRouter } from './routes/circuit-breakers.js'
 
 export const app = new Hono()
 
@@ -13,6 +14,7 @@ app.use('*', cors())
 app.route('/api/v1/health', healthRouter)
 app.route('/api/v1/analytics/daily', dailyRouter)
 app.route('/api/v1/analytics/components', componentsRouter)
+app.route('/api/v1/system/circuit-breakers', circuitBreakersRouter)
 
 app.get('/', (c) => {
   return c.json({
