@@ -9,6 +9,7 @@ console.log(`=== STARTING HONO v4 API GATEWAY (NODE/TSX RUNTIME) ON PORT ${port}
 const server = serve({
   fetch: app.fetch,
   port,
+  hostname: '0.0.0.0',
 })
 
 // Attach WebSocket handler if running under Node http server
