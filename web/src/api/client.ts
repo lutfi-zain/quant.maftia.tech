@@ -10,7 +10,14 @@ function verifyCausalData<T extends { date: string }>(data: T[]): T[] {
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
   // Filter out any anomalous future dates beyond current observation window
-  return data.filter(item => item.date <= todayStr);
+  const filtered = data.filter(item => item && typeof item.date === 'string' && item.date <= todayStr);
+  const uniqueMap = new Map<string, T>();
+  for (const item of filtered) {
+    if (!uniqueMap.has(item.date)) {
+      uniqueMap.set(item.date, item);
+    }
+  }
+  return Array.from(uniqueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export const quantClient = {
