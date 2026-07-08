@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { healthRouter } from './routes/health.js'
+import { dailyRouter } from './routes/daily.js'
 
 export const app = new Hono()
 
@@ -9,6 +10,7 @@ app.use('*', logger())
 app.use('*', cors())
 
 app.route('/api/v1/health', healthRouter)
+app.route('/api/v1/analytics/daily', dailyRouter)
 
 app.get('/', (c) => {
   return c.json({
