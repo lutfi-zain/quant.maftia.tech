@@ -18,7 +18,7 @@
 
 Repositori dan folder ini (`/home/ubuntu/projects/quant.maftia.tech`) adalah pusat arsitektur terpadu (*Unified Architecture & System Documentation*) yang menggabungkan seluruh ekosistem proyek kuantitatif Bitcoin yang dipicu oleh skrip orkestrator `run_report_pipeline.py`.
 
-Pusat dokumentasi ini memetakan secara mendalam **arsitektur kode, alur pemrosesan data, validasi statistik (10 Statistical Families), gerbang eksekusi logika, serta rancangan antarmuka visual (UI/UX & Frontend)** untuk menyatukan 5 proyek terpisah menjadi satu platform bertaraf institusional.
+Pusat dokumentasi ini memetakan secara mendalam **arsitektur kode, alur pemrosesan data, validasi statistik (10 Statistical Families), gerbang eksekusi logika, serta rancangan antarmuka visual (UI/UX & Frontend)** untuk menyatukan 4 proyek terpisah menjadi satu platform bertaraf institusional.
 
 ---
 
@@ -33,13 +33,12 @@ Seluruh dokumentasi telah disusun dengan rapi dalam format Markdown yang interak
 | **02. LTTD System** | `quant-btc-lttd-system` | Arsitektur *Orthogonal Regime-Switching Ensemble Engine* (6-Layer Architecture, 3-State Gaussian HMM, PCA, VIF Pruning, dan L1-Lasso/XGBoost WFO). | [docs/02_quant_btc_lttd_system.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/02_quant_btc_lttd_system.md) |
 | **03. MTTD System v2** | `quant-btc-mttd-system` | Arsitektur *Multi-Principle Consensus Strategy* berjangka menengah (6+ Statistical Families, Kaufman Efficiency Ratio Gate, Shannon Entropy Noise Gate). | [docs/03_quant_btc_mttd_system.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/03_quant_btc_mttd_system.md) |
 | **04. Ichimoku Quant** | `quant-lttd-ichimoku` | Arsitektur *Multi-Principle Denoised Framework* yang mengubah pola Ichimoku visual menjadi osilator stasioner bebas noise (*SuperSmoother $\tanh$* + 5-Gate Logic). | [docs/04_quant_lttd_ichimoku.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/04_quant_lttd_ichimoku.md) |
-| **05. Indicator Bank** | `quant-technical-indicator-bank` | Pustaka dasar kuantitatif, mesin *scraper* Pine Script otomatis (`agent-browser`), terjemahan vektor *bar-by-bar* Python (`indicators_helper.py`), dan konsensus 15-indikator. | [docs/05_quant_technical_indicator_bank.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/05_quant_technical_indicator_bank.md) |
 
 ---
 
 ## 🎯 Ringkasan Saling Mengunci (Interlocking Ecosystem Matrix)
 
-Dalam ekosistem terpadu `quant.maftia.tech`, kelima proyek tidak lagi bekerja secara terisolasi, melainkan membentuk **Konsensus Berlapis (*Multi-Layered Quantitative Defense*)**:
+Dalam ekosistem terpadu `quant.maftia.tech`, keempat proyek tidak lagi bekerja secara terisolasi, melainkan membentuk **Konsensus Berlapis (*Multi-Layered Quantitative Defense*)**:
 
 ```mermaid
 flowchart TD
@@ -73,7 +72,7 @@ flowchart TD
 1. **Rich Aesthetics & Dark-Tech UI:** Menggabungkan keanggunan *Bloomberg Terminal*, kepraktisan *TradingView*, dan desain *Glassmorphism/Obsidian Dark Theme*.
 2. **Vertical Crosshair Synchronization:** Pergerakan kursor mouse pada satu grafik harga akan mensinkronisasikan garis vertikal waktu secara tepat pada seluruh grafik indikator di bawahnya (`Valuation`, `LTTD`, `MTTD`, dan `Ichimoku`).
 3. **85px Y-Axis Width Lock:** Sumbu kanan harga dikunci pada ukuran minimum `85px`, menjamin seluruh *grid horizontal & vertical ticks* tersusun tegak lurus sempurna lintas *subplot*.
-4. **5 Deep-Dive Analytical Studios:** Eksplorasi interaktif khusus untuk *Valuation Pillars*, *LTTD Regime & PCA Lab*, *MTTD Console*, *Ichimoku Terminal*, dan *Indicator Bank Sandbox & Backtester*.
+4. **4 Deep-Dive Analytical Studios:** Eksplorasi interaktif khusus untuk *Valuation Pillars*, *LTTD Regime & PCA Lab*, *MTTD Console*, dan *Ichimoku Terminal*.
 
 ---
 

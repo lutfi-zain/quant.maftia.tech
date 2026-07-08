@@ -2,18 +2,17 @@
 
 > **Dokumen Arsitektur Unified System, Integrasi Ekosistem, Proyeksi Fitur, dan Desain UI/UX**  
 > **Lokasi Proyek:** `/home/ubuntu/projects/quant.maftia.tech`  
-> **Tujuan:** Menyatukan 5 proyek kuantitatif terpisah menjadi satu platform *Quantitative Bitcoin Intelligence System* bertingkat *enterprise*.
+> **Tujuan:** Menyatukan 4 proyek kuantitatif terpisah menjadi satu platform *Quantitative Bitcoin Intelligence System* bertingkat *enterprise*.
 
 ---
 
 ## 1. Visi & Strategi Penggabungan (The Unified Vision)
 
-Saat ini, ekosistem kuantitatif di bawah `/home/ubuntu/projects` terdiri dari 5 proyek yang independen namun memiliki ketergantungan sirkular secara fungsional:
+Saat ini, ekosistem kuantitatif di bawah `/home/ubuntu/projects` terdiri dari 4 proyek yang independen namun memiliki ketergantungan sirkular secara fungsional:
 1. `quant-btc-valuation-system`: Mengukur siklus valuasi makroekonomi berdasarkan 17 indikator (*Fundamental, Teknikal, Sentimen*).
 2. `quant-btc-lttd-system`: Mengklasifikasikan arah tren jangka panjang (*Bull, Bear, Sideways*) menggunakan *Gaussian HMM*, *PCA*, dan *Ensemble L1-Lasso/XGBoost*.
 3. `quant-btc-mttd-system`: Mengambil keputusa posisi tren jangka menengah menggunakan konsensus multi-prinsip (*Efficiency Ratio, Shannon Entropy, Chikou Momentum*).
 4. `quant-lttd-ichimoku`: Mendekomposisi pola Ichimoku visual menjadi osilator stasioner bebas noise (*SuperSmoother $\tanh$*).
-5. `quant-technical-indicator-bank`: Menyediakan mesin translasi Pine Script, 10 keluarga statistik dasar, dan dashboard konsensus 15-indikator (*MTTD v1*).
 
 Eksekusi integrasi saat ini masih bersifat *ad-hoc sequential pipeline* yang dikendalikan oleh skrip tunggal `run_report_pipeline.py`—di mana proses memulai *backend* sementara di *port* 3000, menyalin data secara manual antar file SQLite/JSON (`lttd.db` $\rightarrow$ `btc_daily.json`), menjalankan kalkulasi berurutan, dan mencetak file teks tunggal (`latest_week_scores_report.md`).
 
@@ -58,7 +57,7 @@ graph TB
 
     subgraph UnifiedFrontend [Layer 5: Enterprise React SPA - Vite + TypeScript + Bun]
         UI1[Master Executive Dashboard & Bento Grid Console]
-        UI2[Deep-Dive Sandboxes: Valuation Studio, LTTD Lab, MTTD Console, Ichimoku Terminal, Indicator Bank]
+        UI2[Deep-Dive Sandboxes: Valuation Studio, LTTD Lab, MTTD Console, Ichimoku Terminal]
         UI3[Multi-Pane Synchronized Charting Engine: Lightweight Charts v5.2 with 85px Lock]
         GW2 & GW3 --> UI1 & UI2 & UI3
     end
@@ -79,7 +78,7 @@ Menggantikan pengambilan data yang berulang di setiap folder proyek dengan satu 
 - **Causal Freshness Guard:** Memastikan *stamp* data on-chain terverifikasi ≥ $t-1$ sebelum mengizinkan mesin kuantitatif melakukan kalkulasi.
 
 ### 2.2 Layer 2: Core Orchestration & Processing Engine
-Menyatukan kelima modul kalkulasi secara modular dan terorkestrasi:
+Menyatukan keempat modul kalkulasi secara modular dan terorkestrasi:
 1. **Valuation Engine:** Menghitung 17 komponen dari 3 pilar dan melakukan interpolasi linear piecewise ke rentang `[-2.0, +2.0]`.
 2. **LTTD Engine:** Menerima data OHLCV master, melatih 3-State Gaussian HMM (Log Returns + 20d Vol), melakukan filter VIF & PCA, serta mengevaluasi model ensemble (*XGBoost / L1-Lasso*).
 3. **MTTD v2 Engine:** Menerima *output* dari 10 Keluarga Statistik dan mengevaluasi gerbang komposit `IMO`, `Efficiency Ratio (ER)`, dan `Shannon Entropy`.
@@ -130,10 +129,10 @@ CREATE TABLE unified_daily_analytics (
   FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 );
 
--- 3. Detailed Component Scores (17 Valuation Metrics + 12 LTTD Indicators + 15 Indicator Bank Signals)
+-- 3. Detailed Component Scores (17 Valuation Metrics + 12 LTTD Indicators + MTTD Signals)
 CREATE TABLE unified_component_signals (
   date                   TEXT,
-  system_source          TEXT,          -- 'VALUATION' | 'LTTD' | 'MTTD_BANK' | 'ICHIMOKU'
+  system_source          TEXT,          -- 'VALUATION' | 'LTTD' | 'MTTD' | 'ICHIMOKU'
   component_name         TEXT,
   raw_value              REAL,
   normalized_score       REAL,          -- Score normalized to system bounds
@@ -206,9 +205,7 @@ Tampilan utama yang menyuguhkan status eksekutif sekilas (*at-a-glance*) bagi pa
 4. **Ichimoku Denoised Terminal (`/ichimoku`):**
    - Tampilan perbandingan langsung antara *Raw Non-Stationary Ichimoku Cloud* dengan *Stationary Bounded $\tanh$ Oscillators (`S_TK, S_Cloud, S_Future, S_Chikou`)*.
    - Visualisasi dinamika *SuperSmoother IIR transfer function* pada harga.
-5. **Indicator Bank Sandbox & Backtester (`/indicator-bank`):**
-   - *Interactive Pine-to-Python Playground:* Tempat menguji dan memvisualisasikan 15 indikator konsensus *perpetual* dan *oscillator* atas data harga BTC.
-   - *On-the-fly Backtest Runner:* Pengguna dapat memilih kombinasi N indikator, memvariasikan parameter ambang batas, dan menjalankan simulasi *equity curve* langsung di peramban.
+
 
 ---
 
@@ -272,7 +269,7 @@ Sistem menghindari warna dasar yang membosankan (*plain red/green*) dan menerapk
 ```
 
 ### 5.5 Inovasi UX Charting Kritis: *Vertical Cursor Sync & 85px Y-Axis Lock*
-Mengadopsi dan menyempurnakan fitur terbaik dari *Indicator Bank* dan *Valuation System*:
+Mengadopsi dan menyempurnakan fitur terbaik dari *Valuation System* dan *Ichimoku Quant*:
 1. **Vertical Crosshair Synchronization:** Ketika periset mengarahkan kursor pada tanggal *21 Juni 2026* di grafik harga utama (Subplot 1), garis vertikal penunjuk waktu secara otomatis muncul di posisi yang sama persis pada Subplot 2 (`Valuation`), Subplot 3 (`LTTD`), dan Subplot 4 (`MTTD/Ichimoku`).
 2. **Y-Axis Width Lock (`85px`):** Sumbu harga/nilai di sisi kanan seluruh *subplot* dikunci secara ketat pada lebar minimum `85px`. Tanpa penguncian ini, angka harga BTC yang panjang (`$63,508.84`) dan angka osilator yang pendek (`-0.45`) akan menyebabkan pergeseran horizontal pada area grafik. Penguncian `85px` menjamin bahwa sumbu waktu horizontal ($X$-axis) tepat bergaris lurus dari atas ke bawah layar.
 
@@ -287,10 +284,10 @@ Untuk mewujudkan ekosistem terpadu ini secara mulus tanpa mengganggu validitas m
 | **Phase 1** | **Unified Storage & Data Orchestration** | • Pembangunan skema SQLite WAL / PostgreSQL master (`maftia_quant.db`).<br/>• Pembuatan skrip `UnifiedIngestionService` untuk menarik data OHLCV & BRK API secara otomatis.<br/>• Migrasi data historis dari `metrics.db` dan `lttd.db` ke database master. | **Minggu 1 – 2** |
 | **Phase 2** | **Single Backend API Gateway (`Hono + Bun`)** | • Pembangunan API Gateway di Port tunggal (`:8765` / `api.quant.maftia.tech`).<br/>• Pembuatan *endpoint* terpadu `/api/v1/executive-summary` dan `/api/v1/timeseries/master`.<br/>• Integrasi WebSocket Server untuk penyiaran *sync crosshair* & pembaruan kalkulasi harian. | **Minggu 3 – 4** |
 | **Phase 3** | **Frontend Core & Master Executive Dashboard** | • *Scaffold* aplikasi React 19 + Vite + TypeScript di bawah folder `/home/ubuntu/projects/quant.maftia.tech/web`.<br/>• Implementasi *Design System Tokens (Obsidian HSL)* dan *Sidebar Layout*.<br/>• Integrasi *TradingView Lightweight Charts v5.2* dengan *Vertical Sync & 85px Y-Axis Lock*. | **Minggu 5 – 6** |
-| **Phase 4** | **Deep-Dive Sandboxes & Advanced Backtester** | • Pembangunan 5 Studio Khusus (`Valuation Pillar Studio`, `LTTD Lab`, `MTTD Console`, `Ichimoku Terminal`, `Indicator Bank`).<br/>• Implementasi *Interactive Pine-to-Python Backtest Simulator* di peramban.<br/>• Pengaktifan sistem notifikasi *webhook/alert* otomatis untuk laporan harian/mingguan. | **Minggu 7 – 8** |
+| **Phase 4** | **Deep-Dive Sandboxes & Advanced Backtester** | • Pembangunan 4 Studio Khusus (`Valuation Pillar Studio`, `LTTD Lab`, `MTTD Console`, `Ichimoku Terminal`).<br/>• Implementasi *Interactive Backtest Simulator* di peramban.<br/>• Pengaktifan sistem notifikasi *webhook/alert* otomatis untuk laporan harian/mingguan. | **Minggu 7 – 8** |
 
 ---
 
 ## 7. Kesimpulan Arsitektur
 
-Dengan menyatukan kelima proyek di bawah `/home/ubuntu/projects` ke dalam **Maftia Quant Bitcoin Intelligence Platform (`quant.maftia.tech`)**, kita tidak hanya mengeliminasi kerepotan manual dan redundansi komputasi skrip `run_report_pipeline.py`, tetapi juga menciptakan **satu terminal riset dan perdagangan kuantitatif bertaraf institusional** yang elegan, stasioner secara matematis, dan didukung oleh konsensus 10 Keluarga Statistik berpresisi tinggi.
+Dengan menyatukan keempat proyek di bawah `/home/ubuntu/projects` ke dalam **Maftia Quant Bitcoin Intelligence Platform (`quant.maftia.tech`)**, kita tidak hanya mengeliminasi kerepotan manual dan redundansi komputasi skrip `run_report_pipeline.py`, tetapi juga menciptakan **satu terminal riset dan perdagangan kuantitatif bertaraf institusional** yang elegan, stasioner secara matematis, dan didukung oleh konsensus 10 Keluarga Statistik berpresisi tinggi.

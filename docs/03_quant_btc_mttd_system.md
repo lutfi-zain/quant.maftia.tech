@@ -16,7 +16,7 @@ Sistem ini dirancang untuk mengatasi kelemahan strategi *moving average cross* k
 
 ## 2. Arsitektur Multi-Prinsip (The 10 Statistical Families)
 
-MTTD v2 mengadopsi dan mengoptimalkan kerangka kerja dari *Quantitative Indicator Bank* untuk memastikan bahwa sinyal keputusan tidak diturunkan dari satu dimensi matematika saja, melainkan konsensus lintas disiplin statistik:
+MTTD v2 mengadopsi dan mengoptimalkan kerangka kerja dari 10 Keluarga Statistik untuk memastikan bahwa sinyal keputusan tidak diturunkan dari satu dimensi matematika saja, melainkan konsensus lintas disiplin statistik:
 
 ```mermaid
 graph TD
