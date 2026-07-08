@@ -33,6 +33,53 @@ def run_cmd(cmd, cwd, env=None):
         print(f"STDERR:\n{res.stderr}")
     return res
 
+def fetch_valuation_composite_data():
+    """Directly reads valuation composite scores from metrics.db using WAL connection, rescale, and causal filter."""
+    val_data = {}
+    val_btc = {}
+    db_metrics_path = os.path.join(VALUATION_DIR, "database/metrics.db")
+    if not os.path.exists(db_metrics_path):
+        return val_data, val_btc
+    conn = get_wal_connection(db_metrics_path)
+    comp_params = None
+    try:
+        row = conn.execute("SELECT raw_p2_5, raw_p50, raw_p97_5 FROM audit_composite_params ORDER BY run_date DESC LIMIT 1").fetchone()
+        if row:
+            comp_params = {'p2_5': float(row[0]), 'p50': float(row[1]), 'p97_5': float(row[2])}
+    except Exception:
+        pass
+    
+    rows = conn.execute("""
+        SELECT date, AVG(normalized_value) as comp, MAX(btc_price) as btc
+        FROM timeseries_metrics
+        WHERE normalized_value IS NOT NULL AND metric_name != 'aviv_nupl'
+        GROUP BY date
+        ORDER BY date ASC
+    """).fetchall()
+    conn.close()
+    
+    for r in rows:
+        dt = pd.to_datetime(r[0]).strftime("%Y-%m-%d")
+        raw_val = float(r[1]) if r[1] is not None else None
+        rescaled_val = raw_val
+        if comp_params and raw_val is not None:
+            p2_5, p50, p97_5 = comp_params['p2_5'], comp_params['p50'], comp_params['p97_5']
+            if raw_val <= p2_5:
+                rescaled_val = -2.0
+            elif raw_val >= p97_5:
+                rescaled_val = 2.0
+            elif raw_val < p50:
+                denom = p50 - p2_5
+                rescaled_val = -2.0 if abs(denom) < 1e-9 else -2.0 + 2.0 * (raw_val - p2_5) / denom
+            else:
+                denom = p97_5 - p50
+                rescaled_val = 2.0 if abs(denom) < 1e-9 else 0.0 + 2.0 * (raw_val - p50) / denom
+        val_data[dt] = rescaled_val
+        if r[2] is not None:
+            val_btc[dt] = float(r[2])
+    return val_data, val_btc
+
+
 def main():
     print("=== STARTING QUANT BITCOIN PIPELINES AND SYNC ===")
     
@@ -187,12 +234,12 @@ def main():
     # Fetch valuation values
     val_scores, btc_prices = {}, {}
     try:
-        data = requests.get("http://localhost:3000/api/composite", timeout=5).json()
-        for row in data:
-            dt = pd.to_datetime(row["date"]).strftime("%Y-%m-%d")
-            if dt in dates_str:
-                val_scores[dt] = row["composite_value"]
-                btc_prices[dt] = row["btc_price"]
+        v_data, v_btc = fetch_valuation_composite_data()
+        for dt in dates_str:
+            if dt in v_data:
+                val_scores[dt] = v_data[dt]
+            if dt in v_btc:
+                btc_prices[dt] = v_btc[dt]
     except Exception as e:
         print(f"Error fetching valuation data: {e}")
 
@@ -249,13 +296,13 @@ def main():
     print("Syncing UnifiedDailyAnalytics and UnifiedComponentSignals...")
     val_data_all, val_btc_all = {}, {}
     try:
-        data = requests.get("http://localhost:3000/api/composite", timeout=10).json()
-        for row in data:
-            dt = pd.to_datetime(row["date"]).strftime("%Y-%m-%d")
+        v_data, v_btc = fetch_valuation_composite_data()
+        for dt, score in v_data.items():
             if dt <= current_utc_date_str:
-                val_data_all[dt] = float(row["composite_value"]) if row["composite_value"] is not None else None
-                if row["btc_price"] is not None:
-                    val_btc_all[dt] = float(row["btc_price"])
+                val_data_all[dt] = score
+        for dt, price in v_btc.items():
+            if dt <= current_utc_date_str:
+                val_btc_all[dt] = price
     except Exception as e:
         print(f"Error fetching full valuation composite: {e}")
 
