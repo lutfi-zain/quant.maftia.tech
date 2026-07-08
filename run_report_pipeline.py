@@ -91,6 +91,12 @@ def main():
             master_conn,
             "CREATE TABLE IF NOT EXISTS master_ohlcv (date TEXT PRIMARY KEY, open REAL, high REAL, low REAL, close REAL, volume REAL, source TEXT DEFAULT 'binance', fetched_at TEXT DEFAULT CURRENT_TIMESTAMP)"
         )
+        cols_uda = [c[1] for c in master_conn.execute("PRAGMA table_info(unified_daily_analytics)").fetchall()]
+        if cols_uda and "btc_price" not in cols_uda:
+            master_conn.execute("DROP TABLE IF EXISTS unified_daily_analytics")
+        cols_ucs = [c[1] for c in master_conn.execute("PRAGMA table_info(unified_component_signals)").fetchall()]
+        if cols_ucs and "system_source" not in cols_ucs:
+            master_conn.execute("DROP TABLE IF EXISTS unified_component_signals")
         execute_parameterized(
             master_conn,
             """CREATE TABLE IF NOT EXISTS unified_daily_analytics (
