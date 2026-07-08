@@ -10,7 +10,7 @@ This file is the authoritative guide for AI coding agents working in this reposi
 ## Commands
 
 ```bash
-python3 /home/ubuntu/projects/run_report_pipeline.py
+python3 run_report_pipeline.py
 ```
 
 Run all tests and confirm they pass before finalising any change.
