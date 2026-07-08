@@ -13,6 +13,6 @@
 
 ## 3. Automated Verification & Phase 1 Handoff
 
-- [ ] 3.1 Run end-to-end orchestration verification `python3 /home/ubuntu/projects/run_report_pipeline.py` and confirm 0 `database is locked` errors
-- [ ] 3.2 Verify WAL mode state across `maftia_quant.db` and subsystem databases using `sqlite3 -line <db> "PRAGMA journal_mode;"`
-- [ ] 3.3 Commit any final bugfixes adhering to Conventional Commits (`test: verify phase 1 data ingestion and wal pipeline stability`)
+- [x] 3.1 Run end-to-end orchestration verification `python3 /home/ubuntu/projects/run_report_pipeline.py` and confirm 0 `database is locked` errors
+- [x] 3.2 Verify WAL mode state across `maftia_quant.db` and subsystem databases using `sqlite3 -line <db> "PRAGMA journal_mode;"`
+- [x] 3.3 Commit any final bugfixes adhering to Conventional Commits (`test: verify phase 1 data ingestion and wal pipeline stability`)
