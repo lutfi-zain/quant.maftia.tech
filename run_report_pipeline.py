@@ -91,6 +91,40 @@ def main():
             master_conn,
             "CREATE TABLE IF NOT EXISTS master_ohlcv (date TEXT PRIMARY KEY, open REAL, high REAL, low REAL, close REAL, volume REAL, source TEXT DEFAULT 'binance', fetched_at TEXT DEFAULT CURRENT_TIMESTAMP)"
         )
+        execute_parameterized(
+            master_conn,
+            """CREATE TABLE IF NOT EXISTS unified_daily_analytics (
+  date                   TEXT PRIMARY KEY,
+  btc_price              REAL,
+  valuation_composite    REAL,
+  lttd_regime            TEXT,
+  lttd_score             REAL,
+  lttd_prob_bull         REAL,
+  lttd_prob_bear         REAL,
+  lttd_prob_sideways     REAL,
+  mttd_imo               REAL,
+  mttd_er                REAL,
+  mttd_entropy           REAL,
+  mttd_position          REAL,
+  mttd_immunity_active   INTEGER,
+  ichimoku_imo           REAL,
+  ichimoku_regime        TEXT,
+  ichimoku_position      REAL,
+  FOREIGN KEY (date) REFERENCES master_ohlcv(date)
+)"""
+        )
+        execute_parameterized(
+            master_conn,
+            """CREATE TABLE IF NOT EXISTS unified_component_signals (
+  date                   TEXT,
+  system_source          TEXT,
+  component_name         TEXT,
+  raw_value              REAL,
+  normalized_score       REAL,
+  signal_direction       INTEGER,
+  PRIMARY KEY (date, system_source, component_name)
+)"""
+        )
         current_utc_date_str = pd.Timestamp.now('UTC').strftime("%Y-%m-%d")
         master_records = 0
         for _, mrow in df_master.iterrows():
