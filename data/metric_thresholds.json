@@ -1,0 +1,9 @@
+{
+  "mvrv_z": {
+    "t_minus_2": 3,
+    "t_minus_1": 1.5,
+    "t_zero": 0,
+    "t_plus_1": -1.5,
+    "t_plus_2": -3
+  }
+}

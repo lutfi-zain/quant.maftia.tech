@@ -1,7 +1,47 @@
 import { Hono } from 'hono';
-import { executeQuery, executeQuerySingle } from '../db.js';
+import { executeQuery } from '../db.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const metricsRouter = new Hono();
+
+const THRESHOLDS_PATH = path.resolve(
+  '/home/ubuntu/projects/quant.maftia.tech/data/metric_thresholds.json',
+);
+
+interface ThresholdConfig {
+  t_minus_2: number;
+  t_minus_1: number;
+  t_zero: number;
+  t_plus_1: number;
+  t_plus_2: number;
+}
+
+interface ThresholdsStore {
+  [metricName: string]: ThresholdConfig;
+}
+
+const DEFAULT_THRESHOLDS: ThresholdConfig = {
+  t_minus_2: 2.0,
+  t_minus_1: 1.0,
+  t_zero: 0.0,
+  t_plus_1: -1.0,
+  t_plus_2: -2.0,
+};
+
+function readThresholds(): ThresholdsStore {
+  try {
+    const raw = fs.readFileSync(THRESHOLDS_PATH, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function writeThresholds(store: ThresholdsStore): void {
+  fs.mkdirSync(path.dirname(THRESHOLDS_PATH), { recursive: true });
+  fs.writeFileSync(THRESHOLDS_PATH, JSON.stringify(store, null, 2), 'utf-8');
+}
 
 /**
  * GET /api/v1/analytics/metric/:metric_name
@@ -29,7 +69,6 @@ metricsRouter.get('/:metric_name', (c) => {
   if (isNaN(limit) || limit <= 0) limit = 500;
   if (limit > 5000) limit = 5000;
 
-  // Fetch component signals for this metric name (case-insensitive)
   const signalSql = `
     SELECT date, raw_value, normalized_score, signal_direction
     FROM unified_component_signals
@@ -68,7 +107,6 @@ metricsRouter.get('/:metric_name', (c) => {
   const uniqueDates = [...new Set(dates)];
   const placeholders = uniqueDates.map(() => '?').join(',');
 
-  // Fetch BTC OHLC for the same date range
   const ohlcSql = `
     SELECT date, open, high, low, close
     FROM master_ohlcv
@@ -82,7 +120,6 @@ metricsRouter.get('/:metric_name', (c) => {
     ohlcMap.set(row.date, row);
   }
 
-  // Build response data aligned by date
   const rawValues: { date: string; value: number }[] = [];
   const normalizedValues: { date: string; value: number }[] = [];
   const btcOhlc: {
@@ -131,99 +168,49 @@ metricsRouter.get('/:metric_name', (c) => {
   });
 });
 
-// Helper to ensure the metric_thresholds table exists
-function ensureThresholdsTable() {
-  executeQuery(
-    `CREATE TABLE IF NOT EXISTS metric_thresholds (
-      metric_name TEXT PRIMARY KEY,
-      t_minus_2 REAL NOT NULL DEFAULT 2.0,
-      t_minus_1 REAL NOT NULL DEFAULT 1.0,
-      t_zero REAL NOT NULL DEFAULT 0.0,
-      t_plus_1 REAL NOT NULL DEFAULT -1.0,
-      t_plus_2 REAL NOT NULL DEFAULT -2.0,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )`,
-  );
-}
-
 /**
  * GET /api/v1/analytics/metric/:metric_name/config
  *
- * Returns the 5-piece threshold config for a metric.
- * Uses the metric_thresholds table; returns defaults if no config exists.
+ * Returns the 5-piece threshold config for a metric from JSON storage.
+ * Returns defaults if no config exists.
  */
 metricsRouter.get('/:metric_name/config', (c) => {
-  const metricName = c.req.param('metric_name');
-  ensureThresholdsTable();
+  const metricName = c.req.param('metric_name').toLowerCase();
+  const store = readThresholds();
 
-  const row = executeQuerySingle<any>(
-    `SELECT metric_name, t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2
-     FROM metric_thresholds
-     WHERE LOWER(metric_name) = LOWER(?)`,
-    [metricName],
-  );
-
-  if (!row) {
-    return c.json({
-      status: 'success',
-      metric_name: metricName,
-      thresholds: {
-        t_minus_2: 2.0,
-        t_minus_1: 1.0,
-        t_zero: 0.0,
-        t_plus_1: -1.0,
-        t_plus_2: -2.0,
-      },
-    });
-  }
+  const thresholds = store[metricName] || DEFAULT_THRESHOLDS;
 
   return c.json({
     status: 'success',
-    metric_name: row.metric_name,
-    thresholds: {
-      t_minus_2: row.t_minus_2,
-      t_minus_1: row.t_minus_1,
-      t_zero: row.t_zero,
-      t_plus_1: row.t_plus_1,
-      t_plus_2: row.t_plus_2,
-    },
+    metric_name: metricName,
+    thresholds,
   });
 });
 
 /**
  * POST /api/v1/analytics/metric/:metric_name/config
  *
- * Upserts the 5-piece threshold config for a metric.
+ * Upserts the 5-piece threshold config for a metric to JSON storage.
  */
 metricsRouter.post('/:metric_name/config', async (c) => {
-  const metricName = c.req.param('metric_name');
+  const metricName = c.req.param('metric_name').toLowerCase();
   const body = await c.req.json();
 
-  const t_minus_2 = body.t_minus_2 ?? 2.0;
-  const t_minus_1 = body.t_minus_1 ?? 1.0;
-  const t_zero = body.t_zero ?? 0.0;
-  const t_plus_1 = body.t_plus_1 ?? -1.0;
-  const t_plus_2 = body.t_plus_2 ?? -2.0;
+  const thresholds: ThresholdConfig = {
+    t_minus_2: body.t_minus_2 ?? 2.0,
+    t_minus_1: body.t_minus_1 ?? 1.0,
+    t_zero: body.t_zero ?? 0.0,
+    t_plus_1: body.t_plus_1 ?? -1.0,
+    t_plus_2: body.t_plus_2 ?? -2.0,
+  };
 
-  ensureThresholdsTable();
-
-  // Upsert using INSERT OR REPLACE via parameterized query
-  executeQuery(
-    `INSERT OR REPLACE INTO metric_thresholds
-       (metric_name, t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
-    [metricName, t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2],
-  );
+  const store = readThresholds();
+  store[metricName] = thresholds;
+  writeThresholds(store);
 
   return c.json({
     status: 'saved',
     metric_name: metricName,
-    thresholds: {
-      t_minus_2,
-      t_minus_1,
-      t_zero,
-      t_plus_1,
-      t_plus_2,
-    },
+    thresholds,
   });
 });
