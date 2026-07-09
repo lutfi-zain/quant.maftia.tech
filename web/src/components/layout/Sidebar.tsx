@@ -5,9 +5,9 @@ import {
   TrendingUp, 
   Activity, 
   Layers, 
-  ShieldAlert, 
   Radio 
 } from 'lucide-react';
+import { useTerminal } from '../../context/TerminalContext';
 
 export type ActiveTab = 'dashboard' | 'valuation' | 'lttd' | 'mttd' | 'ichimoku';
 
@@ -18,6 +18,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStatus }) => {
+  const { dailyData, syncGap } = useTerminal();
+
   const navItems = [
     { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard },
     { id: 'valuation', label: 'Valuation Studio', icon: BarChart3 },
@@ -28,20 +30,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
 
   const getStatusColor = () => {
     switch (wsStatus) {
-      case 'Connected':
-        return '#10b981'; // green
-      case 'Reconnecting':
-        return '#f59e0b'; // amber
-      default:
-        return '#ff2a5f'; // red
+      case 'Connected': return 'var(--signal-bull)';
+      case 'Reconnecting': return 'var(--signal-neutral)';
+      default: return 'var(--signal-bear)';
     }
   };
+
+  // Compute data range from loaded daily data
+  const earliestDate = dailyData.length > 0 ? dailyData[0].date : null;
+  const latestDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+  const totalDays = dailyData.length;
 
   return (
     <aside style={{
       width: '260px',
       height: '100vh',
-      backgroundColor: 'var(--bg-secondary)',
+      backgroundColor: 'var(--bg-card)',
       borderRight: '1px solid var(--border-subtle)',
       display: 'flex',
       flexDirection: 'column',
@@ -52,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
     }}>
       {/* Brand Header */}
       <div style={{
-        padding: '24px 20px',
+        padding: '20px',
         borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
@@ -62,41 +66,41 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
           width: '36px',
           height: '36px',
           borderRadius: '8px',
-          background: 'linear-gradient(135deg, var(--accent-cyan), #0055ff)',
+          background: 'linear-gradient(135deg, #F59E0B, #D97706)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: '#000',
           fontWeight: 700,
           fontFamily: 'JetBrains Mono',
-          fontSize: '18px',
-          boxShadow: '0 0 16px var(--accent-cyan-glow)'
+          fontSize: '16px',
+          boxShadow: '0 0 16px rgba(245,158,11,0.25)'
         }}>
           MQ
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '16px', letterSpacing: '-0.5px' }}>
-            MAFTIA <span style={{ color: 'var(--accent-cyan)' }}>QUANT</span>
+          <div style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.3px', fontFamily: 'Inter, sans-serif' }}>
+            MAFTIA <span style={{ color: 'var(--accent)' }}>QUANT</span>
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
-            v2.0 TERMINAL
+          <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>
+            v2.0 UNIFIED TERMINAL
           </div>
         </div>
       </div>
 
       {/* Navigation Links */}
-      <nav style={{ padding: '16px 12px', flex: 1 }}>
+      <nav style={{ padding: '12px', flex: 1 }}>
         <div style={{ 
-          fontSize: '11px', 
+          fontSize: '10px', 
           fontWeight: 600, 
           color: 'var(--text-dim)', 
           textTransform: 'uppercase', 
           letterSpacing: '1px',
-          padding: '0 12px 12px'
+          padding: '0 8px 10px'
         }}>
           Multi-Layer Defense
         </div>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -108,21 +112,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
                     width: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
+                    gap: '10px',
+                    padding: '10px 12px',
                     borderRadius: '8px',
                     border: 'none',
-                    backgroundColor: isActive ? 'var(--surface-card-hover)' : 'transparent',
-                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    backgroundColor: isActive ? 'rgba(245,158,11,0.08)' : 'transparent',
+                    color: isActive ? 'var(--accent)' : 'var(--text-muted)',
                     fontWeight: isActive ? 600 : 400,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     textAlign: 'left',
-                    boxShadow: isActive ? 'inset 3px 0 0 var(--accent-cyan)' : 'none'
+                    boxShadow: isActive ? 'inset 3px 0 0 var(--accent)' : 'none',
+                    fontFamily: 'Inter, sans-serif'
                   }}
                 >
-                  <Icon size={18} style={{ color: isActive ? 'var(--accent-cyan)' : 'var(--text-dim)' }} />
-                  <span style={{ fontSize: '14px' }}>{item.label}</span>
+                  <Icon size={16} style={{ color: isActive ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px' }}>{item.label}</span>
                 </button>
               </li>
             );
@@ -130,31 +135,52 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
         </ul>
       </nav>
 
-      {/* Live Gateway & System Status Footer */}
+      {/* Data Range Section */}
+      {earliestDate && latestDate && (
+        <div style={{
+          padding: '12px 16px',
+          borderTop: '1px solid var(--border-subtle)',
+          backgroundColor: 'rgba(0,0,0,0.15)'
+        }}>
+          <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>
+            Data Range
+          </div>
+          <div style={{ fontFamily: 'JetBrains Mono', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <div>{earliestDate} →</div>
+            <div>{latestDate}</div>
+            <div style={{ marginTop: '4px', color: syncGap.gapDays > 0 ? 'var(--status-warning)' : 'var(--signal-bull)', fontWeight: 600 }}>
+              {totalDays.toLocaleString()} trading days
+              {syncGap.gapDays > 0 && ` · ⚠ ${syncGap.gapDays}d gap`}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live Gateway Status Footer */}
       <div style={{
-        padding: '16px 20px',
+        padding: '12px 16px',
         borderTop: '1px solid var(--border-subtle)',
         backgroundColor: 'rgba(0,0,0,0.2)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-            <Radio size={14} style={{ color: getStatusColor() }} />
+            <Radio size={13} style={{ color: getStatusColor() }} />
             <span>API Gateway</span>
           </div>
           <span style={{
-            fontSize: '11px',
+            fontSize: '10px',
             fontFamily: 'JetBrains Mono',
             padding: '2px 8px',
             borderRadius: '12px',
-            backgroundColor: 'rgba(255,255,255,0.05)',
+            backgroundColor: 'rgba(255,255,255,0.04)',
             color: getStatusColor()
           }}>
             {wsStatus}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>
           <span>PORT :8765</span>
-          <span>CausalFilter $t-1$</span>
+          <span>CausalFilter t−1</span>
         </div>
       </div>
     </aside>

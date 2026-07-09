@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
 import { Sidebar, ActiveTab } from './Sidebar';
+import { useTerminal } from '../../context/TerminalContext';
+import { RefreshCw } from 'lucide-react';
 
 interface AppLayoutProps {
   children: (activeTab: ActiveTab) => React.ReactNode;
   wsStatus: 'Connected' | 'Reconnecting' | 'Disconnected';
 }
 
+const PAGE_TITLES: Record<ActiveTab, string> = {
+  dashboard: 'Master Executive Dashboard',
+  valuation: 'Valuation Pillar Studio (17 Indicators)',
+  lttd: 'LTTD Lab (3-State Gaussian HMM)',
+  mttd: 'MTTD Console (10 Statistical Families)',
+  ichimoku: 'Ichimoku Terminal (SuperSmoother IIR)',
+};
+
 export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const { syncGap, isLoading, refreshData } = useTerminal();
+
+  const hasBehind = syncGap.gapDays > 0;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-root)' }}>
       {/* Fixed Sidebar */}
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} wsStatus={wsStatus} />
 
@@ -33,26 +46,50 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
           borderBottom: '1px solid var(--border-subtle)'
         }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.5px', color: 'var(--text-main)' }}>
-              {activeTab === 'dashboard' && 'Master Executive Dashboard'}
-              {activeTab === 'valuation' && 'Valuation Pillar Studio (17 Indicators)'}
-              {activeTab === 'lttd' && 'LTTD Lab (3-State Gaussian HMM)'}
-              {activeTab === 'mttd' && 'MTTD Console (10 Statistical Families)'}
-              {activeTab === 'ichimoku' && 'Ichimoku Terminal (SuperSmoother IIR)'}
+            <h1 style={{
+              fontSize: '22px',
+              fontWeight: 700,
+              letterSpacing: '-0.4px',
+              color: 'var(--text-main)',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              {PAGE_TITLES[activeTab]}
             </h1>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              Real-time quantitative consensus & interlocking defense metrics • Port :8765
+            <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '3px', fontFamily: 'JetBrains Mono' }}>
+              Unified quantitative consensus & interlocking defense metrics · api.quant.maftia.tech:8765
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div className="glass-card" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'JetBrains Mono' }}>
-              <span style={{ color: 'var(--accent-cyan)' }}>LOCK:</span>
-              <span>85px Y-AXIS SYNC</span>
+
+          {/* Header Controls: Sync Gap Badge + Refresh Button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Sync Status Badge */}
+            <div className={`sync-badge ${hasBehind ? 'behind' : 'current'}`}>
+              {hasBehind ? (
+                <>
+                  <span style={{ fontSize: '10px' }}>⚠</span>
+                  <span>{syncGap.gapDays} day{syncGap.gapDays !== 1 ? 's' : ''} behind</span>
+                </>
+              ) : syncGap.clientDate ? (
+                <>
+                  <span style={{ fontSize: '10px' }}>✓</span>
+                  <span>Data current · {syncGap.clientDate}</span>
+                </>
+              ) : null}
             </div>
-            <div className="glass-card" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontFamily: 'JetBrains Mono' }}>
-              <span style={{ color: '#10b981' }}>STORAGE:</span>
-              <span>SQLite WAL</span>
-            </div>
+
+            {/* Sync / Refetch Button */}
+            <button
+              className="sync-btn"
+              onClick={refreshData}
+              disabled={isLoading}
+              title="Refetch all data from server"
+            >
+              <RefreshCw
+                size={12}
+                style={isLoading ? { animation: 'spin 0.8s linear infinite' } : undefined}
+              />
+              <span>{isLoading ? 'Syncing…' : 'Sync Data'}</span>
+            </button>
           </div>
         </header>
 

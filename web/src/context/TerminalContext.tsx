@@ -3,44 +3,57 @@ import { DailyAnalyticsPoint, CircuitBreakersResponse } from '../api/types';
 import { quantClient } from '../api/client';
 import { useTerminalWebSocket, WSConnectionStatus } from '../hooks/useTerminalWebSocket';
 
+interface SyncGap {
+  serverDate: string | null;
+  clientDate: string | null;
+  gapDays: number;
+}
+
 interface TerminalContextValue {
   dailyData: DailyAnalyticsPoint[];
   circuitBreakers: CircuitBreakersResponse | null;
   wsStatus: WSConnectionStatus;
   isLoading: boolean;
   error: string | null;
+  syncGap: SyncGap;
   refreshData: () => Promise<void>;
 }
 
 const TerminalContext = createContext<TerminalContextValue | undefined>(undefined);
+
+function daysDiff(dateA: string, dateB: string): number {
+  const a = new Date(dateA).getTime();
+  const b = new Date(dateB).getTime();
+  return Math.max(0, Math.round((b - a) / (1000 * 60 * 60 * 24)));
+}
 
 export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [dailyData, setDailyData] = useState<DailyAnalyticsPoint[]>([]);
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakersResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncGap, setSyncGap] = useState<SyncGap>({ serverDate: null, clientDate: null, gapDays: 0 });
 
   const handleAnalyticsUpdate = useCallback((newPoint: any) => {
     const mappedPoint: DailyAnalyticsPoint = {
+      ...newPoint,
       date: newPoint.date,
-      open: newPoint.master_ohlcv?.open ?? newPoint.open ?? 0,
-      high: newPoint.master_ohlcv?.high ?? newPoint.high ?? 0,
-      low: newPoint.master_ohlcv?.low ?? newPoint.low ?? 0,
-      close: newPoint.master_ohlcv?.close ?? newPoint.close ?? 0,
-      volume: newPoint.master_ohlcv?.volume ?? newPoint.volume ?? 0,
-      valuation_composite: newPoint.valuation_composite?.score ?? newPoint.valuation_composite ?? 0,
-      lttd_regime: newPoint.lttd_regime?.regime ?? newPoint.lttd_regime ?? 'SIDEWAYS',
+      open: newPoint.master_ohlcv?.open ?? (typeof newPoint.open === 'number' ? newPoint.open : 0),
+      high: newPoint.master_ohlcv?.high ?? (typeof newPoint.high === 'number' ? newPoint.high : 0),
+      low: newPoint.master_ohlcv?.low ?? (typeof newPoint.low === 'number' ? newPoint.low : 0),
+      close: newPoint.master_ohlcv?.close ?? (typeof newPoint.close === 'number' ? newPoint.close : 0),
+      volume: newPoint.master_ohlcv?.volume ?? (typeof newPoint.volume === 'number' ? newPoint.volume : 0),
+      valuation_composite: newPoint.valuation_composite?.score ?? (typeof newPoint.valuation_composite === 'number' ? newPoint.valuation_composite : 0),
+      lttd_regime: newPoint.lttd_regime?.regime ?? (typeof newPoint.lttd_regime === 'string' ? newPoint.lttd_regime : 'SIDEWAYS'),
       lttd_prob_bull: newPoint.lttd_regime?.prob_bull ?? 0,
       lttd_prob_bear: newPoint.lttd_regime?.prob_bear ?? 0,
       lttd_prob_sideways: newPoint.lttd_regime?.prob_sideways ?? 1,
-      mttd_imo: newPoint.mttd_imo?.oscillator ?? newPoint.mttd_imo ?? 0,
+      mttd_imo: newPoint.mttd_imo?.oscillator ?? (typeof newPoint.mttd_imo === 'number' ? newPoint.mttd_imo : 0),
       mttd_er_ratio: newPoint.mttd_imo?.efficiency_ratio ?? 0,
       mttd_shannon_entropy: newPoint.mttd_imo?.shannon_entropy ?? 0,
-      ichimoku_imo: newPoint.ichimoku_imo?.oscillator ?? newPoint.ichimoku_imo ?? 0,
-      ...newPoint
+      ichimoku_imo: newPoint.ichimoku_imo?.oscillator ?? (typeof newPoint.ichimoku_imo === 'number' ? newPoint.ichimoku_imo : 0)
     };
     setDailyData(prev => {
-      // Replace if date exists, otherwise append
       const idx = prev.findIndex(item => item.date === mappedPoint.date);
       if (idx !== -1) {
         const next = [...prev];
@@ -62,13 +75,28 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const refreshData = useCallback(async () => {
     try {
+      setIsLoading(true);
       setError(null);
+
+      // Fetch full history (limit=5000 covers ~13+ years of daily Bitcoin data)
       const [analytics, breakers] = await Promise.all([
-        quantClient.getDailyAnalytics(365),
+        quantClient.getDailyAnalytics(5000),
         quantClient.getCircuitBreakers()
       ]);
       setDailyData(analytics);
       setCircuitBreakers(breakers);
+
+      // Detect sync gap: compare server's latest data date vs client's loaded tail
+      try {
+        const health = await quantClient.getHealth();
+        const serverDate = health.database?.latest_data_timestamp ?? null;
+        const clientDate = analytics.length > 0 ? analytics[analytics.length - 1].date : null;
+        const gapDays = serverDate && clientDate ? daysDiff(clientDate, serverDate) : 0;
+        setSyncGap({ serverDate, clientDate, gapDays });
+      } catch {
+        // Health check failure is non-critical — silently skip gap detection
+        setSyncGap({ serverDate: null, clientDate: null, gapDays: 0 });
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to fetch initial terminal telemetry.');
       console.error('Initial data fetch error:', e);
@@ -88,6 +116,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       wsStatus,
       isLoading,
       error,
+      syncGap,
       refreshData
     }}>
       {children}
