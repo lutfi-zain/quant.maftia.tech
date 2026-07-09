@@ -58,7 +58,7 @@ function makeCommonOptions() {
 
 // Heights per panel state
 function getPanelHeights(maximized: MaximizedPanel) {
-	const full = window.innerHeight;
+	const full = window.visualViewport?.height || window.innerHeight;
 	switch (maximized) {
 		case "btc":
 			return { btc: full, val: 0, lttd: 0, mttd: 0 };

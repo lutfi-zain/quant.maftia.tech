@@ -120,18 +120,31 @@ pre,
 	right: 0;
 	bottom: 0;
 	width: 100vw !important;
-	height: 100vh !important;
+	height: 100dvh !important;
 	z-index: 9999;
 	border-radius: 0;
 	border: none;
 	background: var(--bg-root);
 	padding: 0;
 	margin: 0;
+	overflow: hidden;
 }
 
-/* Fullscreen: subplot headers compact */
+/* Fullscreen: subplot headers overlay the chart */
 .chart-panel.fullscreen .chart-subplot-header {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 10;
 	padding: 6px 14px;
+	background: rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(4px);
+	border-bottom: none;
+}
+
+.chart-panel.fullscreen .chart-subplot {
+	position: relative;
 }
 
 /* When any chart-panel is fullscreen, hide all other content */

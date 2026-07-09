@@ -51,12 +51,15 @@ function makeCommonOptions() {
 }
 
 function getPanelHeights(maximized: MaximizedPanel) {
-	const full = window.innerHeight;
+	const full = window.visualViewport?.height || window.innerHeight;
 	switch (maximized) {
 		case "btc":
 			return { btc: full, val: 0 };
 		case "val":
-			return { btc: Math.floor(full * 0.65), val: Math.floor(full * 0.35) };
+			return {
+				btc: Math.floor(full * 0.65),
+				val: Math.floor(full * 0.35),
+			};
 		default:
 			return { btc: 300, val: 240 };
 	}
