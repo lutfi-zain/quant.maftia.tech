@@ -1,322 +1,380 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  /* ─── Bloomberg Slate Amber — Institutional Terminal Palette ─── */
-  --bg-root: #020617;
-  --bg-card: #0F172A;
-  --bg-elevated: #1E293B;
-  --bg-chart: #0B1220;
+	/* ─── Bloomberg Slate Amber — Institutional Terminal Palette ─── */
+	--bg-root: #020617;
+	--bg-card: #0f172a;
+	--bg-elevated: #1e293b;
+	--bg-chart: #0b1220;
 
-  /* Borders */
-  --border-card: rgba(255, 255, 255, 0.07);
-  --border-panel: #1E293B;
-  --border-focus: rgba(245, 158, 11, 0.4);
+	/* Borders */
+	--border-card: rgba(255, 255, 255, 0.07);
+	--border-panel: #1e293b;
+	--border-focus: rgba(245, 158, 11, 0.4);
 
-  /* Legacy aliases (for backward compatibility with remaining inline styles) */
-  --bg-primary: #020617;
-  --bg-secondary: #0F172A;
-  --surface-card: #0F172A;
-  --surface-card-hover: #1E293B;
-  --surface-glass: rgba(15, 23, 42, 0.80);
-  --border-subtle: rgba(255, 255, 255, 0.07);
+	/* Legacy aliases (for backward compatibility with remaining inline styles) */
+	--bg-primary: #020617;
+	--bg-secondary: #0f172a;
+	--surface-card: #0f172a;
+	--surface-card-hover: #1e293b;
+	--surface-glass: rgba(15, 23, 42, 0.8);
+	--border-subtle: rgba(255, 255, 255, 0.07);
 
-  /* Text & Typography */
-  --text-main: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #94A3B8;
-  --text-dim: #64748B;
-  --text-mono: #CBD5E1;
+	/* Text & Typography */
+	--text-main: #f8fafc;
+	--text-secondary: #94a3b8;
+	--text-muted: #94a3b8;
+	--text-dim: #64748b;
+	--text-mono: #cbd5e1;
 
-  /* Primary Accent — Amber Gold (Bloomberg DNA) */
-  --accent: #F59E0B;
-  --accent-glow: rgba(245, 158, 11, 0.15);
-  /* Legacy accent aliases */
-  --accent-cyan: #F59E0B;
-  --accent-cyan-glow: rgba(245, 158, 11, 0.12);
-  --accent-gold: #F59E0B;
-  --accent-gold-glow: rgba(245, 158, 11, 0.15);
-  --accent-purple: #A78BFA;
+	/* Primary Accent — Amber Gold (Bloomberg DNA) */
+	--accent: #f59e0b;
+	--accent-glow: rgba(245, 158, 11, 0.15);
+	/* Legacy accent aliases */
+	--accent-cyan: #f59e0b;
+	--accent-cyan-glow: rgba(245, 158, 11, 0.12);
+	--accent-gold: #f59e0b;
+	--accent-gold-glow: rgba(245, 158, 11, 0.15);
+	--accent-purple: #a78bfa;
 
-  /* Quantitative Signal Colors */
-  --signal-bull: #22C55E;
-  --signal-bear: #EF4444;
-  --signal-neutral: #F59E0B;
-  --signal-quant: #60A5FA;
-  --signal-pca: #A78BFA;
+	/* Quantitative Signal Colors */
+	--signal-bull: #22c55e;
+	--signal-bear: #ef4444;
+	--signal-neutral: #f59e0b;
+	--signal-quant: #60a5fa;
+	--signal-pca: #a78bfa;
 
-  /* Status */
-  --status-success: #22C55E;
-  --status-danger: #EF4444;
-  --status-danger-glow: rgba(239, 68, 68, 0.2);
-  --status-warning: #F59E0B;
+	/* Status */
+	--status-success: #22c55e;
+	--status-danger: #ef4444;
+	--status-danger-glow: rgba(239, 68, 68, 0.2);
+	--status-warning: #f59e0b;
 }
 
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--bg-root);
-  color: var(--text-main);
-  line-height: 1.5;
-  overflow-x: hidden;
+	font-family:
+		"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	background-color: var(--bg-root);
+	color: var(--text-main);
+	line-height: 1.5;
+	overflow-x: hidden;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Inter', sans-serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: "Inter", sans-serif;
 }
 
-code, pre, .font-mono,
-[data-mono], .data-value, .metric-value {
-  font-family: 'JetBrains Mono', monospace;
+code,
+pre,
+.font-mono,
+[data-mono],
+.data-value,
+.metric-value {
+	font-family: "JetBrains Mono", monospace;
 }
 
 /* ─── Glassmorphic card — with hover lift (for non-chart cards only) ─── */
 .glass-card {
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.32);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	background: var(--surface-glass);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	border: 1px solid var(--border-card);
+	border-radius: 12px;
+	box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.32);
+	transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.48);
+	border-color: rgba(255, 255, 255, 0.12);
+	transform: translateY(-2px);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.48);
 }
 
 /* ─── Chart panel — NO hover transform (prevents chart resize-loop jitter) ─── */
 .chart-panel {
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.32);
-  overflow: hidden;
+	background: var(--surface-glass);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	border: 1px solid var(--border-card);
+	border-radius: 12px;
+	box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.32);
+	overflow: hidden;
+}
+
+/* Fullscreen chart panel — covers viewport when a pane is maximized */
+.chart-panel.fullscreen {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100vw !important;
+	height: 100vh !important;
+	z-index: 9999;
+	border-radius: 0;
+	border: none;
+	background: var(--bg-root);
+	padding: 0;
+	margin: 0;
+}
+
+/* Fullscreen: subplot headers compact */
+.chart-panel.fullscreen .chart-subplot-header {
+	padding: 6px 14px;
+}
+
+/* When any chart-panel is fullscreen, hide all other content */
+.chart-fullscreen-active > *:not(.chart-panel) {
+	display: none !important;
+}
+.chart-fullscreen-active .chart-panel:not(.fullscreen) {
+	display: none !important;
+}
+
+/* Hidden subplot — keeps container in DOM but invisible */
+.chart-subplot-hidden {
+	height: 0 !important;
+	overflow: hidden;
+	border-top: none !important;
 }
 
 /* Each pane within a chart panel */
 .chart-subplot {
-  position: relative;
+	position: relative;
 }
 
 .chart-subplot + .chart-subplot {
-  border-top: 1px solid var(--border-panel);
+	border-top: 1px solid var(--border-panel);
 }
 
 /* Subplot inline header row */
 .chart-subplot-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid var(--border-panel);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 14px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	background: rgba(255, 255, 255, 0.02);
+	border-bottom: 1px solid var(--border-panel);
 }
 
 .chart-subplot-header .subplot-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .chart-subplot-header .subplot-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 /* Toggle segment button group */
 .toggle-group {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-panel);
-  border-radius: 6px;
-  overflow: hidden;
+	display: flex;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid var(--border-panel);
+	border-radius: 6px;
+	overflow: hidden;
 }
 
 .toggle-btn {
-  padding: 3px 10px;
-  font-size: 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  letter-spacing: 0.5px;
+	padding: 3px 10px;
+	font-size: 10px;
+	font-family: "JetBrains Mono", monospace;
+	font-weight: 600;
+	border: none;
+	background: transparent;
+	color: var(--text-dim);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	letter-spacing: 0.5px;
 }
 
 .toggle-btn:hover {
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
+	color: var(--text-muted);
+	background: rgba(255, 255, 255, 0.06);
 }
 
 .toggle-btn.active {
-  background: var(--accent-glow);
-  color: var(--accent);
+	background: var(--accent-glow);
+	color: var(--accent);
 }
 
 /* Icon action button (maximize, restore) */
 .icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 13px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-dim);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	font-size: 13px;
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--accent);
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--accent);
 }
 
 /* Gate badge for MTTD Console */
 .gate-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 10px;
+	border-radius: 20px;
+	font-size: 11px;
+	font-family: "JetBrains Mono", monospace;
+	font-weight: 600;
 }
 
 .gate-badge.pass {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--signal-bull);
-  border: 1px solid rgba(34, 197, 94, 0.2);
+	background: rgba(34, 197, 94, 0.12);
+	color: var(--signal-bull);
+	border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
 .gate-badge.fail {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--signal-bear);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+	background: rgba(239, 68, 68, 0.12);
+	color: var(--signal-bear);
+	border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .gate-badge.active-exit {
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--signal-neutral);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+	background: rgba(245, 158, 11, 0.12);
+	color: var(--signal-neutral);
+	border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 /* Sync gap badge */
 .sync-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 500;
-  cursor: default;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	border-radius: 8px;
+	font-size: 12px;
+	font-family: "JetBrains Mono", monospace;
+	font-weight: 500;
+	cursor: default;
 }
 
 .sync-badge.behind {
-  background: rgba(245, 158, 11, 0.10);
-  color: var(--status-warning);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+	background: rgba(245, 158, 11, 0.1);
+	color: var(--status-warning);
+	border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .sync-badge.current {
-  background: rgba(34, 197, 94, 0.08);
-  color: var(--status-success);
-  border: 1px solid rgba(34, 197, 94, 0.15);
+	background: rgba(34, 197, 94, 0.08);
+	color: var(--status-success);
+	border: 1px solid rgba(34, 197, 94, 0.15);
 }
 
 /* Sync action button */
 .sync-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 600;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.08);
-  color: var(--accent);
-  cursor: pointer;
-  transition: all 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	border-radius: 8px;
+	font-size: 12px;
+	font-family: "JetBrains Mono", monospace;
+	font-weight: 600;
+	border: 1px solid rgba(245, 158, 11, 0.3);
+	background: rgba(245, 158, 11, 0.08);
+	color: var(--accent);
+	cursor: pointer;
+	transition: all 0.15s ease;
 }
 
 .sync-btn:hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.16);
-  border-color: rgba(245, 158, 11, 0.5);
+	background: rgba(245, 158, 11, 0.16);
+	border-color: rgba(245, 158, 11, 0.5);
 }
 
 .sync-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 /* Glow utilities */
 .glow-accent {
-  box-shadow: 0 0 20px var(--accent-glow);
+	box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .glow-danger {
-  box-shadow: 0 0 20px var(--status-danger-glow);
+	box-shadow: 0 0 20px var(--status-danger-glow);
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+	width: 6px;
+	height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-root);
+	background: var(--bg-root);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-elevated);
-  border-radius: 3px;
+	background: var(--bg-elevated);
+	border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.4);
+	background: rgba(245, 158, 11, 0.4);
 }
 
 /* Animations */
 @keyframes pulseGlow {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.02); }
+	0%,
+	100% {
+		opacity: 0.8;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.02);
+	}
 }
 
 .animate-pulse-glow {
-  animation: pulseGlow 3s infinite ease-in-out;
+	animation: pulseGlow 3s infinite ease-in-out;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .animate-spin {
-  animation: spin 0.8s linear infinite;
+	animation: spin 0.8s linear infinite;
 }

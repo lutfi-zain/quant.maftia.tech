@@ -52,7 +52,7 @@ function makeCommonOptions() {
 }
 
 function getPanelHeights(maximized: MaximizedPanel) {
-	const full = Math.max(500, window.innerHeight - 220);
+	const full = window.innerHeight;
 	switch (maximized) {
 		case "btc":
 			return { btc: full, imo: 0, scomp: 0 };
@@ -86,9 +86,6 @@ function computeIchimokuLines(dailyData: DailyAnalyticsPoint[]) {
 	const spanB: (number | null)[] = new Array(n).fill(null);
 
 	for (let i = 0; i < n; i++) {
-		const highs = dailyData[i].high;
-		const lows = dailyData[i].low;
-
 		// Tenkan-sen (9-period)
 		if (i >= 8) {
 			let maxH = -Infinity,
@@ -173,7 +170,6 @@ const ICHIMOKU_COMPONENTS_METADATA: Record<
 export const IchimokuTerminal: React.FC = () => {
 	const { dailyData } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
-	const [loading, setLoading] = useState(true);
 	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
@@ -195,11 +191,9 @@ export const IchimokuTerminal: React.FC = () => {
 			.getComponents("quant-lttd-ichimoku")
 			.then((data) => {
 				setComponents(data);
-				setLoading(false);
 			})
 			.catch((e) => {
 				console.error("Failed to load Ichimoku components:", e);
-				setLoading(false);
 			});
 	}, []);
 
@@ -464,7 +458,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// ── Populate S-component data ──
 		sTkSeries.setData(
-			dailyData.map((p, i) => ({
+			dailyData.map((p) => ({
 				time: p.date as Time,
 				value:
 					p.ichimoku_s_tk !== undefined && p.ichimoku_s_tk !== null
@@ -507,7 +501,7 @@ export const IchimokuTerminal: React.FC = () => {
 			{ chart: scompChart, series: sTkSeries },
 		];
 
-		allCharts.forEach(({ chart, series }, idx) => {
+		allCharts.forEach(({ chart }, idx) => {
 			chart.subscribeCrosshairMove((param) => {
 				if (isSyncingRef.current) return;
 				isSyncingRef.current = true;
@@ -599,7 +593,10 @@ export const IchimokuTerminal: React.FC = () => {
 	const heights = getPanelHeights(maximized);
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+		<div
+			className={maximized !== null ? "chart-fullscreen-active" : ""}
+			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+		>
 			{/* Pillar Header Info Bar */}
 			<div
 				className="glass-card"
@@ -749,131 +746,130 @@ export const IchimokuTerminal: React.FC = () => {
 			</div>
 
 			{/* Single seamless chart panel — 3 subplots */}
-			<div className="chart-panel" ref={wrapperRef}>
+			<div
+				className={`chart-panel ${maximized !== null ? "fullscreen" : ""}`}
+				ref={wrapperRef}
+			>
 				{/* Pane 1: BTC + Ichimoku overlay */}
-				{heights.btc > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							BTC/USD + Ichimoku Cloud · Tenkan{" "}
+							<span style={{ color: "#F87171" }}>━</span> Kijun{" "}
+							<span style={{ color: "#60A5FA" }}>━</span> Span A{" "}
+							<span style={{ color: "rgba(34,197,94,0.6)" }}>━</span> Span B{" "}
+							<span style={{ color: "rgba(239,68,68,0.6)" }}>━</span> Chikou{" "}
+							<span style={{ color: "rgba(168,85,247,0.6)" }}>┄</span>
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								BTC/USD + Ichimoku Cloud · Tenkan{" "}
-								<span style={{ color: "#F87171" }}>━</span> Kijun{" "}
-								<span style={{ color: "#60A5FA" }}>━</span> Span A{" "}
-								<span style={{ color: "rgba(34,197,94,0.6)" }}>━</span> Span B{" "}
-								<span style={{ color: "rgba(239,68,68,0.6)" }}>━</span> Chikou{" "}
-								<span style={{ color: "rgba(168,85,247,0.6)" }}>┄</span>
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "btc" ? null : "btc")
-									}
-									title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
-								>
-									{maximized === "btc" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
+								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
+							>
+								{maximized === "btc" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={btcContainerRef}
-							style={{ width: "100%", height: `${heights.btc}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={btcContainerRef}
+						style={{ width: "100%", height: `${heights.btc}px` }}
+					/>
+				</div>
 
 				{/* Pane 2: Ichimoku IMO oscillator */}
-				{heights.imo > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.imo === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							Ichimoku Stationary Bounded tanh Oscillator [-1.00 → +1.00] · Bull
+							+0.50 / Bear -0.50
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								Ichimoku Stationary Bounded tanh Oscillator [-1.00 → +1.00] ·
-								Bull +0.50 / Bear -0.50
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "imo" ? null : "imo")
-									}
-									title={maximized === "imo" ? "Restore" : "Maximize IMO pane"}
-								>
-									{maximized === "imo" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
+								title={maximized === "imo" ? "Restore" : "Maximize IMO pane"}
+							>
+								{maximized === "imo" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={imoContainerRef}
-							style={{ width: "100%", height: `${heights.imo}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={imoContainerRef}
+						style={{ width: "100%", height: `${heights.imo}px` }}
+					/>
+				</div>
 
 				{/* Pane 3: S-component lines (bottom — shows time axis) */}
-				{heights.scomp > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.scomp === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							S-Components · S_TK <span style={{ color: "#22D3EE" }}>━</span>{" "}
+							S_Cloud <span style={{ color: "#F59E0B" }}>━</span> S_Future{" "}
+							<span style={{ color: "#A78BFA" }}>━</span> S_Chikou{" "}
+							<span style={{ color: "#22C55E" }}>━</span>
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								S-Components · S_TK <span style={{ color: "#22D3EE" }}>━</span>{" "}
-								S_Cloud <span style={{ color: "#F59E0B" }}>━</span> S_Future{" "}
-								<span style={{ color: "#A78BFA" }}>━</span> S_Chikou{" "}
-								<span style={{ color: "#22C55E" }}>━</span>
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "scomp" ? null : "scomp")
-									}
-									title={
-										maximized === "scomp" ? "Restore" : "Maximize S-Comp pane"
-									}
-								>
-									{maximized === "scomp" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() =>
+									setMaximized(maximized === "scomp" ? null : "scomp")
+								}
+								title={
+									maximized === "scomp" ? "Restore" : "Maximize S-Comp pane"
+								}
+							>
+								{maximized === "scomp" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={scompContainerRef}
-							style={{ width: "100%", height: `${heights.scomp}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={scompContainerRef}
+						style={{ width: "100%", height: `${heights.scomp}px` }}
+					/>
+				</div>
 			</div>
 
 			{/* Interactive Breakdown Table */}

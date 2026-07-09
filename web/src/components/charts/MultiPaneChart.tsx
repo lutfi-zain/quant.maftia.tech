@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	createChart,
 	type IChartApi,
@@ -58,7 +58,7 @@ function makeCommonOptions() {
 
 // Heights per panel state
 function getPanelHeights(maximized: MaximizedPanel) {
-	const full = Math.max(500, window.innerHeight - 220);
+	const full = window.innerHeight;
 	switch (maximized) {
 		case "btc":
 			return { btc: full, val: 0, lttd: 0, mttd: 0 };
@@ -385,7 +385,6 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		const resizeObserver = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const newW = wrapperRef.current.clientWidth;
-			const h = getPanelHeights(maximized);
 			btcChart.applyOptions({ width: newW });
 			valChart.applyOptions({ width: newW });
 			lttdChart.applyOptions({ width: newW });
@@ -548,14 +547,17 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 			</div>
 
 			{/* Single seamless chart panel — all 4 subplots */}
-			<div className="chart-panel" ref={wrapperRef}>
+			<div
+				className={`chart-panel ${maximized !== null ? "fullscreen" : ""}`}
+				ref={wrapperRef}
+			>
 				{subplots.map(({ id, label, containerRef }) => {
 					const heights = getPanelHeights(maximized);
 					const heightKey = id as string;
 					const h = heights[heightKey as keyof typeof heights];
-					if (h === 0) return null;
+					const hiddenClass = h === 0 ? "chart-subplot-hidden" : "";
 					return (
-						<div key={id} className="chart-subplot">
+						<div key={id} className={`chart-subplot ${hiddenClass}`}>
 							<div className="chart-subplot-header">
 								<span
 									className="subplot-title"

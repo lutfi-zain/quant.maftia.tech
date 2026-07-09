@@ -80,10 +80,19 @@
 ## 9. Final Polish & Verification
 
 - [x] 9.1 Run `bun run dev` in `web/` and visually verify all 5 views (Dashboard + 4 Studios) render without white gaps between chart subplots
-- [ ] 9.2 Verify log/linear toggle works on all BTC price panes (apply options without remount)
-- [ ] 9.3 Verify maximize works in each studio: BTC-only fullscreen, subplot+BTC two-pane, restore to full
-- [ ] 9.4 Verify crosshair sync: mouse over top pane shows crosshair on all synchronized subplots simultaneously
-- [ ] 9.5 Verify sync gap badge: check if server date vs client data tail date difference is computed and displayed correctly
-- [ ] 9.6 Verify data timeline: open browser DevTools, check `dailyData.length > 3000` and earliest entry date is ≤ 2017-01-01
-- [ ] 9.7 Verify amber accent color applied throughout (nav active state, sync badge, accent buttons)
+- [x] 9.2 Verify log/linear toggle works on all BTC price panes (apply options without remount)
+- [x] 9.3 Verify maximize works in each studio: BTC-only fullscreen, subplot+BTC two-pane, restore to full
+- [x] 9.4 Verify crosshair sync: mouse over top pane shows crosshair on all synchronized subplots simultaneously
+- [x] 9.5 Verify sync gap badge: check if server date vs client data tail date difference is computed and displayed correctly
+- [x] 9.6 Verify data timeline: open browser DevTools, check `dailyData.length > 3000` and earliest entry date is ≤ 2017-01-01
+- [x] 9.7 Verify amber accent color applied throughout (nav active state, sync badge, accent buttons)
 - [x] 9.8 Run `python3 run_report_pipeline.py` to confirm no Python backend regressions from any accidental file modification
+
+## 10. Maximize Bugfix (2026-07-09)
+
+- [x] 10.1 Fix charts disappearing after maximize/restore cycle — containers were removed from DOM when height=0 via conditional rendering (`{heights.x > 0 && (...)}`), but chart init useEffect only depended on `dailyData` and didn't re-run to recreate charts. Fix: always render containers, hide with CSS class `.chart-subplot-hidden` (height: 0, overflow: hidden) instead of conditional rendering.
+- [x] 10.2 Fix maximize not covering full viewport — `getPanelHeights` used `window.innerHeight - 220` which left 220px gap. Fix: use `window.innerHeight` directly for fullscreen. Add `.chart-panel.fullscreen` CSS class with `position: fixed; width: 100vw; height: 100vh; z-index: 9999`.
+- [x] 10.3 Fix toolbar/header/sidebar still visible when maximized — parent div gets `.chart-fullscreen-active` class which hides all non-chart elements via CSS rule `.chart-fullscreen-active > *:not(.chart-panel) { display: none }`.
+- [x] 10.4 Apply maximize bugfix to all 4 studios (ValuationStudio, LttdLab, MttdConsole, IchimokuTerminal) and MultiPaneChart.
+- [x] 10.5 Add `database` property to `HealthResponse` type in `api/types.ts` for sync gap detection.
+- [x] 10.6 Fix React 19 `RefObject<HTMLDivElement | null>` type mismatch in MultiPaneChart.tsx.

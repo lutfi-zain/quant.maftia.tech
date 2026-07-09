@@ -58,7 +58,7 @@ function makeCommonOptions() {
 }
 
 function getPanelHeights(maximized: MaximizedPanel) {
-	const full = Math.max(500, window.innerHeight - 220);
+	const full = window.innerHeight;
 	switch (maximized) {
 		case "btc":
 			return { btc: full, hmm: 0, vol: 0 };
@@ -116,7 +116,6 @@ const LTTD_COMPONENT_METADATA: Record<
 export const LttdLab: React.FC = () => {
 	const { dailyData, circuitBreakers } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
-	const [loading, setLoading] = useState(true);
 	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
@@ -138,11 +137,9 @@ export const LttdLab: React.FC = () => {
 			.getComponents("quant-btc-lttd-system")
 			.then((data) => {
 				setComponents(data);
-				setLoading(false);
 			})
 			.catch((e) => {
 				console.error("Failed to load LTTD components:", e);
-				setLoading(false);
 			});
 	}, []);
 
@@ -338,7 +335,7 @@ export const LttdLab: React.FC = () => {
 			{ chart: volChart, series: volSeries },
 		];
 
-		allCharts.forEach(({ chart, series }, idx) => {
+		allCharts.forEach(({ chart }, idx) => {
 			chart.subscribeCrosshairMove((param) => {
 				if (isSyncingRef.current) return;
 				isSyncingRef.current = true;
@@ -430,7 +427,10 @@ export const LttdLab: React.FC = () => {
 	const heights = getPanelHeights(maximized);
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+		<div
+			className={maximized !== null ? "chart-fullscreen-active" : ""}
+			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+		>
 			{/* Pillar Header Info Bar */}
 			<div
 				className="glass-card"
@@ -700,121 +700,117 @@ export const LttdLab: React.FC = () => {
 			</div>
 
 			{/* Single seamless chart panel — 3 subplots */}
-			<div className="chart-panel" ref={wrapperRef}>
+			<div
+				className={`chart-panel ${maximized !== null ? "fullscreen" : ""}`}
+				ref={wrapperRef}
+			>
 				{/* BTC Candlestick Pane */}
-				{heights.btc > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							MasterOHLCV Price · BTC/USD Candlestick · Regime-Colored Wicks
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								MasterOHLCV Price · BTC/USD Candlestick · Regime-Colored Wicks
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "btc" ? null : "btc")
-									}
-									title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
-								>
-									{maximized === "btc" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
+								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
+							>
+								{maximized === "btc" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={btcContainerRef}
-							style={{ width: "100%", height: `${heights.btc}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={btcContainerRef}
+						style={{ width: "100%", height: `${heights.btc}px` }}
+					/>
+				</div>
 
 				{/* HMM Probabilities Pane */}
-				{heights.hmm > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.hmm === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							Gaussian HMM State Probabilities · P(Bull) / P(Bear) / P(Sideways)
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								Gaussian HMM State Probabilities · P(Bull) / P(Bear) /
-								P(Sideways)
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "hmm" ? null : "hmm")
-									}
-									title={maximized === "hmm" ? "Restore" : "Maximize HMM pane"}
-								>
-									{maximized === "hmm" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "hmm" ? null : "hmm")}
+								title={maximized === "hmm" ? "Restore" : "Maximize HMM pane"}
+							>
+								{maximized === "hmm" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={hmmContainerRef}
-							style={{ width: "100%", height: `${heights.hmm}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={hmmContainerRef}
+						style={{ width: "100%", height: `${heights.hmm}px` }}
+					/>
+				</div>
 
 				{/* Volatility Pane (bottom — shows time axis) */}
-				{heights.vol > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.vol === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							20-Day Annualized Realized Volatility (Feature Input)
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								20-Day Annualized Realized Volatility (Feature Input)
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "vol" ? null : "vol")
-									}
-									title={maximized === "vol" ? "Restore" : "Maximize Vol pane"}
-								>
-									{maximized === "vol" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "vol" ? null : "vol")}
+								title={maximized === "vol" ? "Restore" : "Maximize Vol pane"}
+							>
+								{maximized === "vol" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={volContainerRef}
-							style={{ width: "100%", height: `${heights.vol}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={volContainerRef}
+						style={{ width: "100%", height: `${heights.vol}px` }}
+					/>
+				</div>
 			</div>
 
 			{/* Interactive Breakdown Table */}

@@ -51,7 +51,7 @@ function makeCommonOptions() {
 }
 
 function getPanelHeights(maximized: MaximizedPanel) {
-	const full = Math.max(500, window.innerHeight - 220);
+	const full = window.innerHeight;
 	switch (maximized) {
 		case "btc":
 			return { btc: full, val: 0 };
@@ -367,7 +367,10 @@ export const ValuationStudio: React.FC = () => {
 	const heights = getPanelHeights(maximized);
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+		<div
+			className={maximized !== null ? "chart-fullscreen-active" : ""}
+			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+		>
 			{/* Pillar Header Info Bar */}
 			<div
 				className="glass-card"
@@ -530,85 +533,84 @@ export const ValuationStudio: React.FC = () => {
 			</div>
 
 			{/* Single seamless chart panel — 2 subplots */}
-			<div className="chart-panel" ref={wrapperRef}>
+			<div
+				className={`chart-panel ${maximized !== null ? "fullscreen" : ""}`}
+				ref={wrapperRef}
+			>
 				{/* BTC Candlestick Pane */}
-				{heights.btc > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							MasterOHLCV Price · BTC/USD Candlestick
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								MasterOHLCV Price · BTC/USD Candlestick
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "btc" ? null : "btc")
-									}
-									title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
-								>
-									{maximized === "btc" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
+								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
+							>
+								{maximized === "btc" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={btcContainerRef}
-							style={{ width: "100%", height: `${heights.btc}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={btcContainerRef}
+						style={{ width: "100%", height: `${heights.btc}px` }}
+					/>
+				</div>
 
 				{/* Valuation Composite Pane */}
-				{heights.val > 0 && (
-					<div className="chart-subplot">
-						<div className="chart-subplot-header">
+				<div
+					className={`chart-subplot ${heights.val === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<span
+							className="subplot-title"
+							style={{ color: "var(--text-dim)" }}
+						>
+							Valuation Composite [-2.00 → +2.00] · Bubble +1.50 / Discount
+							-1.00
+						</span>
+						<div className="subplot-controls">
 							<span
-								className="subplot-title"
-								style={{ color: "var(--text-dim)" }}
+								style={{
+									fontFamily: "JetBrains Mono",
+									fontSize: "10px",
+									color: "rgba(255,255,255,0.2)",
+								}}
 							>
-								Valuation Composite [-2.00 → +2.00] · Bubble +1.50 / Discount
-								-1.00
+								85px
 							</span>
-							<div className="subplot-controls">
-								<span
-									style={{
-										fontFamily: "JetBrains Mono",
-										fontSize: "10px",
-										color: "rgba(255,255,255,0.2)",
-									}}
-								>
-									85px
-								</span>
-								<button
-									className="icon-btn"
-									onClick={() =>
-										setMaximized(maximized === "val" ? null : "val")
-									}
-									title={
-										maximized === "val" ? "Restore" : "Maximize Valuation pane"
-									}
-								>
-									{maximized === "val" ? "⊡" : "⤢"}
-								</button>
-							</div>
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "val" ? null : "val")}
+								title={
+									maximized === "val" ? "Restore" : "Maximize Valuation pane"
+								}
+							>
+								{maximized === "val" ? "⊡" : "⤢"}
+							</button>
 						</div>
-						<div
-							ref={valContainerRef}
-							style={{ width: "100%", height: `${heights.val}px` }}
-						/>
 					</div>
-				)}
+					<div
+						ref={valContainerRef}
+						style={{ width: "100%", height: `${heights.val}px` }}
+					/>
+				</div>
 			</div>
 
 			{/* Interactive Breakdown Table */}
