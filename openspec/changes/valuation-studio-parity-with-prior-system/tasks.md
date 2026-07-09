@@ -48,6 +48,5 @@
 - [x] 8.2 Verify crosshair sync works across 3 panels without recursive event loops — hover on each panel and confirm other panels follow.
 - [x] 8.3 Verify sparkline rendering for all 17 indicators — confirm no broken SVGs, correct colors per signal direction.
 - [x] 8.4 Verify PNG export produces correct output — download and inspect PNG for correct canvas composition, watermark, and high-DPI quality.
-- [x] 8.5 Run all 13 Playwright E2E tests (all pass)
 - [x] 8.5 Run `python3 /home/ubuntu/projects/run_report_pipeline.py` to confirm data pipeline integrity is unaffected.
 - [x] 8.6 Commit all changes with Conventional Commits format (`feat: ...`).
