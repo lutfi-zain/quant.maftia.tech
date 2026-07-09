@@ -55,6 +55,52 @@ export interface ComponentSignal {
 	raw_value?: number;
 }
 
+export interface MetricTimeseriesResponse {
+	status: string;
+	metric_name: string;
+	causal_filter: {
+		applied: boolean;
+		max_allowed_date: string;
+		effective_end_date: string;
+	};
+	count: number;
+	data: {
+		raw_values: { date: string; value: number }[];
+		normalized_values: { date: string; value: number }[];
+		btc_ohlc: {
+			date: string;
+			open: number;
+			high: number;
+			low: number;
+			close: number;
+		}[];
+	};
+}
+
+export interface MetricThresholdConfig {
+	status: string;
+	metric_name: string;
+	thresholds: {
+		t_minus_2: number;
+		t_minus_1: number;
+		t_zero: number;
+		t_plus_1: number;
+		t_plus_2: number;
+	};
+}
+
+export interface MetricThresholdSaveResponse {
+	status: string;
+	metric_name: string;
+	thresholds: {
+		t_minus_2: number;
+		t_minus_1: number;
+		t_zero: number;
+		t_plus_1: number;
+		t_plus_2: number;
+	};
+}
+
 export interface HealthResponse {
 	status: "healthy" | "degraded" | "error";
 	service: string;

@@ -15,6 +15,12 @@ export function useTerminalWebSocket(options?: UseTerminalWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const retryCountRef = useRef<number>(0);
   const timeoutRef = useRef<any>(null);
+  const optionsRef = useRef(options);
+
+  // Always keep the latest options without triggering reconnects
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   const connect = useCallback(() => {
     if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
@@ -35,9 +41,9 @@ export function useTerminalWebSocket(options?: UseTerminalWebSocketOptions) {
         try {
           const message = JSON.parse(event.data);
           if (message.type === 'analytics_update' && message.payload) {
-            options?.onAnalyticsUpdate?.(message.payload);
+            optionsRef.current?.onAnalyticsUpdate?.(message.payload);
           } else if (message.type === 'circuit_breaker_trip' && message.payload) {
-            options?.onCircuitBreakerTrip?.(message.payload);
+            optionsRef.current?.onCircuitBreakerTrip?.(message.payload);
           }
         } catch (e) {
           console.error('Failed to parse WebSocket broadcast:', e);
@@ -60,7 +66,7 @@ export function useTerminalWebSocket(options?: UseTerminalWebSocketOptions) {
       setStatus('Reconnecting');
       scheduleReconnect();
     }
-  }, [options]);
+  }, []);
 
   const scheduleReconnect = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -77,12 +83,18 @@ export function useTerminalWebSocket(options?: UseTerminalWebSocketOptions) {
   }, [connect]);
 
   useEffect(() => {
-    connect();
+    // Delay connection slightly to avoid React Strict Mode double-invocation aborted connection errors
+    const initialConnectTimeout = setTimeout(() => {
+      connect();
+    }, 50);
+    
     return () => {
+      clearTimeout(initialConnectTimeout);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null; // Prevent reconnect on unmount
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [connect]);
