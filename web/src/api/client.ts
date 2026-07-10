@@ -39,7 +39,7 @@ export const quantClient = {
 	},
 
 	async getDailyAnalytics(limit?: number): Promise<DailyAnalyticsPoint[]> {
-		const url = new URL(`${API_BASE}/api/v1/analytics/daily`, window.location.origin);
+		const url = new URL(`${API_BASE}/api/v1/quant/daily`, window.location.origin);
 		if (limit) url.searchParams.set("limit", limit.toString());
 
 		const res = await fetch(url.toString());
@@ -109,7 +109,7 @@ export const quantClient = {
 	},
 
 	async getComponents(systemSource?: string, date?: string, limit?: number): Promise<ComponentSignal[]> {
-		const url = new URL(`${API_BASE}/api/v1/analytics/components`, window.location.origin);
+		const url = new URL(`${API_BASE}/api/v1/quant/components`, window.location.origin);
 		if (systemSource) url.searchParams.set("system", systemSource);
 		if (date) url.searchParams.set("date", date);
 		if (limit) url.searchParams.set("limit", limit.toString());
@@ -122,7 +122,7 @@ export const quantClient = {
 	},
 
 	async getMetricTimeseries(metricName: string): Promise<MetricTimeseriesResponse> {
-		const res = await fetch(`${API_BASE}/api/v1/analytics/metric/${metricName}`);
+		const res = await fetch(`${API_BASE}/api/v1/quant/metric/${metricName}`);
 		if (!res.ok) throw new Error(`Failed to fetch metric timeseries: ${res.statusText}`);
 		const json = (await res.json()) as MetricTimeseriesResponse;
 		if (json && json.data) {
@@ -134,7 +134,7 @@ export const quantClient = {
 	},
 
 	async getMetricConfig(metricName: string): Promise<MetricThresholdConfig> {
-		const res = await fetch(`${API_BASE}/api/v1/analytics/metric/${metricName}/config`);
+		const res = await fetch(`${API_BASE}/api/v1/quant/metric/${metricName}/config`);
 		if (!res.ok) throw new Error(`Failed to fetch metric config: ${res.statusText}`);
 		return res.json();
 	},
@@ -149,7 +149,7 @@ export const quantClient = {
 			t_plus_2: number | null;
 		},
 	): Promise<MetricThresholdSaveResponse> {
-		const res = await fetch(`${API_BASE}/api/v1/analytics/metric/${metricName}/config`, {
+		const res = await fetch(`${API_BASE}/api/v1/quant/metric/${metricName}/config`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(config),
