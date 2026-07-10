@@ -1,4 +1,4 @@
-import type { DailyAnalyticsPoint, CircuitBreakersResponse, ComponentSignal, MetricTimeseriesResponse, MetricThresholdConfig, MetricThresholdSaveResponse, HealthResponse } from './types';
+import { DailyAnalyticsPoint, CircuitBreakersResponse, ComponentSignal, HealthResponse } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL !== undefined ? import.meta.env.VITE_API_BASE_URL : (window.location.protocol + '//' + window.location.hostname + ':8765');
 
@@ -105,43 +105,5 @@ export const quantClient = {
     const json = await res.json();
     const rawList: any[] = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []);
     return verifyCausalData(rawList);
-  },
-
-  async getMetricTimeseries(metricName: string, startDate?: string, endDate?: string, limit?: number): Promise<MetricTimeseriesResponse> {
-    const url = new URL(`${API_BASE}/api/v1/analytics/metric/${encodeURIComponent(metricName)}`, window.location.origin);
-    if (startDate) url.searchParams.set('start_date', startDate);
-    if (endDate) url.searchParams.set('end_date', endDate);
-    if (limit) url.searchParams.set('limit', limit.toString());
-
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      if (res.status === 404) {
-        return {
-          status: 'error',
-          metric_name: metricName,
-          causal_filter: { applied: true, max_allowed_date: '', effective_end_date: '' },
-          count: 0,
-          data: { raw_values: [], normalized_values: [], btc_ohlc: [] },
-        };
-      }
-      throw new Error(`Failed to fetch metric timeseries: ${res.statusText}`);
-    }
-    return res.json();
-  },
-
-  async getMetricConfig(metricName: string): Promise<MetricThresholdConfig> {
-    const res = await fetch(`${API_BASE}/api/v1/analytics/metric/${encodeURIComponent(metricName)}/config`);
-    if (!res.ok) throw new Error(`Failed to fetch metric config: ${res.statusText}`);
-    return res.json();
-  },
-
-  async saveMetricConfig(metricName: string, thresholds: { t_minus_2: number; t_minus_1: number; t_zero: number; t_plus_1: number; t_plus_2: number }): Promise<MetricThresholdSaveResponse> {
-    const res = await fetch(`${API_BASE}/api/v1/analytics/metric/${encodeURIComponent(metricName)}/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(thresholds),
-    });
-    if (!res.ok) throw new Error(`Failed to save metric config: ${res.statusText}`);
-    return res.json();
-  },
+  }
 };

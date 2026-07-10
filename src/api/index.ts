@@ -5,7 +5,6 @@ import { healthRouter } from './routes/health.js'
 import { dailyRouter } from './routes/daily.js'
 import { componentsRouter } from './routes/components.js'
 import { circuitBreakersRouter } from './routes/circuit-breakers.js'
-import { metricsRouter } from './routes/metrics.js'
 
 export const app = new Hono()
 
@@ -16,7 +15,6 @@ app.route('/api/v1/health', healthRouter)
 app.route('/api/v1/analytics/daily', dailyRouter)
 app.route('/api/v1/analytics/components', componentsRouter)
 app.route('/api/v1/system/circuit-breakers', circuitBreakersRouter)
-app.route('/api/v1/analytics/metric', metricsRouter)
 
 app.get('/', (c) => {
   return c.json({

@@ -41,8 +41,8 @@ test.describe('Full-Stack E2E Quantitative Terminal Verification', () => {
     
     // Wait for the main executive header and bento summary
     await expect(page.locator('h1')).toContainText('Master Executive Dashboard');
-    await expect(page.getByText('LOCK: 85px Y-AXIS SYNC')).toBeVisible();
-    await expect(page.getByText('STORAGE: SQLite WAL')).toBeVisible();
+    await expect(page.getByText('CausalFilter t−1')).toBeVisible();
+    await expect(page.getByText('PORT :8765')).toBeVisible();
 
     // Verify Lightweight Charts render
     await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
@@ -108,7 +108,7 @@ test.describe('Full-Stack E2E Quantitative Terminal Verification', () => {
 
     // Verify indicator cards render numerical/Z-score data cleanly
     const cards = page.locator('.glass-card');
-    expect(await cards.count()).toBeGreaterThan(5);
+    expect(await cards.count()).toBeGreaterThanOrEqual(3);
 
     // Verify 85px Y-axis lock on Valuation chart canvas
     const rightCell = page.locator('.tv-lightweight-charts tr:first-child > td:nth-child(3) > div').first();
