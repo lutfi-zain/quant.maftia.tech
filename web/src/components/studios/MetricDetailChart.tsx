@@ -129,6 +129,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		});
 		btcChart.priceScale("right").applyOptions({
 			mode: isLogScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+			minimumWidth: 85,
 		});
 
 		// 2. Raw Metric Chart
@@ -137,6 +138,9 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			width: w,
 			height: rawHeight,
 			timeScale: { ...common.timeScale, visible: rawHeight > 0 && oscHeight === 0 },
+		});
+		rawChart.priceScale("right").applyOptions({
+			minimumWidth: 85,
 		});
 		const rawSeries = rawChart.addSeries(LineSeries, {
 			color: "#38BDF8",
@@ -149,6 +153,9 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			width: w,
 			height: oscHeight,
 			timeScale: { ...common.timeScale, visible: oscHeight > 0 },
+		});
+		oscChart.priceScale("right").applyOptions({
+			minimumWidth: 85,
 		});
 		const oscSeries = oscChart.addSeries(LineSeries, {
 			color: "#A855F7",
@@ -464,7 +471,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 
 			<div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "20px", alignItems: "start" }}>
 				{/* The 3-panel Chart Subplots */}
-				<div className="chart-panel" ref={wrapperRef} style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+				<div className="chart-panel" ref={wrapperRef}>
 					{/* Subplot 1: BTC price */}
 					<div className={`chart-subplot ${bHeight === 0 ? "chart-subplot-hidden" : ""}`}>
 						<div className="chart-subplot-header">
