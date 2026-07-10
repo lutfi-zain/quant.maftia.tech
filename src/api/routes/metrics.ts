@@ -119,12 +119,12 @@ metricsRouter.get('/:metric_name', (c) => {
       [metricName, startParam, endParamRaw]
     )
 
-    const raw_values = rawRows.map((r) => ({
+    const raw_values_raw = rawRows.map((r) => ({
       date: r.date.split('T')[0],
       value: r.raw_value,
     }))
 
-    const btc_ohlc = ohlcRows.map((r) => ({
+    const btc_ohlc_raw = ohlcRows.map((r) => ({
       date: r.date.split('T')[0],
       open: r.open,
       high: r.high,
@@ -132,9 +132,39 @@ metricsRouter.get('/:metric_name', (c) => {
       close: r.close,
     }))
 
-    const normalized_values = normalizedRows.map((r) => ({
+    const normalized_values_raw = normalizedRows.map((r) => ({
       date: r.date.split('T')[0],
       value: r.normalized_score,
+    }))
+
+    // Inner join / alignment by date to prevent index-based chart timescale sync drift
+    const rawMap = new Map(raw_values_raw.map((r) => [r.date, r.value]))
+    const btcMap = new Map(btc_ohlc_raw.map((b) => [b.date, b]))
+    const normMap = new Map(normalized_values_raw.map((n) => [n.date, n.value]))
+
+    const commonDates = Array.from(rawMap.keys())
+      .filter((date) => btcMap.has(date))
+      .sort()
+
+    const raw_values = commonDates.map((date) => ({
+      date,
+      value: rawMap.get(date),
+    }))
+
+    const btc_ohlc = commonDates.map((date) => {
+      const b = btcMap.get(date)!
+      return {
+        date,
+        open: b.open,
+        high: b.high,
+        low: b.low,
+        close: b.close,
+      }
+    })
+
+    const normalized_values = commonDates.map((date) => ({
+      date,
+      value: normMap.get(date) ?? 0.0,
     }))
 
     return c.json({
@@ -145,7 +175,7 @@ metricsRouter.get('/:metric_name', (c) => {
         max_allowed_date: today,
         effective_end_date: effectiveEndDate,
       },
-      count: raw_values.length,
+      count: commonDates.length,
       data: {
         raw_values,
         normalized_values,
