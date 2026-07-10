@@ -126,6 +126,11 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			borderVisible: false,
 			wickUpColor: "#22C55E",
 			wickDownColor: "#EF4444",
+			priceFormat: {
+				type: "price",
+				precision: 0,
+				minMove: 1,
+			},
 		});
 		btcChart.priceScale("right").applyOptions({
 			mode: isLogScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
@@ -145,6 +150,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		const rawSeries = rawChart.addSeries(LineSeries, {
 			color: "#38BDF8",
 			lineWidth: 2,
+			priceFormat: {
+				type: "price",
+				precision: 3,
+			},
 		});
 
 		// 3. Oscillator Chart
@@ -160,6 +169,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		const oscSeries = oscChart.addSeries(LineSeries, {
 			color: "#A855F7",
 			lineWidth: 2,
+			priceFormat: {
+				type: "price",
+				precision: 2,
+			},
 		});
 
 		chartsRef.current = { btc: btcChart, raw: rawChart, osc: oscChart };
