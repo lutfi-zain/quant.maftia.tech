@@ -224,7 +224,7 @@ export const ValuationStudio: React.FC = () => {
 		// BTC time axis visible only when it's the only visible pane
 		btc.timeScale().applyOptions({ visible: heights.val === 0 });
 		if (val) val.timeScale().applyOptions({ visible: heights.val > 0 });
-	}, [maximized]);
+	}, [maximized, isMobile]);
 
 	// Initialize 2-pane charts
 	useEffect(() => {
@@ -353,8 +353,12 @@ export const ValuationStudio: React.FC = () => {
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const nw = wrapperRef.current.clientWidth;
+			if (!nw || nw <= 0) return;
+			const yWidth = getChartYAxisWidth();
 			btcChart.applyOptions({ width: nw });
+			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			valChart.applyOptions({ width: nw });
+			valChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 

@@ -193,7 +193,7 @@ export const LttdLab: React.FC = () => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
 		});
-	}, [maximized]);
+	}, [maximized, isMobile]);
 
 	// Initialize 3-pane charts
 	useEffect(() => {
@@ -386,9 +386,14 @@ export const LttdLab: React.FC = () => {
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const nw = wrapperRef.current.clientWidth;
+			if (!nw || nw <= 0) return;
+			const yWidth = getChartYAxisWidth();
 			btcChart.applyOptions({ width: nw });
+			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			hmmChart.applyOptions({ width: nw });
+			hmmChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			volChart.applyOptions({ width: nw });
+			volChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 

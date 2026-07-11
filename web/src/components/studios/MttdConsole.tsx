@@ -209,7 +209,7 @@ export const MttdConsole: React.FC = () => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
 		});
-	}, [maximized]);
+	}, [maximized, isMobile]);
 
 	// Initialize 3-pane charts
 	useEffect(() => {
@@ -397,9 +397,14 @@ export const MttdConsole: React.FC = () => {
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const nw = wrapperRef.current.clientWidth;
+			if (!nw || nw <= 0) return;
+			const yWidth = getChartYAxisWidth();
 			btcChart.applyOptions({ width: nw });
+			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			imoChart.applyOptions({ width: nw });
+			imoChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			gatesChart.applyOptions({ width: nw });
+			gatesChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 

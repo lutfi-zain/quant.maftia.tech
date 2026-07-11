@@ -27,7 +27,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
   const hasBehind = syncGap.gapDays > 0;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-root)' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        minHeight: '100vh',
+        backgroundColor: 'var(--bg-root)',
+        width: '100%',
+        overflowX: 'hidden',
+      }}
+    >
       {/* Desktop sidebar — hidden on mobile via CSS class */}
       {!isMobile && (
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} wsStatus={wsStatus} />
@@ -47,6 +56,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
         style={{
           marginLeft: isMobile ? '0' : '260px',
           flex: 1,
+          width: isMobile ? '100%' : 'calc(100% - 260px)',
           minWidth: 0,
           padding: isMobile ? '12px 10px 68px 10px' : '24px 32px',
           display: 'flex',

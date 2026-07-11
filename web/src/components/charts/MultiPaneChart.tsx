@@ -168,7 +168,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		});
 		// BTC time axis visible only when it's the only pane or nothing below it
 		btc.timeScale().applyOptions({ visible: visiblePanels.length === 0 });
-	}, [maximized]);
+	}, [maximized, isMobile]);
 
 	// Chart initialization — runs once on data available
 	useEffect(() => {
@@ -398,10 +398,13 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		const resizeObserver = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const newW = wrapperRef.current.clientWidth;
-			btcChart.applyOptions({ width: newW });
-			valChart.applyOptions({ width: newW });
-			lttdChart.applyOptions({ width: newW });
-			mttdChart.applyOptions({ width: newW });
+			if (!newW || newW <= 0) return;
+			const yWidth = getChartYAxisWidth();
+			[btcChart, valChart, lttdChart, mttdChart].forEach((chart) => {
+				if (!chart) return;
+				chart.applyOptions({ width: newW });
+				chart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			});
 		});
 		if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
 

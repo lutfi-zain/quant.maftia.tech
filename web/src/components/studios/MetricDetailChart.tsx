@@ -291,9 +291,14 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const nw = wrapperRef.current.clientWidth;
+			if (!nw || nw <= 0) return;
+			const yWidth = getChartYAxisWidth();
 			btcChart.applyOptions({ width: nw });
+			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			rawChart.applyOptions({ width: nw });
+			rawChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			oscChart.applyOptions({ width: nw });
+			oscChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 
@@ -417,7 +422,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			osc.resize(w, oHeight);
 			osc.timeScale().applyOptions({ visible: oHeight > 0 });
 		}
-	}, [maximizedPanel]);
+	}, [maximizedPanel, isMobile]);
 
 	// Apply log scale effect
 	useEffect(() => {
