@@ -612,13 +612,13 @@ export const IchimokuTerminal: React.FC = () => {
 	return (
 		<div
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
-			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
 			{/* Pillar Header Info Bar */}
 			<div
 				className="glass-card"
 				style={{
-					padding: "20px 24px",
+					padding: "12px 16px",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
@@ -657,7 +657,7 @@ export const IchimokuTerminal: React.FC = () => {
 						Ichimoku Denoised SuperSmoother Quantitative Terminal
 					</h2>
 				</div>
-				<div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
 					<div style={{ textAlign: "right", fontFamily: "JetBrains Mono" }}>
 						<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
 							STATIONARY BOUNDED TANH
@@ -677,7 +677,7 @@ export const IchimokuTerminal: React.FC = () => {
 					<div
 						className="glass-card"
 						style={{
-							padding: "10px 16px",
+							padding: "8px 12px",
 							display: "flex",
 							alignItems: "center",
 							gap: "8px",
@@ -732,7 +732,7 @@ export const IchimokuTerminal: React.FC = () => {
 				style={{
 					display: "flex",
 					alignItems: "center",
-					gap: "10px",
+					gap: "8px",
 					justifyContent: "flex-end",
 				}}
 			>
@@ -890,7 +890,7 @@ export const IchimokuTerminal: React.FC = () => {
 			</div>
 
 			{/* Interactive Breakdown Table */}
-			<div className="glass-card" style={{ padding: "20px" }}>
+			<div className="glass-card" style={{ padding: "12px" }}>
 				<div
 					style={{
 						display: "flex",
@@ -922,7 +922,7 @@ export const IchimokuTerminal: React.FC = () => {
 									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "JetBrains Mono", flexShrink: 0, backgroundColor: "rgba(245,158,11,0.1)", color: "var(--accent)" }}>
 										{ind.category}
 									</span>
-									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
+									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
 										{ind.direction === 1 ? "BULL" : ind.direction === -1 ? "BEAR" : "NEUTRAL"}
 									</span>
 								</div>
@@ -948,14 +948,14 @@ export const IchimokuTerminal: React.FC = () => {
 										fontFamily: "JetBrains Mono",
 									}}
 								>
-									<th style={{ padding: "12px 8px" }}>Component Name</th>
-									<th style={{ padding: "12px 8px" }}>Category</th>
-									<th style={{ padding: "12px 8px" }}>Description</th>
-									<th style={{ padding: "12px 8px" }}>DSP Transformation</th>
-									<th style={{ padding: "12px 8px", textAlign: "right" }}>
+									<th style={{ padding: "8px 6px" }}>Component Name</th>
+									<th style={{ padding: "8px 6px" }}>Category</th>
+									<th style={{ padding: "8px 6px" }}>Description</th>
+									<th style={{ padding: "8px 6px" }}>DSP Transformation</th>
+									<th style={{ padding: "8px 6px", textAlign: "right" }}>
 										Score [-1, +1]
 									</th>
-									<th style={{ padding: "12px 8px", textAlign: "center" }}>
+									<th style={{ padding: "8px 6px", textAlign: "center" }}>
 										Signal Direction
 									</th>
 								</tr>
@@ -971,14 +971,14 @@ export const IchimokuTerminal: React.FC = () => {
 									>
 										<td
 											style={{
-												padding: "14px 8px",
+												padding: "10px 6px",
 												fontWeight: 600,
 												color: "var(--text-primary)",
 											}}
 										>
 											{ind.name}
 										</td>
-										<td style={{ padding: "14px 8px" }}>
+										<td style={{ padding: "10px 6px" }}>
 											<span
 												style={{
 													fontSize: "11px",
@@ -992,12 +992,12 @@ export const IchimokuTerminal: React.FC = () => {
 												{ind.category}
 											</span>
 										</td>
-										<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+										<td style={{ padding: "10px 6px", color: "var(--text-dim)" }}>
 											{ind.description}
 										</td>
 										<td
 											style={{
-												padding: "14px 8px",
+												padding: "10px 6px",
 												fontFamily: "JetBrains Mono",
 												fontSize: "11px",
 												color: "var(--signal-quant)",
@@ -1007,7 +1007,7 @@ export const IchimokuTerminal: React.FC = () => {
 										</td>
 										<td
 											style={{
-												padding: "14px 8px",
+												padding: "10px 6px",
 												textAlign: "right",
 												fontFamily: "JetBrains Mono",
 												fontWeight: 700,
@@ -1023,7 +1023,7 @@ export const IchimokuTerminal: React.FC = () => {
 												? `+${ind.score.toFixed(3)}`
 												: ind.score.toFixed(3)}
 										</td>
-										<td style={{ padding: "14px 8px", textAlign: "center" }}>
+										<td style={{ padding: "10px 6px", textAlign: "center" }}>
 											<span
 												style={{
 													display: "inline-block",

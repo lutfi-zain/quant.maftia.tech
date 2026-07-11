@@ -58,10 +58,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
           flex: 1,
           width: isMobile ? '100%' : 'calc(100% - 260px)',
           minWidth: 0,
-          padding: isMobile ? '12px 10px 68px 10px' : '24px 32px',
+          padding: isMobile ? '12px 10px 68px 10px' : '16px 24px',
           display: 'flex',
           flexDirection: 'column',
-          gap: isMobile ? '12px' : '24px',
+          gap: isMobile ? '12px' : '16px',
         }}
       >
         {/* Desktop Top Header — hidden on mobile */}
@@ -71,7 +71,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingBottom: '16px',
+              paddingBottom: '8px',
               borderBottom: '1px solid var(--border-subtle)',
             }}
           >

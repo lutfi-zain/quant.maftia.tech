@@ -56,16 +56,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
     }}>
       {/* Brand Header */}
       <div style={{
-        padding: '20px',
+        padding: '14px',
         borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
         gap: '12px'
       }}>
         <div style={{
-          width: '36px',
-          height: '36px',
-          borderRadius: '8px',
+          width: '30px',
+          height: '30px',
+          borderRadius: '4px',
           background: 'linear-gradient(135deg, #F59E0B, #D97706)',
           display: 'flex',
           alignItems: 'center',
@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
           color: '#000',
           fontWeight: 700,
           fontFamily: 'JetBrains Mono',
-          fontSize: '16px',
+          fontSize: '14px',
           boxShadow: '0 0 16px rgba(245,158,11,0.25)'
         }}>
           MQ
@@ -89,18 +89,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
       </div>
 
       {/* Navigation Links */}
-      <nav style={{ padding: '12px', flex: 1 }}>
+      <nav style={{ padding: '8px', flex: 1 }}>
         <div style={{ 
           fontSize: '10px', 
           fontWeight: 600, 
           color: 'var(--text-dim)', 
           textTransform: 'uppercase', 
           letterSpacing: '1px',
-          padding: '0 8px 10px'
+          padding: '0 8px 6px'
         }}>
           Multi-Layer Defense
         </div>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -113,8 +113,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
+                    padding: '7px 10px',
+                    borderRadius: '4px',
                     border: 'none',
                     backgroundColor: isActive ? 'rgba(245,158,11,0.08)' : 'transparent',
                     color: isActive ? 'var(--accent)' : 'var(--text-muted)',
@@ -122,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     textAlign: 'left',
-                    boxShadow: isActive ? 'inset 3px 0 0 var(--accent)' : 'none',
+                    boxShadow: isActive ? 'inset 2px 0 0 var(--accent)' : 'none',
                     fontFamily: 'Inter, sans-serif'
                   }}
                 >

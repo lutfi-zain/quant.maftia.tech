@@ -446,13 +446,13 @@ export const LttdLab: React.FC = () => {
 	return (
 		<div
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
-			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
 			{/* Pillar Header Info Bar */}
 			<div
 				className="glass-card"
 				style={{
-					padding: "20px 24px",
+					padding: "12px 16px",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
@@ -514,7 +514,7 @@ export const LttdLab: React.FC = () => {
 					<div
 						className="glass-card"
 						style={{
-							padding: "10px 16px",
+							padding: "8px 12px",
 							display: "flex",
 							alignItems: "center",
 							gap: "8px",
@@ -579,7 +579,7 @@ export const LttdLab: React.FC = () => {
 					gap: "16px",
 				}}
 			>
-				<div className="glass-card" style={{ padding: "16px" }}>
+				<div className="glass-card" style={{ padding: "12px" }}>
 					<div
 						style={{
 							fontSize: "11px",
@@ -610,7 +610,7 @@ export const LttdLab: React.FC = () => {
 						Orthogonalized log return direction
 					</div>
 				</div>
-				<div className="glass-card" style={{ padding: "16px" }}>
+				<div className="glass-card" style={{ padding: "12px" }}>
 					<div
 						style={{
 							fontSize: "11px",
@@ -641,7 +641,7 @@ export const LttdLab: React.FC = () => {
 						Zero multicollinearity leakage
 					</div>
 				</div>
-				<div className="glass-card" style={{ padding: "16px" }}>
+				<div className="glass-card" style={{ padding: "12px" }}>
 					<div
 						style={{
 							fontSize: "11px",
@@ -832,7 +832,7 @@ export const LttdLab: React.FC = () => {
 			</div>
 
 			{/* Interactive Breakdown Table */}
-			<div className="glass-card" style={{ padding: "20px" }}>
+			<div className="glass-card" style={{ padding: "12px" }}>
 				<div
 					style={{
 						display: "flex",
@@ -901,7 +901,7 @@ export const LttdLab: React.FC = () => {
 											style={{
 												display: "inline-block",
 												padding: "2px 8px",
-												borderRadius: "10px",
+												borderRadius: "4px",
 												fontSize: "10px",
 												fontWeight: 700,
 												fontFamily: "JetBrains Mono",
@@ -946,13 +946,13 @@ export const LttdLab: React.FC = () => {
 											fontFamily: "JetBrains Mono",
 										}}
 									>
-										<th style={{ padding: "12px 8px" }}>Feature / Component</th>
-										<th style={{ padding: "12px 8px" }}>Category</th>
-										<th style={{ padding: "12px 8px" }}>Description</th>
-										<th style={{ padding: "12px 8px", textAlign: "right" }}>
+										<th style={{ padding: "8px 6px" }}>Feature / Component</th>
+										<th style={{ padding: "8px 6px" }}>Category</th>
+										<th style={{ padding: "8px 6px" }}>Description</th>
+										<th style={{ padding: "8px 6px", textAlign: "right" }}>
 											Normalized Value
 										</th>
-										<th style={{ padding: "12px 8px", textAlign: "center" }}>
+										<th style={{ padding: "8px 6px", textAlign: "center" }}>
 											Regime Contribution
 										</th>
 									</tr>
@@ -968,14 +968,14 @@ export const LttdLab: React.FC = () => {
 										>
 											<td
 												style={{
-													padding: "14px 8px",
+													padding: "10px 6px",
 													fontWeight: 600,
 													color: "var(--text-primary)",
 												}}
 											>
 												{ind.name}
 											</td>
-											<td style={{ padding: "14px 8px" }}>
+											<td style={{ padding: "10px 6px" }}>
 												<span
 													style={{
 														fontSize: "11px",
@@ -989,12 +989,12 @@ export const LttdLab: React.FC = () => {
 													{ind.category}
 												</span>
 											</td>
-											<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+											<td style={{ padding: "10px 6px", color: "var(--text-dim)" }}>
 												{ind.description}
 											</td>
 											<td
 												style={{
-													padding: "14px 8px",
+													padding: "10px 6px",
 													textAlign: "right",
 													fontFamily: "JetBrains Mono",
 													fontWeight: 700,
@@ -1010,7 +1010,7 @@ export const LttdLab: React.FC = () => {
 													? `+${ind.score.toFixed(3)}`
 													: ind.score.toFixed(3)}
 											</td>
-											<td style={{ padding: "14px 8px", textAlign: "center" }}>
+											<td style={{ padding: "10px 6px", textAlign: "center" }}>
 												<span
 													style={{
 														display: "inline-block",

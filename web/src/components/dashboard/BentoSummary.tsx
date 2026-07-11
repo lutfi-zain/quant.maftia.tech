@@ -47,44 +47,44 @@ export const BentoSummary: React.FC<BentoSummaryProps> = ({
     <div style={{
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-      gap: '20px',
+      gap: '10px',
       marginBottom: '8px'
     }}>
       {/* 1. Valuation Composite Card */}
       <div 
         className={`glass-card ${isBubble ? 'glow-danger' : isDiscount ? 'glow-cyan' : ''}`}
         onClick={() => onSelectStudio?.('valuation')}
-        style={{ padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+        style={{ padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Valuation Pillar
             </span>
-            <DollarSign size={18} style={{ color: 'var(--accent-cyan)' }} />
+            <DollarSign size={16} style={{ color: 'var(--accent-cyan)' }} />
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: isBubble ? 'var(--status-danger)' : isDiscount ? 'var(--accent-cyan)' : 'var(--text-main)' }}>
+          <div style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: isBubble ? 'var(--status-danger)' : isDiscount ? 'var(--accent-cyan)' : 'var(--text-main)' }}>
             {valScore > 0 ? `+${valScore.toFixed(4)}` : valScore.toFixed(4)}
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
             Scale [-2.00 to +2.00] • 17 Indicators
           </div>
         </div>
-        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isBubble ? (
             <>
-              <AlertTriangle size={16} style={{ color: 'var(--status-danger)' }} />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--status-danger)' }}>BUBBLE RISK (Score ≥ +1.50)</span>
+              <AlertTriangle size={14} style={{ color: 'var(--status-danger)' }} />
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--status-danger)' }}>BUBBLE RISK (Score ≥ +1.50)</span>
             </>
           ) : isDiscount ? (
             <>
-              <CheckCircle2 size={16} style={{ color: 'var(--accent-cyan)' }} />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-cyan)' }}>DEEP DISCOUNT (Score ≤ -1.00)</span>
+              <CheckCircle2 size={14} style={{ color: 'var(--accent-cyan)' }} />
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-cyan)' }}>DEEP DISCOUNT (Score ≤ -1.00)</span>
             </>
           ) : (
             <>
-              <CheckCircle2 size={16} style={{ color: 'var(--status-success)' }} />
-              <span style={{ fontSize: '12px', color: 'var(--status-success)' }}>FAIR VALUE / NEUTRAL</span>
+              <CheckCircle2 size={14} style={{ color: 'var(--status-success)' }} />
+              <span style={{ fontSize: '11px', color: 'var(--status-success)' }}>FAIR VALUE / NEUTRAL</span>
             </>
           )}
         </div>
@@ -94,64 +94,64 @@ export const BentoSummary: React.FC<BentoSummaryProps> = ({
       <div 
         className={`glass-card ${isSidewaysOverride ? 'glow-gold' : ''}`}
         onClick={() => onSelectStudio?.('lttd')}
-        style={{ padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+        style={{ padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               LTTD Regime (HMM)
             </span>
-            <TrendingUp size={18} style={{ color: isSidewaysOverride ? 'var(--accent-gold)' : 'var(--status-success)' }} />
+            <TrendingUp size={16} style={{ color: isSidewaysOverride ? 'var(--accent-gold)' : 'var(--status-success)' }} />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: lttdRegime === 'BULL' ? 'var(--status-success)' : lttdRegime === 'BEAR' ? 'var(--status-danger)' : 'var(--accent-gold)' }}>
+          <div style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: lttdRegime === 'BULL' ? 'var(--status-success)' : lttdRegime === 'BEAR' ? 'var(--status-danger)' : 'var(--accent-gold)' }}>
             {lttdRegime}
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
             Gaussian HMM • Returns & 20d Volatility
           </div>
         </div>
-        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isSidewaysOverride ? (
             <>
-              <ShieldAlert size={16} style={{ color: 'var(--accent-gold)' }} />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-gold)' }}>OVERRIDE: 0.0% CASH EXPOSURE</span>
+              <ShieldAlert size={14} style={{ color: 'var(--accent-gold)' }} />
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-gold)' }}>OVERRIDE: 0.0% CASH EXPOSURE</span>
             </>
           ) : (
             <>
-              <CheckCircle2 size={16} style={{ color: 'var(--status-success)' }} />
-              <span style={{ fontSize: '12px', color: 'var(--status-success)' }}>Exposure Multiplier: {circuitBreakers.lttd_macro_override.exposure_multiplier * 100}%</span>
+              <CheckCircle2 size={14} style={{ color: 'var(--status-success)' }} />
+              <span style={{ fontSize: '11px', color: 'var(--status-success)' }}>Exposure Multiplier: {circuitBreakers.lttd_macro_override.exposure_multiplier * 100}%</span>
             </>
           )}
         </div>
       </div>
 
-      {/* 3. MTTD Console (10 Statistical Families) Card */}
+      {/* 3. MTTD Consensus (IMO) Card */}
       <div 
         className="glass-card"
         onClick={() => onSelectStudio?.('mttd')}
-        style={{ padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+        style={{ padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               MTTD Consensus (IMO)
             </span>
-            <Activity size={18} style={{ color: 'var(--accent-purple)' }} />
+            <Activity size={16} style={{ color: 'var(--accent-purple)' }} />
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: mttdImo > 0.2 ? 'var(--status-success)' : mttdImo < -0.2 ? 'var(--status-danger)' : 'var(--text-main)' }}>
+          <div style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: mttdImo > 0.2 ? 'var(--status-success)' : mttdImo < -0.2 ? 'var(--status-danger)' : 'var(--text-main)' }}>
             {mttdImo > 0 ? `+${mttdImo.toFixed(4)}` : mttdImo.toFixed(4)}
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
             10 Statistical Families Consensus [-1, +1]
           </div>
         </div>
-        <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontFamily: 'JetBrains Mono' }}>
+        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '11px', fontFamily: 'JetBrains Mono' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>ER Gate (≥0.20):</span>
             <span style={{ color: er_gate_open ? 'var(--status-success)' : 'var(--status-danger)' }}>{er_gate_open ? 'PASSED' : 'BLOCKED'}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Shannon Entropy (≤2.30):</span>
+            <span>Entropy (≤2.30):</span>
             <span style={{ color: shannon_entropy_gate_open ? 'var(--status-success)' : 'var(--status-danger)' }}>{shannon_entropy_gate_open ? 'PASSED' : 'HIGH NOISE'}</span>
           </div>
         </div>
@@ -161,26 +161,26 @@ export const BentoSummary: React.FC<BentoSummaryProps> = ({
       <div 
         className="glass-card"
         onClick={() => onSelectStudio?.('ichimoku')}
-        style={{ padding: '20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+        style={{ padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Ichimoku SuperSmoother
             </span>
-            <Layers size={18} style={{ color: '#0055ff' }} />
+            <Layers size={16} style={{ color: '#0055ff' }} />
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: ichimokuImo > 0 ? 'var(--accent-cyan)' : 'var(--status-danger)' }}>
+          <div style={{ fontSize: '26px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: ichimokuImo > 0 ? 'var(--accent-cyan)' : 'var(--status-danger)' }}>
             {ichimokuImo > 0 ? `+${ichimokuImo.toFixed(4)}` : ichimokuImo.toFixed(4)}
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
             Ehlers 2-pole IIR Bounded tanh
           </div>
         </div>
-        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'JetBrains Mono' }}>
+        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'JetBrains Mono' }}>
           <span style={{ color: 'var(--text-muted)' }}>Cloud State:</span>
           <span style={{ color: ichimokuImo > 0.15 ? 'var(--status-success)' : ichimokuImo < -0.15 ? 'var(--status-danger)' : 'var(--accent-gold)', fontWeight: 600 }}>
-            {ichimokuImo > 0.15 ? 'BULL CLOUD' : ichimokuImo < -0.15 ? 'BEAR CLOUD' : 'NEUTRAL CLOUD'}
+            {ichimokuImo > 0.15 ? 'BULL CLOUD' : ichimokuImo < -0.15 ? 'BEAR CLOUD' : 'NEUTRAL'}
           </span>
         </div>
       </div>

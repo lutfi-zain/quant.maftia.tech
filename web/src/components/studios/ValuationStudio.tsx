@@ -479,7 +479,7 @@ export const ValuationStudio: React.FC = () => {
 	return (
 		<div
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
-			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
 			{selectedMetric ? (
 				<MetricDetailChart
@@ -495,7 +495,7 @@ export const ValuationStudio: React.FC = () => {
 					<div
 						className="glass-card"
 						style={{
-							padding: "20px 24px",
+							padding: "12px 16px",
 							display: "flex",
 							alignItems: "center",
 							justifyContent: "space-between",
@@ -558,7 +558,7 @@ export const ValuationStudio: React.FC = () => {
 							<div
 								className="glass-card"
 								style={{
-									padding: "10px 16px",
+									padding: "8px 12px",
 									display: "flex",
 									alignItems: "center",
 									gap: "8px",
@@ -646,7 +646,7 @@ export const ValuationStudio: React.FC = () => {
 								backgroundColor: "rgba(30, 41, 59, 0.5)",
 								border: "1px solid var(--border-panel)",
 								padding: "6px 12px",
-								borderRadius: "6px",
+								borderRadius: "4px",
 								cursor: "pointer",
 								color: "var(--text-primary)",
 								fontSize: "12px",
@@ -828,13 +828,13 @@ export const ValuationStudio: React.FC = () => {
 					</div>
 
 					{/* Interactive Breakdown Table */}
-					<div className="glass-card" style={{ padding: "20px" }}>
+					<div className="glass-card" style={{ padding: "12px" }}>
 						<div
 							style={{
 								display: "flex",
 								alignItems: "center",
 								justifyContent: "space-between",
-								marginBottom: "16px",
+								marginBottom: "12px",
 							}}
 						>
 							<div
@@ -852,7 +852,7 @@ export const ValuationStudio: React.FC = () => {
 										onClick={() => setSelectedCategory(cat)}
 										style={{
 											padding: "6px 14px",
-											borderRadius: "6px",
+											borderRadius: "4px",
 											border: "1px solid var(--border-panel)",
 											backgroundColor:
 												selectedCategory === cat
@@ -957,7 +957,7 @@ export const ValuationStudio: React.FC = () => {
 													fontSize: "10px",
 													fontWeight: 700,
 													padding: "2px 8px",
-													borderRadius: "10px",
+													borderRadius: "4px",
 													fontFamily: "JetBrains Mono",
 													marginLeft: "auto",
 													flexShrink: 0,
@@ -1005,16 +1005,16 @@ export const ValuationStudio: React.FC = () => {
 												fontFamily: "JetBrains Mono",
 											}}
 										>
-											<th style={{ padding: "12px 8px" }}>Indicator Name</th>
-											<th style={{ padding: "12px 8px" }}>Category</th>
-											<th style={{ padding: "12px 8px" }}>Description</th>
-											<th style={{ padding: "12px 8px", textAlign: "center" }}>
+											<th style={{ padding: "8px 6px" }}>Indicator Name</th>
+											<th style={{ padding: "8px 6px" }}>Category</th>
+											<th style={{ padding: "8px 6px" }}>Description</th>
+											<th style={{ padding: "8px 6px", textAlign: "center" }}>
 												Trend
 											</th>
-											<th style={{ padding: "12px 8px", textAlign: "right" }}>
+											<th style={{ padding: "8px 6px", textAlign: "right" }}>
 												Piecewise Score [-2, +2]
 											</th>
-											<th style={{ padding: "12px 8px", textAlign: "center" }}>
+											<th style={{ padding: "8px 6px", textAlign: "center" }}>
 												Signal Direction
 											</th>
 										</tr>
@@ -1033,14 +1033,14 @@ export const ValuationStudio: React.FC = () => {
 											>
 												<td
 													style={{
-														padding: "14px 8px",
+														padding: "10px 6px",
 														fontWeight: 600,
 														color: "var(--text-primary)",
 													}}
 												>
 													{ind.name}
 												</td>
-												<td style={{ padding: "14px 8px" }}>
+												<td style={{ padding: "10px 6px" }}>
 													<span
 														style={{
 															fontSize: "11px",
@@ -1066,14 +1066,14 @@ export const ValuationStudio: React.FC = () => {
 												</td>
 												<td
 													style={{
-														padding: "14px 8px",
+														padding: "10px 6px",
 														color: "var(--text-dim)",
 													}}
 												>
 													{ind.description}
 												</td>
 												<td
-													style={{ padding: "14px 8px", textAlign: "center" }}
+													style={{ padding: "10px 6px", textAlign: "center" }}
 												>
 													<Sparkline
 														data={ind.sparklineData}
@@ -1088,7 +1088,7 @@ export const ValuationStudio: React.FC = () => {
 												</td>
 												<td
 													style={{
-														padding: "14px 8px",
+														padding: "10px 6px",
 														textAlign: "right",
 														fontFamily: "JetBrains Mono",
 														fontWeight: 700,
@@ -1105,14 +1105,14 @@ export const ValuationStudio: React.FC = () => {
 														: ind.score.toFixed(3)}
 												</td>
 												<td
-													style={{ padding: "14px 8px", textAlign: "center" }}
+													style={{ padding: "10px 6px", textAlign: "center" }}
 												>
 													<span
 														style={{
 															fontSize: "11px",
 															fontWeight: 700,
 															padding: "4px 10px",
-															borderRadius: "12px",
+															borderRadius: "4px",
 															fontFamily: "JetBrains Mono",
 															backgroundColor:
 																ind.direction === 1
@@ -1125,7 +1125,7 @@ export const ValuationStudio: React.FC = () => {
 																	? "var(--signal-bear)"
 																	: ind.direction === -1
 																		? "var(--signal-quant)"
-																		: "var(--text-dim)",
+																	: "var(--text-dim)",
 														}}
 													>
 														{ind.direction === 1

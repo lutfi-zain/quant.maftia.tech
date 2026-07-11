@@ -467,13 +467,13 @@ export const MttdConsole: React.FC = () => {
 	return (
 		<div
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
-			style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
 			{/* Pillar Header Info Bar */}
 			<div
 				className="glass-card"
 				style={{
-					padding: "20px 24px",
+					padding: "12px 16px",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
@@ -537,7 +537,7 @@ export const MttdConsole: React.FC = () => {
 					<div
 						className="glass-card"
 						style={{
-							padding: "10px 16px",
+							padding: "8px 12px",
 							display: "flex",
 							alignItems: "center",
 							gap: "8px",
@@ -592,7 +592,7 @@ export const MttdConsole: React.FC = () => {
 				<div
 					className="glass-card"
 					style={{
-						padding: "16px",
+						padding: "12px",
 						borderLeft: `3px solid ${gates.er_gate_open ? "#22C55E" : "#EF4444"}`,
 					}}
 				>
@@ -622,7 +622,7 @@ export const MttdConsole: React.FC = () => {
 						style={{
 							marginTop: "8px",
 							padding: "6px 12px",
-							borderRadius: "8px",
+							borderRadius: "4px",
 							fontFamily: "JetBrains Mono",
 							fontSize: "14px",
 							fontWeight: 700,
@@ -649,7 +649,7 @@ export const MttdConsole: React.FC = () => {
 				<div
 					className="glass-card"
 					style={{
-						padding: "16px",
+						padding: "12px",
 						borderLeft: `3px solid ${gates.shannon_entropy_gate_open ? "#22C55E" : "#EF4444"}`,
 					}}
 				>
@@ -681,7 +681,7 @@ export const MttdConsole: React.FC = () => {
 						style={{
 							marginTop: "8px",
 							padding: "6px 12px",
-							borderRadius: "8px",
+							borderRadius: "4px",
 							fontFamily: "JetBrains Mono",
 							fontSize: "14px",
 							fontWeight: 700,
@@ -708,7 +708,7 @@ export const MttdConsole: React.FC = () => {
 				<div
 					className="glass-card"
 					style={{
-						padding: "16px",
+						padding: "12px",
 						borderLeft: `3px solid ${!gates.chikou_momentum_exit ? "#22C55E" : "#F59E0B"}`,
 					}}
 				>
@@ -740,7 +740,7 @@ export const MttdConsole: React.FC = () => {
 						style={{
 							marginTop: "8px",
 							padding: "6px 12px",
-							borderRadius: "8px",
+							borderRadius: "4px",
 							fontFamily: "JetBrains Mono",
 							fontSize: "14px",
 							fontWeight: 700,
@@ -919,7 +919,7 @@ export const MttdConsole: React.FC = () => {
 			</div>
 
 			{/* Interactive Breakdown Table */}
-			<div className="glass-card" style={{ padding: "20px" }}>
+			<div className="glass-card" style={{ padding: "12px" }}>
 				<div
 					style={{
 						display: "flex",
@@ -953,7 +953,7 @@ export const MttdConsole: React.FC = () => {
 								onClick={() => setSelectedFamily(cat)}
 								style={{
 									padding: "4px 10px",
-									borderRadius: "6px",
+									borderRadius: "4px",
 									border: "1px solid var(--border-panel)",
 									backgroundColor:
 										selectedFamily === cat
@@ -988,7 +988,7 @@ export const MttdConsole: React.FC = () => {
 									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "JetBrains Mono", flexShrink: 0, backgroundColor: "rgba(168,85,247,0.1)", color: "var(--signal-pca)" }}>
 										{ind.category}
 									</span>
-									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
+									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
 										{ind.direction === 1 ? "+1 (BULL)" : ind.direction === -1 ? "-1 (BEAR)" : "0 (NEUT)"}
 									</span>
 								</div>
@@ -1014,14 +1014,14 @@ export const MttdConsole: React.FC = () => {
 										fontFamily: "JetBrains Mono",
 									}}
 								>
-									<th style={{ padding: "12px 8px" }}>Statistical Family</th>
-									<th style={{ padding: "12px 8px" }}>Category</th>
-									<th style={{ padding: "12px 8px" }}>Algorithm Description</th>
-									<th style={{ padding: "12px 8px" }}>Governing Gate</th>
-									<th style={{ padding: "12px 8px", textAlign: "right" }}>
+									<th style={{ padding: "8px 6px" }}>Statistical Family</th>
+									<th style={{ padding: "8px 6px" }}>Category</th>
+									<th style={{ padding: "8px 6px" }}>Algorithm Description</th>
+									<th style={{ padding: "8px 6px" }}>Governing Gate</th>
+									<th style={{ padding: "8px 6px", textAlign: "right" }}>
 										Consensus Score [-1, +1]
 									</th>
-									<th style={{ padding: "12px 8px", textAlign: "center" }}>
+									<th style={{ padding: "8px 6px", textAlign: "center" }}>
 										Signal Direction
 									</th>
 								</tr>
@@ -1037,14 +1037,14 @@ export const MttdConsole: React.FC = () => {
 									>
 										<td
 											style={{
-												padding: "14px 8px",
+												padding: "10px 6px",
 												fontWeight: 600,
 												color: "var(--text-primary)",
 											}}
 										>
 											{ind.name}
 										</td>
-										<td style={{ padding: "14px 8px" }}>
+										<td style={{ padding: "10px 6px" }}>
 											<span
 												style={{
 													fontSize: "11px",
@@ -1058,12 +1058,12 @@ export const MttdConsole: React.FC = () => {
 												{ind.category}
 											</span>
 										</td>
-										<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+										<td style={{ padding: "10px 6px", color: "var(--text-dim)" }}>
 											{ind.description}
 										</td>
 										<td
 											style={{
-												padding: "14px 8px",
+												padding: "10px 6px",
 												fontFamily: "JetBrains Mono",
 												fontSize: "11px",
 												color:
@@ -1076,7 +1076,7 @@ export const MttdConsole: React.FC = () => {
 										</td>
 										<td
 											style={{
-												padding: "14px 8px",
+												padding: "10px 6px",
 												textAlign: "right",
 												fontFamily: "JetBrains Mono",
 												fontWeight: 700,
@@ -1092,7 +1092,7 @@ export const MttdConsole: React.FC = () => {
 												? `+${ind.score.toFixed(3)}`
 												: ind.score.toFixed(3)}
 										</td>
-										<td style={{ padding: "14px 8px", textAlign: "center" }}>
+										<td style={{ padding: "10px 6px", textAlign: "center" }}>
 											<span
 												style={{
 													display: "inline-block",

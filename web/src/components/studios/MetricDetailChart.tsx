@@ -978,22 +978,22 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 	);
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+		<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 			{/* Metric Detail Header Navigation */}
 			<div
 				className="glass-card"
 				style={{
-					padding: "16px 20px",
+					padding: "12px 16px",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "space-between",
 				}}
 			>
-				<div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
 					<button
 						onClick={onClose}
 						className="icon-btn flex items-center justify-center"
-						style={{ width: "36px", height: "36px" }}
+						style={{ width: "30px", height: "30px" }}
 						title="Back to Composite"
 					>
 						<ArrowLeft size={18} />
@@ -1014,7 +1014,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 					</div>
 				</div>
 
-				<div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 					{maximizedPanel !== null && (
 						<button
 							onClick={() => setMaximizedPanel(null)}
@@ -1034,7 +1034,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							backgroundColor: "rgba(30, 41, 59, 0.5)",
 							border: "1px solid var(--border-panel)",
 							padding: "6px 12px",
-							borderRadius: "6px",
+							borderRadius: "4px",
 							cursor: "pointer",
 							color: "var(--text-primary)",
 							fontSize: "12px",
@@ -1065,7 +1065,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 								backgroundColor: "var(--signal-quant)",
 								color: "#000",
 								border: "none",
-								borderRadius: "6px",
+								borderRadius: "4px",
 								fontWeight: 600,
 								fontSize: "12px",
 								cursor: "pointer",
@@ -1081,7 +1081,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 				style={{
 					display: "grid",
 					gridTemplateColumns: isMobile ? "1fr" : "1fr 280px",
-					gap: "20px",
+					gap: "12px",
 					alignItems: "start",
 				}}
 			>
@@ -1197,10 +1197,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 					<div
 						className="glass-card"
 						style={{
-							padding: "20px",
+							padding: "12px",
 							display: "flex",
 							flexDirection: "column",
-							gap: "16px",
+							gap: "10px",
 						}}
 					>
 						<h4
