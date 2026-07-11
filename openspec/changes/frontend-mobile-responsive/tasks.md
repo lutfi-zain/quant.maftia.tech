@@ -42,8 +42,8 @@
 
 ## 8. Commit, Push, and Verify
 
-- [ ] 8.1 Verify all views render correctly on a 375px viewport using browser DevTools device emulation — check Dashboard, Valuation Studio (composite + detail drill-down), LTTD Lab, MTTD Console, and Ichimoku Terminal
-- [ ] 8.2 Verify crosshair sync still works across all stacked subplots on mobile
-- [ ] 8.3 Verify threshold editor bottom sheet opens, edits, saves, and dismisses correctly on mobile
-- [ ] 8.4 Verify desktop layout is completely unchanged at ≥768px viewport
-- [ ] 8.5 Commit all changes with `feat(web): add mobile responsive layout with bottom tab bar, compact tables, and iOS bottom sheet` and push to `origin main`
+- [x] 8.1 Verify all views render correctly on a 375px viewport using browser DevTools device emulation — check Dashboard, Valuation Studio (composite + detail drill-down), LTTD Lab, MTTD Console, and Ichimoku Terminal
+- [x] 8.2 Verify crosshair sync still works across all stacked subplots on mobile
+- [x] 8.3 Verify threshold editor bottom sheet opens, edits, saves, and dismisses correctly on mobile
+- [x] 8.4 Verify desktop layout is completely unchanged at ≥768px viewport
+- [x] 8.5 Commit all changes with `feat(web): add mobile responsive layout with bottom tab bar, compact tables, and iOS bottom sheet` and push to `origin main`
