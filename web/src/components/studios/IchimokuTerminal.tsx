@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal, DailyAnalyticsPoint } from "../../api/types";
 import { useTerminal } from "../../context/TerminalContext";
@@ -25,7 +26,14 @@ const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
 const TEXT_COLOR = "#94A3B8";
 const GRID_COLOR = "rgba(255,255,255,0.03)";
 
-function makeCommonOptions() {
+function getChartYAxisWidth(): number {
+	const raw = getComputedStyle(document.documentElement)
+		.getPropertyValue('--chart-yaxis-width')
+		.trim();
+	return Number(raw) || 85;
+}
+
+function makeCommonOptions(yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -38,7 +46,7 @@ function makeCommonOptions() {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: 85,
+			minimumWidth: yAxisWidth,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -48,10 +56,11 @@ function makeCommonOptions() {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
+		handleScroll: { vertTouchDrag: false },
 	};
 }
 
-function getPanelHeights(maximized: MaximizedPanel) {
+function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
 	switch (maximized) {
 		case "btc":
@@ -69,7 +78,9 @@ function getPanelHeights(maximized: MaximizedPanel) {
 				scomp: Math.floor(full * 0.35),
 			};
 		default:
-			return { btc: 320, imo: 180, scomp: 160 };
+			return isMobile
+				? { btc: 160, imo: 120, scomp: 120 }
+				: { btc: 320, imo: 180, scomp: 160 };
 	}
 }
 
@@ -173,6 +184,7 @@ export const IchimokuTerminal: React.FC = () => {
 	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
+	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
@@ -216,7 +228,7 @@ export const IchimokuTerminal: React.FC = () => {
 	useEffect(() => {
 		const { btc, imo, scomp } = chartsRef.current;
 		if (!btc) return;
-		const heights = getPanelHeights(maximized);
+		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
 		btc.resize(w, heights.btc);
@@ -252,9 +264,9 @@ export const IchimokuTerminal: React.FC = () => {
 		)
 			return;
 
-		const common = makeCommonOptions();
+		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
-		const heights = getPanelHeights(null);
+		const heights = getPanelHeights(null, isMobile);
 		const { tenkan, kijun, spanA, spanB, chikou } = ichimokuLines;
 
 		// ── Pane 1: BTC Candlestick + Ichimoku overlay ──
@@ -590,7 +602,7 @@ export const IchimokuTerminal: React.FC = () => {
 		},
 	);
 
-	const heights = getPanelHeights(maximized);
+	const heights = getPanelHeights(maximized, isMobile);
 
 	return (
 		<div
@@ -888,133 +900,159 @@ export const IchimokuTerminal: React.FC = () => {
 					</span>
 				</div>
 
-				<div style={{ overflowX: "auto" }}>
-					<table
-						style={{
-							width: "100%",
-							borderCollapse: "collapse",
-							textAlign: "left",
-						}}
-					>
-						<thead>
-							<tr
-								style={{
-									borderBottom: "1px solid var(--border-panel)",
-									color: "var(--text-dim)",
-									fontSize: "11px",
-									textTransform: "uppercase",
-									fontFamily: "JetBrains Mono",
-								}}
-							>
-								<th style={{ padding: "12px 8px" }}>Component Name</th>
-								<th style={{ padding: "12px 8px" }}>Category</th>
-								<th style={{ padding: "12px 8px" }}>Description</th>
-								<th style={{ padding: "12px 8px" }}>DSP Transformation</th>
-								<th style={{ padding: "12px 8px", textAlign: "right" }}>
-									Score [-1, +1]
-								</th>
-								<th style={{ padding: "12px 8px", textAlign: "center" }}>
-									Signal Direction
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{displayComponents.map((ind) => (
+				{isMobile ? (
+					/* Mobile: Compact Two-Line List */
+					<div className="mobile-metric-list">
+						{displayComponents.map((ind) => (
+							<div key={ind.name} className="mobile-metric-row">
+								<div className="mobile-metric-row-top">
+									<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+										{ind.name}
+									</span>
+									<span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 700, flexShrink: 0, color: ind.score > 0.15 ? "var(--signal-bull)" : ind.score < -0.15 ? "var(--signal-bear)" : "var(--text-main)" }}>
+										{ind.score > 0 ? `+${ind.score.toFixed(3)}` : ind.score.toFixed(3)}
+									</span>
+								</div>
+								<div className="mobile-metric-row-bottom">
+									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "JetBrains Mono", flexShrink: 0, backgroundColor: "rgba(245,158,11,0.1)", color: "var(--accent)" }}>
+										{ind.category}
+									</span>
+									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
+										{ind.direction === 1 ? "BULL" : ind.direction === -1 ? "BEAR" : "NEUTRAL"}
+									</span>
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					<div style={{ overflowX: "auto" }}>
+						<table
+							style={{
+								width: "100%",
+								borderCollapse: "collapse",
+								textAlign: "left",
+							}}
+						>
+							<thead>
 								<tr
-									key={ind.name}
 									style={{
-										borderBottom: "1px solid rgba(255,255,255,0.03)",
-										fontSize: "13px",
+										borderBottom: "1px solid var(--border-panel)",
+										color: "var(--text-dim)",
+										fontSize: "11px",
+										textTransform: "uppercase",
+										fontFamily: "JetBrains Mono",
 									}}
 								>
-									<td
-										style={{
-											padding: "14px 8px",
-											fontWeight: 600,
-											color: "var(--text-primary)",
-										}}
-									>
-										{ind.name}
-									</td>
-									<td style={{ padding: "14px 8px" }}>
-										<span
-											style={{
-												fontSize: "11px",
-												padding: "2px 8px",
-												borderRadius: "4px",
-												fontFamily: "JetBrains Mono",
-												backgroundColor: "rgba(245,158,11,0.1)",
-												color: "var(--accent)",
-											}}
-										>
-											{ind.category}
-										</span>
-									</td>
-									<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
-										{ind.description}
-									</td>
-									<td
-										style={{
-											padding: "14px 8px",
-											fontFamily: "JetBrains Mono",
-											fontSize: "11px",
-											color: "var(--signal-quant)",
-										}}
-									>
-										{ind.formula}
-									</td>
-									<td
-										style={{
-											padding: "14px 8px",
-											textAlign: "right",
-											fontFamily: "JetBrains Mono",
-											fontWeight: 700,
-											color:
-												ind.score > 0.15
-													? "var(--signal-bull)"
-													: ind.score < -0.15
-														? "var(--signal-bear)"
-														: "var(--text-primary)",
-										}}
-									>
-										{ind.score > 0
-											? `+${ind.score.toFixed(3)}`
-											: ind.score.toFixed(3)}
-									</td>
-									<td style={{ padding: "14px 8px", textAlign: "center" }}>
-										<span
-											style={{
-												display: "inline-block",
-												padding: "2px 8px",
-												borderRadius: "4px",
-												fontSize: "11px",
-												fontFamily: "JetBrains Mono",
-												backgroundColor:
-													ind.direction === 1
-														? "rgba(34,197,94,0.15)"
-														: ind.direction === -1
-															? "rgba(239,68,68,0.15)"
-															: "rgba(255,255,255,0.05)",
-												color:
-													ind.direction === 1
-														? "var(--signal-bull)"
-														: ind.direction === -1
-															? "var(--signal-bear)"
-															: "var(--text-dim)",
-											}}
-										>
-											{ind.direction === 1
-												? "BULL"
-												: ind.direction === -1
-													? "BEAR"
-													: "NEUTRAL"}
-										</span>
-									</td>
+									<th style={{ padding: "12px 8px" }}>Component Name</th>
+									<th style={{ padding: "12px 8px" }}>Category</th>
+									<th style={{ padding: "12px 8px" }}>Description</th>
+									<th style={{ padding: "12px 8px" }}>DSP Transformation</th>
+									<th style={{ padding: "12px 8px", textAlign: "right" }}>
+										Score [-1, +1]
+									</th>
+									<th style={{ padding: "12px 8px", textAlign: "center" }}>
+										Signal Direction
+									</th>
 								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+							</thead>
+							<tbody>
+								{displayComponents.map((ind) => (
+									<tr
+										key={ind.name}
+										style={{
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+											fontSize: "13px",
+										}}
+									>
+										<td
+											style={{
+												padding: "14px 8px",
+												fontWeight: 600,
+												color: "var(--text-primary)",
+											}}
+										>
+											{ind.name}
+										</td>
+										<td style={{ padding: "14px 8px" }}>
+											<span
+												style={{
+													fontSize: "11px",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontFamily: "JetBrains Mono",
+													backgroundColor: "rgba(245,158,11,0.1)",
+													color: "var(--accent)",
+												}}
+											>
+												{ind.category}
+											</span>
+										</td>
+										<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+											{ind.description}
+										</td>
+										<td
+											style={{
+												padding: "14px 8px",
+												fontFamily: "JetBrains Mono",
+												fontSize: "11px",
+												color: "var(--signal-quant)",
+											}}
+										>
+											{ind.formula}
+										</td>
+										<td
+											style={{
+												padding: "14px 8px",
+												textAlign: "right",
+												fontFamily: "JetBrains Mono",
+												fontWeight: 700,
+												color:
+													ind.score > 0.15
+														? "var(--signal-bull)"
+														: ind.score < -0.15
+															? "var(--signal-bear)"
+															: "var(--text-primary)",
+											}}
+										>
+											{ind.score > 0
+												? `+${ind.score.toFixed(3)}`
+												: ind.score.toFixed(3)}
+										</td>
+										<td style={{ padding: "14px 8px", textAlign: "center" }}>
+											<span
+												style={{
+													display: "inline-block",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontSize: "11px",
+													fontFamily: "JetBrains Mono",
+													backgroundColor:
+														ind.direction === 1
+															? "rgba(34,197,94,0.15)"
+															: ind.direction === -1
+																? "rgba(239,68,68,0.15)"
+																: "rgba(255,255,255,0.05)",
+													color:
+														ind.direction === 1
+															? "var(--signal-bull)"
+															: ind.direction === -1
+																? "var(--signal-bear)"
+																: "var(--text-dim)",
+												}}
+											>
+												{ind.direction === 1
+													? "BULL"
+													: ind.direction === -1
+														? "BEAR"
+														: "NEUTRAL"}
+											</span>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
 			</div>
 		</div>
 	);

@@ -1,5 +1,7 @@
 import type React from "react";
 import { useEffect, useState, useRef } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { BottomSheet } from "../ui/BottomSheet";
 import { createChart, type IChartApi, ColorType, CrosshairMode, type ISeriesApi, LineStyle, PriceScaleMode, CandlestickSeries, LineSeries, type Time } from "lightweight-charts";
 import { ArrowLeft, Save, Sparkles, Maximize2, Minimize2, Download } from "lucide-react";
 import { quantClient } from "../../api/client";
@@ -17,7 +19,14 @@ interface MetricDetailChartProps {
 	onClose: () => void;
 }
 
-function makeCommonOptions() {
+function getChartYAxisWidth(): number {
+	const raw = getComputedStyle(document.documentElement)
+		.getPropertyValue('--chart-yaxis-width')
+		.trim();
+	return Number(raw) || 85;
+}
+
+function makeCommonOptions(yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -30,7 +39,7 @@ function makeCommonOptions() {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: 85,
+			minimumWidth: yAxisWidth,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -40,6 +49,7 @@ function makeCommonOptions() {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
+		handleScroll: { vertTouchDrag: false },
 	};
 }
 
@@ -57,6 +67,8 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 	const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 	const [maximizedPanel, setMaximizedPanel] = useState<"btc" | "raw" | "osc" | null>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
+	const isMobile = useIsMobile();
+	const [sheetOpen, setSheetOpen] = useState(false);
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
@@ -106,12 +118,12 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 	useEffect(() => {
 		if (loading || !timeseriesData || !btcContainerRef.current || !rawContainerRef.current || !oscContainerRef.current) return;
 
-		const common = makeCommonOptions();
+		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		const btcHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? 220 : 0;
-		const rawHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? 180 : 0;
-		const oscHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? 160 : 0;
+		const btcHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? (isMobile ? 160 : 220) : 0;
+		const rawHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 180) : 0;
+		const oscHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 160) : 0;
 
 		// 1. BTC Price Chart
 		const btcChart = createChart(btcContainerRef.current, {
@@ -134,7 +146,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		});
 		btcChart.priceScale("right").applyOptions({
 			mode: isLogScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
-			minimumWidth: 85,
+			minimumWidth: getChartYAxisWidth(),
 		});
 
 		// 2. Raw Metric Chart
@@ -145,7 +157,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			timeScale: { ...common.timeScale, visible: rawHeight > 0 && oscHeight === 0 },
 		});
 		rawChart.priceScale("right").applyOptions({
-			minimumWidth: 85,
+			minimumWidth: getChartYAxisWidth(),
 		});
 		const rawSeries = rawChart.addSeries(LineSeries, {
 			color: "#38BDF8",
@@ -164,7 +176,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			timeScale: { ...common.timeScale, visible: oscHeight > 0 },
 		});
 		oscChart.priceScale("right").applyOptions({
-			minimumWidth: 85,
+			minimumWidth: getChartYAxisWidth(),
 		});
 		const oscSeries = oscChart.addSeries(LineSeries, {
 			color: "#A855F7",
@@ -389,9 +401,9 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		const { btc, raw, osc } = chartsRef.current;
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		const bHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? 220 : 0;
-		const rHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? 180 : 0;
-		const oHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? 160 : 0;
+		const bHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? (isMobile ? 160 : 220) : 0;
+		const rHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 180) : 0;
+		const oHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 160) : 0;
 
 		if (btc) {
 			btc.resize(w, bHeight);
@@ -428,9 +440,121 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		);
 	}
 
-	const bHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? 220 : 0;
-	const rHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? 180 : 0;
-	const oHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? 160 : 0;
+	const bHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? (isMobile ? 160 : 220) : 0;
+	const rHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 180) : 0;
+	const oHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 160) : 0;
+
+	const thresholdEditorContent = (
+		<>
+			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+				<div>
+					<label style={{ display: "block", fontSize: "11px", color: "#EF4444", fontWeight: 600, marginBottom: "4px" }}>
+						Peak (t_minus_2)
+					</label>
+					<input
+						type="number"
+						step="any"
+						value={thresholds.t_minus_2 ?? ""}
+						onChange={(e) => handleThresholdChange("t_minus_2", e.target.value)}
+						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+					/>
+				</div>
+
+				<div>
+					<label style={{ display: "block", fontSize: "11px", color: "#F87171", fontWeight: 600, marginBottom: "4px" }}>
+						Warning (t_minus_1)
+					</label>
+					<input
+						type="number"
+						step="any"
+						value={thresholds.t_minus_1 ?? ""}
+						onChange={(e) => handleThresholdChange("t_minus_1", e.target.value)}
+						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+					/>
+				</div>
+
+				<div>
+					<label style={{ display: "block", fontSize: "11px", color: "#64748B", fontWeight: 600, marginBottom: "4px" }}>
+						Neutral (t_zero)
+					</label>
+					<input
+						type="number"
+						step="any"
+						value={thresholds.t_zero ?? ""}
+						onChange={(e) => handleThresholdChange("t_zero", e.target.value)}
+						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+					/>
+				</div>
+
+				<div>
+					<label style={{ display: "block", fontSize: "11px", color: "#4ADE80", fontWeight: 600, marginBottom: "4px" }}>
+						Opportunity (t_plus_1)
+					</label>
+					<input
+						type="number"
+						step="any"
+						value={thresholds.t_plus_1 ?? ""}
+						onChange={(e) => handleThresholdChange("t_plus_1", e.target.value)}
+						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+					/>
+				</div>
+
+				<div>
+					<label style={{ display: "block", fontSize: "11px", color: "#22C55E", fontWeight: 600, marginBottom: "4px" }}>
+						Bottom (t_plus_2)
+					</label>
+					<input
+						type="number"
+						step="any"
+						value={thresholds.t_plus_2 ?? ""}
+						onChange={(e) => handleThresholdChange("t_plus_2", e.target.value)}
+						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+					/>
+				</div>
+			</div>
+
+			<button
+				onClick={handleSaveConfig}
+				disabled={saving}
+				style={{
+					marginTop: "8px",
+					width: "100%",
+					padding: "10px",
+					backgroundColor: "var(--signal-quant)",
+					color: "#000",
+					border: "none",
+					borderRadius: "4px",
+					fontWeight: 600,
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: "8px",
+					cursor: saving ? "not-allowed" : "pointer",
+					opacity: saving ? 0.7 : 1,
+				}}
+			>
+				<Save size={16} />
+				{saving ? "SAVING CONFIG..." : "SAVE CONFIG"}
+			</button>
+
+			{toast && (
+				<div
+					style={{
+						padding: "8px 12px",
+						borderRadius: "4px",
+						fontSize: "11px",
+						lineHeight: "1.3",
+						fontFamily: "JetBrains Mono",
+						backgroundColor: toast.type === "success" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+						color: toast.type === "success" ? "var(--signal-quant)" : "#FFAAAA",
+						border: `1px solid ${toast.type === "success" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+					}}
+				>
+					{toast.message}
+				</div>
+			)}
+		</>
+	);
 
 	return (
 		<div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -479,10 +603,27 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 							LOG
 						</button>
 					</div>
+					{isMobile && (
+						<button
+							onClick={() => setSheetOpen(true)}
+							style={{
+								padding: "6px 12px",
+								backgroundColor: "var(--signal-quant)",
+								color: "#000",
+								border: "none",
+								borderRadius: "6px",
+								fontWeight: 600,
+								fontSize: "12px",
+								cursor: "pointer",
+							}}
+						>
+							THRESHOLDS
+						</button>
+					)}
 				</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "20px", alignItems: "start" }}>
+			<div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 280px", gap: "20px", alignItems: "start" }}>
 				{/* The 3-panel Chart Subplots */}
 				<div className="chart-panel" ref={wrapperRef}>
 					{/* Subplot 1: BTC price */}
@@ -528,120 +669,21 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 					</div>
 				</div>
 
-				{/* Inline Threshold Editor Sidebar */}
-				<div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-					<h4 style={{ fontSize: "14px", fontWeight: 700, margin: 0, borderBottom: "1px solid var(--border-panel)", paddingBottom: "8px" }}>
-						Piecewise Threshold Editor
-					</h4>
-
-					<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-						<div>
-							<label style={{ display: "block", fontSize: "11px", color: "#EF4444", fontWeight: 600, marginBottom: "4px" }}>
-								Peak (t_minus_2)
-							</label>
-							<input
-								type="number"
-								step="any"
-								value={thresholds.t_minus_2 ?? ""}
-								onChange={(e) => handleThresholdChange("t_minus_2", e.target.value)}
-								style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
-							/>
+				{/* Threshold Editor: BottomSheet on mobile, inline sidebar on desktop */}
+				{isMobile ? (
+					<BottomSheet isOpen={sheetOpen} state="peek" onClose={() => setSheetOpen(false)} title="Piecewise Threshold Editor">
+						<div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+							{thresholdEditorContent}
 						</div>
-
-						<div>
-							<label style={{ display: "block", fontSize: "11px", color: "#F87171", fontWeight: 600, marginBottom: "4px" }}>
-								Warning (t_minus_1)
-							</label>
-							<input
-								type="number"
-								step="any"
-								value={thresholds.t_minus_1 ?? ""}
-								onChange={(e) => handleThresholdChange("t_minus_1", e.target.value)}
-								style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
-							/>
-						</div>
-
-						<div>
-							<label style={{ display: "block", fontSize: "11px", color: "#64748B", fontWeight: 600, marginBottom: "4px" }}>
-								Neutral (t_zero)
-							</label>
-							<input
-								type="number"
-								step="any"
-								value={thresholds.t_zero ?? ""}
-								onChange={(e) => handleThresholdChange("t_zero", e.target.value)}
-								style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
-							/>
-						</div>
-
-						<div>
-							<label style={{ display: "block", fontSize: "11px", color: "#4ADE80", fontWeight: 600, marginBottom: "4px" }}>
-								Opportunity (t_plus_1)
-							</label>
-							<input
-								type="number"
-								step="any"
-								value={thresholds.t_plus_1 ?? ""}
-								onChange={(e) => handleThresholdChange("t_plus_1", e.target.value)}
-								style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
-							/>
-						</div>
-
-						<div>
-							<label style={{ display: "block", fontSize: "11px", color: "#22C55E", fontWeight: 600, marginBottom: "4px" }}>
-								Bottom (t_plus_2)
-							</label>
-							<input
-								type="number"
-								step="any"
-								value={thresholds.t_plus_2 ?? ""}
-								onChange={(e) => handleThresholdChange("t_plus_2", e.target.value)}
-								style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
-							/>
-						</div>
+					</BottomSheet>
+				) : (
+					<div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+						<h4 style={{ fontSize: "14px", fontWeight: 700, margin: 0, borderBottom: "1px solid var(--border-panel)", paddingBottom: "8px" }}>
+							Piecewise Threshold Editor
+						</h4>
+						{thresholdEditorContent}
 					</div>
-
-					<button
-						onClick={handleSaveConfig}
-						disabled={saving}
-						style={{
-							marginTop: "8px",
-							width: "100%",
-							padding: "10px",
-							backgroundColor: "var(--signal-quant)",
-							color: "#000",
-							border: "none",
-							borderRadius: "4px",
-							fontWeight: 600,
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							gap: "8px",
-							cursor: saving ? "not-allowed" : "pointer",
-							opacity: saving ? 0.7 : 1,
-						}}
-					>
-						<Save size={16} />
-						{saving ? "SAVING CONFIG..." : "SAVE CONFIG"}
-					</button>
-
-					{toast && (
-						<div
-							style={{
-								padding: "8px 12px",
-								borderRadius: "4px",
-								fontSize: "11px",
-								lineHeight: "1.3",
-								fontFamily: "JetBrains Mono",
-								backgroundColor: toast.type === "success" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
-								color: toast.type === "success" ? "var(--signal-quant)" : "#FFAAAA",
-								border: `1px solid ${toast.type === "success" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-							}}
-						>
-							{toast.message}
-						</div>
-					)}
-				</div>
+				)}
 			</div>
 		</div>
 	);

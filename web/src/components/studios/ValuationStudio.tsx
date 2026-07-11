@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useState, useRef } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
 import { useTerminal } from "../../context/TerminalContext";
@@ -27,7 +28,14 @@ const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
 const TEXT_COLOR = "#94A3B8";
 const GRID_COLOR = "rgba(255,255,255,0.03)";
 
-function makeCommonOptions() {
+function getChartYAxisWidth(): number {
+	const raw = getComputedStyle(document.documentElement)
+		.getPropertyValue('--chart-yaxis-width')
+		.trim();
+	return Number(raw) || 85;
+}
+
+function makeCommonOptions(yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -40,7 +48,7 @@ function makeCommonOptions() {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: 85,
+			minimumWidth: yAxisWidth,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -50,10 +58,11 @@ function makeCommonOptions() {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
+		handleScroll: { vertTouchDrag: false },
 	};
 }
 
-function getPanelHeights(maximized: MaximizedPanel) {
+function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
 	switch (maximized) {
 		case "btc":
@@ -64,7 +73,7 @@ function getPanelHeights(maximized: MaximizedPanel) {
 				val: Math.floor(full * 0.35),
 			};
 		default:
-			return { btc: 300, val: 240 };
+			return isMobile ? { btc: 160, val: 120 } : { btc: 300, val: 240 };
 	}
 }
 
@@ -168,6 +177,7 @@ export const ValuationStudio: React.FC = () => {
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
+	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
@@ -205,7 +215,7 @@ export const ValuationStudio: React.FC = () => {
 	useEffect(() => {
 		const { btc, val } = chartsRef.current;
 		if (!btc) return;
-		const heights = getPanelHeights(maximized);
+		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
 		btc.resize(w, heights.btc);
@@ -225,9 +235,9 @@ export const ValuationStudio: React.FC = () => {
 		)
 			return;
 
-		const common = makeCommonOptions();
+		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
-		const heights = getPanelHeights(null);
+		const heights = getPanelHeights(null, isMobile);
 
 		// BTC Candlestick Pane (top, no time axis)
 		const btcChart = createChart(btcContainerRef.current, {
@@ -409,7 +419,7 @@ export const ValuationStudio: React.FC = () => {
 		exportChartsToPng(subplots, filename);
 	};
 
-	const heights = getPanelHeights(maximized);
+	const heights = getPanelHeights(maximized, isMobile);
 
 	return (
 		<div
@@ -723,148 +733,183 @@ export const ValuationStudio: React.FC = () => {
 							</div>
 						</div>
 
-						<div style={{ overflowX: "auto" }}>
-							<table
-								style={{
-									width: "100%",
-									borderCollapse: "collapse",
-									textAlign: "left",
-								}}
-							>
-								<thead>
-									<tr
-										style={{
-											borderBottom: "1px solid var(--border-panel)",
-											color: "var(--text-dim)",
-											fontSize: "11px",
-											textTransform: "uppercase",
-											fontFamily: "JetBrains Mono",
-										}}
+						{isMobile ? (
+							/* Mobile: Compact Two-Line List */
+							<div className="mobile-metric-list">
+								{displayIndicators.map((ind) => (
+									<div
+										key={ind.key}
+										className="mobile-metric-row"
+										onClick={() => setSelectedMetric(ind.key)}
+										role="button"
+										tabIndex={0}
+										onKeyDown={(e) => e.key === 'Enter' && setSelectedMetric(ind.key)}
 									>
-										<th style={{ padding: "12px 8px" }}>Indicator Name</th>
-										<th style={{ padding: "12px 8px" }}>Category</th>
-										<th style={{ padding: "12px 8px" }}>Description</th>
-										<th style={{ padding: "12px 8px", textAlign: "center" }}>Trend</th>
-										<th style={{ padding: "12px 8px", textAlign: "right" }}>
-											Piecewise Score [-2, +2]
-										</th>
-										<th style={{ padding: "12px 8px", textAlign: "center" }}>
-											Signal Direction
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{displayIndicators.map((ind) => (
-										<tr
-											key={ind.key}
-											onClick={() => setSelectedMetric(ind.key)}
-											style={{
-												borderBottom: "1px solid rgba(255,255,255,0.03)",
-												fontSize: "13px",
-												cursor: "pointer",
-											}}
-											className="hover:bg-slate-800/30 transition-colors"
-										>
-											<td
-												style={{
-													padding: "14px 8px",
-													fontWeight: 600,
-													color: "var(--text-primary)",
-												}}
-											>
+										<div className="mobile-metric-row-top">
+											<span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
 												{ind.name}
-											</td>
-											<td style={{ padding: "14px 8px" }}>
-												<span
-													style={{
-														fontSize: "11px",
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontFamily: "JetBrains Mono",
-														backgroundColor:
-															ind.category === "Fundamental"
-																? "rgba(96,165,250,0.1)"
-																: ind.category === "Technical"
-																	? "rgba(168,85,247,0.1)"
-																	: "rgba(245,158,11,0.1)",
-														color:
-															ind.category === "Fundamental"
-																? "var(--signal-quant)"
-																: ind.category === "Technical"
-																	? "var(--signal-pca)"
-																	: "var(--accent)",
-													}}
-												>
-													{ind.category}
-												</span>
-											</td>
-											<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
-												{ind.description}
-											</td>
-											<td style={{ padding: "14px 8px", textAlign: "center" }}>
-												<Sparkline
-													data={ind.sparklineData}
-													color={
-														ind.direction === -1
-															? "#22C55E"
-															: ind.direction === 1
-																? "#EF4444"
-																: "#64748B"
-													}
-												/>
-											</td>
-											<td
-												style={{
-													padding: "14px 8px",
-													textAlign: "right",
-													fontFamily: "JetBrains Mono",
-													fontWeight: 700,
-													color:
-														ind.score >= 1.0
-															? "var(--signal-bear)"
-															: ind.score <= -1.0
-																? "var(--signal-quant)"
-																: "var(--text-primary)",
-												}}
-											>
-												{ind.score > 0
-													? `+${ind.score.toFixed(3)}`
-													: ind.score.toFixed(3)}
-											</td>
-											<td style={{ padding: "14px 8px", textAlign: "center" }}>
-												<span
-													style={{
-														fontSize: "11px",
-														fontWeight: 700,
-														padding: "4px 10px",
-														borderRadius: "12px",
-														fontFamily: "JetBrains Mono",
-														backgroundColor:
-															ind.direction === 1
-																? "rgba(239,68,68,0.15)"
-																: ind.direction === -1
-																	? "rgba(96,165,250,0.15)"
-																	: "rgba(255,255,255,0.05)",
-														color:
-															ind.direction === 1
-																? "var(--signal-bear)"
-																: ind.direction === -1
-																	? "var(--signal-quant)"
-																	: "var(--text-dim)",
-													}}
-												>
-													{ind.direction === 1
-														? "OVERVALUED (+1)"
-														: ind.direction === -1
-															? "DISCOUNT (-1)"
-															: "NEUTRAL (0)"}
-												</span>
-											</td>
+											</span>
+											<span style={{ fontFamily: 'JetBrains Mono', fontSize: '13px', fontWeight: 700, flexShrink: 0, color: ind.score >= 1.0 ? 'var(--signal-bear)' : ind.score <= -1.0 ? 'var(--signal-quant)' : 'var(--text-main)' }}>
+												{ind.score > 0 ? `+${ind.score.toFixed(2)}` : ind.score.toFixed(2)}
+											</span>
+										</div>
+										<div className="mobile-metric-row-bottom">
+											<span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontFamily: 'JetBrains Mono', flexShrink: 0, backgroundColor: ind.category === 'Fundamental' ? 'rgba(96,165,250,0.1)' : ind.category === 'Technical' ? 'rgba(168,85,247,0.1)' : 'rgba(245,158,11,0.1)', color: ind.category === 'Fundamental' ? 'var(--signal-quant)' : ind.category === 'Technical' ? 'var(--signal-pca)' : 'var(--accent)' }}>
+												{ind.category}
+											</span>
+											<Sparkline data={ind.sparklineData} color={ind.direction === -1 ? '#22C55E' : ind.direction === 1 ? '#EF4444' : '#64748B'} />
+											<span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', fontFamily: 'JetBrains Mono', marginLeft: 'auto', flexShrink: 0, backgroundColor: ind.direction === 1 ? 'rgba(239,68,68,0.15)' : ind.direction === -1 ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.05)', color: ind.direction === 1 ? 'var(--signal-bear)' : ind.direction === -1 ? 'var(--signal-quant)' : 'var(--text-dim)' }}>
+												{ind.direction === 1 ? 'OVER' : ind.direction === -1 ? 'DISC' : 'NEUT'}
+											</span>
+										</div>
+									</div>
+								))}
+							</div>
+						) : (
+							/* Desktop: Full Table */
+							<div style={{ overflowX: 'auto' }}>
+								<table
+									style={{
+										width: "100%",
+										borderCollapse: "collapse",
+										textAlign: "left",
+									}}
+								>
+									<thead>
+										<tr
+											style={{
+												borderBottom: "1px solid var(--border-panel)",
+												color: "var(--text-dim)",
+												fontSize: "11px",
+												textTransform: "uppercase",
+												fontFamily: "JetBrains Mono",
+											}}
+										>
+											<th style={{ padding: "12px 8px" }}>Indicator Name</th>
+											<th style={{ padding: "12px 8px" }}>Category</th>
+											<th style={{ padding: "12px 8px" }}>Description</th>
+											<th style={{ padding: "12px 8px", textAlign: "center" }}>Trend</th>
+											<th style={{ padding: "12px 8px", textAlign: "right" }}>
+												Piecewise Score [-2, +2]
+											</th>
+											<th style={{ padding: "12px 8px", textAlign: "center" }}>
+												Signal Direction
+											</th>
 										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
+									</thead>
+									<tbody>
+										{displayIndicators.map((ind) => (
+											<tr
+												key={ind.key}
+												onClick={() => setSelectedMetric(ind.key)}
+												style={{
+													borderBottom: "1px solid rgba(255,255,255,0.03)",
+													fontSize: "13px",
+													cursor: "pointer",
+												}}
+												className="hover:bg-slate-800/30 transition-colors"
+											>
+												<td
+													style={{
+														padding: "14px 8px",
+														fontWeight: 600,
+														color: "var(--text-primary)",
+													}}
+												>
+													{ind.name}
+												</td>
+												<td style={{ padding: "14px 8px" }}>
+													<span
+														style={{
+															fontSize: "11px",
+															padding: "2px 8px",
+															borderRadius: "4px",
+															fontFamily: "JetBrains Mono",
+															backgroundColor:
+																ind.category === "Fundamental"
+																	? "rgba(96,165,250,0.1)"
+																	: ind.category === "Technical"
+																		? "rgba(168,85,247,0.1)"
+																		: "rgba(245,158,11,0.1)",
+															color:
+																ind.category === "Fundamental"
+																	? "var(--signal-quant)"
+																	: ind.category === "Technical"
+																		? "var(--signal-pca)"
+																		: "var(--accent)",
+														}}
+													>
+														{ind.category}
+													</span>
+												</td>
+												<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+													{ind.description}
+												</td>
+												<td style={{ padding: "14px 8px", textAlign: "center" }}>
+													<Sparkline
+														data={ind.sparklineData}
+														color={
+															ind.direction === -1
+																? "#22C55E"
+																: ind.direction === 1
+																	? "#EF4444"
+																	: "#64748B"
+														}
+													/>
+												</td>
+												<td
+													style={{
+														padding: "14px 8px",
+														textAlign: "right",
+														fontFamily: "JetBrains Mono",
+														fontWeight: 700,
+														color:
+															ind.score >= 1.0
+																? "var(--signal-bear)"
+																: ind.score <= -1.0
+																	? "var(--signal-quant)"
+																	: "var(--text-primary)",
+													}}
+												>
+													{ind.score > 0
+														? `+${ind.score.toFixed(3)}`
+														: ind.score.toFixed(3)}
+												</td>
+												<td style={{ padding: "14px 8px", textAlign: "center" }}>
+													<span
+														style={{
+															fontSize: "11px",
+															fontWeight: 700,
+															padding: "4px 10px",
+															borderRadius: "12px",
+															fontFamily: "JetBrains Mono",
+															backgroundColor:
+																ind.direction === 1
+																	? "rgba(239,68,68,0.15)"
+																	: ind.direction === -1
+																		? "rgba(96,165,250,0.15)"
+																		: "rgba(255,255,255,0.05)",
+															color:
+																ind.direction === 1
+																	? "var(--signal-bear)"
+																	: ind.direction === -1
+																		? "var(--signal-quant)"
+																		: "var(--text-dim)",
+														}}
+													>
+														{ind.direction === 1
+															? "OVERVALUED (+1)"
+															: ind.direction === -1
+																? "DISCOUNT (-1)"
+																: "NEUTRAL (0)"}
+													</span>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
 					</div>
 				</>
 			)}

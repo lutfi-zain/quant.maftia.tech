@@ -8,7 +8,7 @@ interface UseTerminalWebSocketOptions {
   onCircuitBreakerTrip?: (data: CircuitBreakersResponse) => void;
 }
 
-const WS_URL = import.meta.env.VITE_WS_URL || ((window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':8765/ws/live');
+const WS_URL = import.meta.env.VITE_WS_URL || ((window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/live');
 
 export function useTerminalWebSocket(options?: UseTerminalWebSocketOptions) {
   const [status, setStatus] = useState<WSConnectionStatus>('Disconnected');

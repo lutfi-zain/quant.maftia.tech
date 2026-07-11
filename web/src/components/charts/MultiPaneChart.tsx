@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import {
 	createChart,
 	type IChartApi,
@@ -30,7 +31,14 @@ const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
 const TEXT_COLOR = "#94A3B8";
 const GRID_COLOR = "rgba(255,255,255,0.03)";
 
-function makeCommonOptions() {
+function getChartYAxisWidth(): number {
+	const raw = getComputedStyle(document.documentElement)
+		.getPropertyValue('--chart-yaxis-width')
+		.trim();
+	return Number(raw) || 85;
+}
+
+function makeCommonOptions(yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -43,7 +51,7 @@ function makeCommonOptions() {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: 85,
+			minimumWidth: yAxisWidth,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -53,11 +61,12 @@ function makeCommonOptions() {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
+		handleScroll: { vertTouchDrag: false },
 	};
 }
 
 // Heights per panel state
-function getPanelHeights(maximized: MaximizedPanel) {
+function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
 	switch (maximized) {
 		case "btc":
@@ -84,7 +93,10 @@ function getPanelHeights(maximized: MaximizedPanel) {
 				mttd: Math.floor(full * 0.35),
 			};
 		default:
-			return { btc: 300, val: 160, lttd: 160, mttd: 160 };
+			// Mobile: smaller heights to fit phone viewport
+			return isMobile
+				? { btc: 160, val: 120, lttd: 120, mttd: 120 }
+				: { btc: 300, val: 160, lttd: 160, mttd: 160 };
 	}
 }
 
@@ -119,6 +131,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 	);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
+	const isMobile = useIsMobile();
 
 	// Toggle log/linear on price chart
 	useEffect(() => {
@@ -133,7 +146,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 	useEffect(() => {
 		const { btc, val, lttd, mttd } = chartsRef.current;
 		if (!btc) return;
-		const heights = getPanelHeights(maximized);
+		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
 		btc.resize(w, heights.btc);
@@ -168,9 +181,9 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		)
 			return;
 
-		const common = makeCommonOptions();
+		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
-		const heights = getPanelHeights(null);
+		const heights = getPanelHeights(null, isMobile);
 
 		// ── BTC Price Chart ──
 		const btcChart = createChart(priceContainerRef.current, {
@@ -552,7 +565,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 				ref={wrapperRef}
 			>
 				{subplots.map(({ id, label, containerRef }) => {
-					const heights = getPanelHeights(maximized);
+					const heights = getPanelHeights(maximized, isMobile);
 					const heightKey = id as string;
 					const h = heights[heightKey as keyof typeof heights];
 					const hiddenClass = h === 0 ? "chart-subplot-hidden" : "";

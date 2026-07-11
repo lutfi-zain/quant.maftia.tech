@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useState, useRef } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
 import { useTerminal } from "../../context/TerminalContext";
@@ -25,7 +26,14 @@ const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
 const TEXT_COLOR = "#94A3B8";
 const GRID_COLOR = "rgba(255,255,255,0.03)";
 
-function makeCommonOptions() {
+function getChartYAxisWidth(): number {
+	const raw = getComputedStyle(document.documentElement)
+		.getPropertyValue('--chart-yaxis-width')
+		.trim();
+	return Number(raw) || 85;
+}
+
+function makeCommonOptions(yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -38,7 +46,7 @@ function makeCommonOptions() {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: 85,
+			minimumWidth: yAxisWidth,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -48,10 +56,11 @@ function makeCommonOptions() {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
+		handleScroll: { vertTouchDrag: false },
 	};
 }
 
-function getPanelHeights(maximized: MaximizedPanel) {
+function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
 	switch (maximized) {
 		case "btc":
@@ -69,7 +78,9 @@ function getPanelHeights(maximized: MaximizedPanel) {
 				gates: Math.floor(full * 0.35),
 			};
 		default:
-			return { btc: 280, imo: 180, gates: 160 };
+			return isMobile
+				? { btc: 160, imo: 120, gates: 120 }
+				: { btc: 280, imo: 180, gates: 160 };
 	}
 }
 
@@ -136,6 +147,7 @@ export const MttdConsole: React.FC = () => {
 	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
+	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
@@ -173,7 +185,7 @@ export const MttdConsole: React.FC = () => {
 	useEffect(() => {
 		const { btc, imo, gates } = chartsRef.current;
 		if (!btc) return;
-		const heights = getPanelHeights(maximized);
+		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
 		btc.resize(w, heights.btc);
@@ -209,9 +221,9 @@ export const MttdConsole: React.FC = () => {
 		)
 			return;
 
-		const common = makeCommonOptions();
+		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
-		const heights = getPanelHeights(null);
+		const heights = getPanelHeights(null, isMobile);
 
 		// BTC Candlestick Pane (top)
 		const btcChart = createChart(btcContainerRef.current, {
@@ -445,7 +457,7 @@ export const MttdConsole: React.FC = () => {
 			};
 		});
 
-	const heights = getPanelHeights(maximized);
+	const heights = getPanelHeights(maximized, isMobile);
 
 	return (
 		<div
@@ -565,6 +577,7 @@ export const MttdConsole: React.FC = () => {
 
 			{/* Traffic-Light Gate Status Badges */}
 			<div
+				className="stat-grid-3col"
 				style={{
 					display: "grid",
 					gridTemplateColumns: "repeat(3, 1fr)",
@@ -953,82 +966,101 @@ export const MttdConsole: React.FC = () => {
 					</div>
 				</div>
 
-				<div style={{ overflowX: "auto" }}>
-					<table
-						style={{
-							width: "100%",
-							borderCollapse: "collapse",
-							textAlign: "left",
-						}}
-					>
-						<thead>
-							<tr
-								style={{
-									borderBottom: "1px solid var(--border-panel)",
-									color: "var(--text-dim)",
-									fontSize: "11px",
-									textTransform: "uppercase",
-									fontFamily: "JetBrains Mono",
-								}}
-							>
-								<th style={{ padding: "12px 8px" }}>Statistical Family</th>
-								<th style={{ padding: "12px 8px" }}>Category</th>
-								<th style={{ padding: "12px 8px" }}>Algorithm Description</th>
-								<th style={{ padding: "12px 8px" }}>Governing Gate</th>
-								<th style={{ padding: "12px 8px", textAlign: "right" }}>
-									Consensus Score [-1, +1]
-								</th>
-								<th style={{ padding: "12px 8px", textAlign: "center" }}>
-									Signal Direction
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{displayFamilies.map((ind) => (
+				{isMobile ? (
+					/* Mobile: Compact Two-Line List */
+					<div className="mobile-metric-list">
+						{displayFamilies.map((ind) => (
+							<div key={ind.name} className="mobile-metric-row">
+								<div className="mobile-metric-row-top">
+									<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+										{ind.name}
+									</span>
+									<span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 700, flexShrink: 0, color: ind.score >= 0.2 ? "var(--signal-bull)" : ind.score <= -0.2 ? "var(--signal-bear)" : "var(--text-main)" }}>
+										{ind.score > 0 ? `+${ind.score.toFixed(3)}` : ind.score.toFixed(3)}
+									</span>
+								</div>
+								<div className="mobile-metric-row-bottom">
+									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "JetBrains Mono", flexShrink: 0, backgroundColor: "rgba(168,85,247,0.1)", color: "var(--signal-pca)" }}>
+										{ind.category}
+									</span>
+									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
+										{ind.direction === 1 ? "+1 (BULL)" : ind.direction === -1 ? "-1 (BEAR)" : "0 (NEUT)"}
+									</span>
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					<div style={{ overflowX: "auto" }}>
+						<table
+							style={{
+								width: "100%",
+								borderCollapse: "collapse",
+								textAlign: "left",
+							}}
+						>
+							<thead>
 								<tr
-									key={ind.name}
 									style={{
-										borderBottom: "1px solid rgba(255,255,255,0.03)",
-										fontSize: "13px",
+										borderBottom: "1px solid var(--border-panel)",
+										color: "var(--text-dim)",
+										fontSize: "11px",
+										textTransform: "uppercase",
+										fontFamily: "JetBrains Mono",
 									}}
 								>
-									<td
+									<th style={{ padding: "12px 8px" }}>Statistical Family</th>
+									<th style={{ padding: "12px 8px" }}>Category</th>
+									<th style={{ padding: "12px 8px" }}>Algorithm Description</th>
+									<th style={{ padding: "12px 8px" }}>Governing Gate</th>
+									<th style={{ padding: "12px 8px", textAlign: "right" }}>
+										Consensus Score [-1, +1]
+									</th>
+									<th style={{ padding: "12px 8px", textAlign: "center" }}>
+										Signal Direction
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{displayFamilies.map((ind) => (
+									<tr
+										key={ind.name}
 										style={{
-											padding: "14px 8px",
-											fontWeight: 600,
-											color: "var(--text-primary)",
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+											fontSize: "13px",
 										}}
 									>
-										{ind.name}
-									</td>
-									<td style={{ padding: "14px 8px" }}>
-										<span
+										<td
 											style={{
-												fontSize: "11px",
-												padding: "2px 8px",
-												borderRadius: "4px",
-												fontFamily: "JetBrains Mono",
-												backgroundColor: "rgba(168,85,247,0.1)",
-												color: "var(--signal-pca)",
+												padding: "14px 8px",
+												fontWeight: 600,
+												color: "var(--text-primary)",
 											}}
 										>
-											{ind.category}
-										</span>
-									</td>
-									<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
-										{ind.description}
-									</td>
-									<td style={{ padding: "14px 8px" }}>
-										<span
+											{ind.name}
+										</td>
+										<td style={{ padding: "14px 8px" }}>
+											<span
+												style={{
+													fontSize: "11px",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontFamily: "JetBrains Mono",
+													backgroundColor: "rgba(168,85,247,0.1)",
+													color: "var(--signal-pca)",
+												}}
+											>
+												{ind.category}
+											</span>
+										</td>
+										<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+											{ind.description}
+										</td>
+										<td
 											style={{
-												fontSize: "11px",
-												padding: "2px 6px",
-												borderRadius: "4px",
+												padding: "14px 8px",
 												fontFamily: "JetBrains Mono",
-												backgroundColor:
-													ind.gate === "None"
-														? "rgba(255,255,255,0.03)"
-														: "rgba(34,211,238,0.08)",
+												fontSize: "11px",
 												color:
 													ind.gate === "None"
 														? "var(--text-dim)"
@@ -1036,60 +1068,60 @@ export const MttdConsole: React.FC = () => {
 											}}
 										>
 											{ind.gate}
-										</span>
-									</td>
-									<td
-										style={{
-											padding: "14px 8px",
-											textAlign: "right",
-											fontFamily: "JetBrains Mono",
-											fontWeight: 700,
-											color:
-												ind.score >= 0.2
-													? "var(--signal-bull)"
-													: ind.score <= -0.2
-														? "var(--signal-bear)"
-														: "var(--text-primary)",
-										}}
-									>
-										{ind.score > 0
-											? `+${ind.score.toFixed(3)}`
-											: ind.score.toFixed(3)}
-									</td>
-									<td style={{ padding: "14px 8px", textAlign: "center" }}>
-										<span
+										</td>
+										<td
 											style={{
-												display: "inline-block",
-												padding: "2px 8px",
-												borderRadius: "4px",
-												fontSize: "11px",
+												padding: "14px 8px",
+												textAlign: "right",
 												fontFamily: "JetBrains Mono",
-												backgroundColor:
-													ind.direction === 1
-														? "rgba(34,197,94,0.15)"
-														: ind.direction === -1
-															? "rgba(239,68,68,0.15)"
-															: "rgba(255,255,255,0.05)",
+												fontWeight: 700,
 												color:
-													ind.direction === 1
+													ind.score >= 0.2
 														? "var(--signal-bull)"
-														: ind.direction === -1
+														: ind.score <= -0.2
 															? "var(--signal-bear)"
-															: "var(--text-dim)",
+															: "var(--text-primary)",
 											}}
 										>
-											{ind.direction === 1
-												? "+1 (BULL)"
-												: ind.direction === -1
-													? "-1 (BEAR)"
-													: "0 (NEUTRAL)"}
-										</span>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+											{ind.score > 0
+												? `+${ind.score.toFixed(3)}`
+												: ind.score.toFixed(3)}
+										</td>
+										<td style={{ padding: "14px 8px", textAlign: "center" }}>
+											<span
+												style={{
+													display: "inline-block",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontSize: "11px",
+													fontFamily: "JetBrains Mono",
+													backgroundColor:
+														ind.direction === 1
+															? "rgba(34,197,94,0.15)"
+															: ind.direction === -1
+																? "rgba(239,68,68,0.15)"
+																: "rgba(255,255,255,0.05)",
+													color:
+														ind.direction === 1
+															? "var(--signal-bull)"
+															: ind.direction === -1
+																? "var(--signal-bear)"
+																: "var(--text-dim)",
+												}}
+											>
+												{ind.direction === 1
+													? "+1 (BULL)"
+													: ind.direction === -1
+														? "-1 (BEAR)"
+														: "0 (NEUTRAL)"}
+											</span>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
 			</div>
 		</div>
 	);
