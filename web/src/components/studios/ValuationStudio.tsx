@@ -9,7 +9,6 @@ import {
 	type IChartApi,
 	ColorType,
 	CrosshairMode,
-	type ISeriesApi,
 	type Time,
 	LineStyle,
 	CandlestickSeries,
@@ -30,7 +29,7 @@ const GRID_COLOR = "rgba(255,255,255,0.03)";
 
 function getChartYAxisWidth(): number {
 	const raw = getComputedStyle(document.documentElement)
-		.getPropertyValue('--chart-yaxis-width')
+		.getPropertyValue("--chart-yaxis-width")
 		.trim();
 	return Number(raw) || 85;
 }
@@ -144,7 +143,8 @@ const INDICATOR_METADATA: Record<
 	williams_r: {
 		name: "Williams %R",
 		category: "Technical",
-		description: "Bounded momentum oscillator showing overbought/oversold levels",
+		description:
+			"Bounded momentum oscillator showing overbought/oversold levels",
 	},
 	two_year_ma: {
 		name: "2-Year MA Multiplier",
@@ -154,7 +154,8 @@ const INDICATOR_METADATA: Record<
 	ahr999: {
 		name: "AHR999 Index",
 		category: "Technical",
-		description: "Bitcoin cheapness index based on MA and log growth regression",
+		description:
+			"Bitcoin cheapness index based on MA and log growth regression",
 	},
 	fear_greed_og: {
 		name: "Fear & Greed (OG)",
@@ -169,9 +170,15 @@ const INDICATOR_METADATA: Record<
 };
 
 export const ValuationStudio: React.FC = () => {
-	const { dailyData, circuitBreakers } = useTerminal();
+	const { dailyData, isLoading: terminalLoading, error: terminalError, refreshData } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
-	const [loading, setLoading] = useState(true);
+	const [localLoading, setLocalLoading] = useState(true);
+	const [localError, setLocalError] = useState<string | null>(null);
+	const [retryTrigger, setRetryTrigger] = useState(0);
+
+	const isLoading = terminalLoading || localLoading;
+	const currentError = terminalError || localError;
+
 	const [selectedCategory, setSelectedCategory] = useState<string>("All");
 	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
@@ -190,17 +197,20 @@ export const ValuationStudio: React.FC = () => {
 	const isRangeSyncingRef = useRef(false);
 
 	useEffect(() => {
+		setLocalLoading(true);
+		setLocalError(null);
 		quantClient
 			.getComponents("quant-btc-valuation-system", undefined, 2000)
 			.then((data) => {
 				setComponents(data);
-				setLoading(false);
+				setLocalLoading(false);
 			})
 			.catch((e) => {
 				console.error("Failed to load valuation components:", e);
-				setLoading(false);
+				setLocalError(e.message || "Failed to load valuation components");
+				setLocalLoading(false);
 			});
-	}, []);
+	}, [retryTrigger]);
 
 	// Log/linear toggle on BTC price scale
 	useEffect(() => {
@@ -288,6 +298,30 @@ export const ValuationStudio: React.FC = () => {
 			axisLabelVisible: true,
 			title: "Discount -1.00",
 		});
+		valSeries.createPriceLine({
+			price: 2.0,
+			color: "#EF4444",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: true,
+			title: "Extreme Overvalued +2.00",
+		});
+		valSeries.createPriceLine({
+			price: 0,
+			color: "#64748B",
+			lineWidth: 1,
+			lineStyle: LineStyle.Solid,
+			axisLabelVisible: true,
+			title: "Neutral 0.00",
+		});
+		valSeries.createPriceLine({
+			price: -2.0,
+			color: "#22C55E",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: true,
+			title: "Extreme Undervalued -2.00",
+		});
 
 		chartsRef.current = { btc: btcChart, val: valChart };
 
@@ -308,21 +342,34 @@ export const ValuationStudio: React.FC = () => {
 			})),
 		);
 
+		// Build O(1) lookups for crosshair synchronization
+		const btcDataMap = new Map<string, number>();
+		const valDataMap = new Map<string, number>();
+		for (const p of dailyData) {
+			btcDataMap.set(p.date, p.close);
+			valDataMap.set(p.date, p.valuation_composite);
+		}
+
 		// Crosshair sync
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
 			{ chart: valChart, series: valSeries },
 		];
 
-		allCharts.forEach(({ chart, series }, idx) => {
+		allCharts.forEach(({ chart }, idx) => {
 			chart.subscribeCrosshairMove((param) => {
 				if (isSyncingRef.current) return;
 				isSyncingRef.current = true;
 				if (param.time) {
 					const timeStr = param.time as string;
-					setHoveredPoint(dailyData.find((p) => p.date === timeStr) || null);
+					const hovered = dailyData.find((p) => p.date === timeStr);
+					setHoveredPoint(hovered || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
-						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
+						if (i === idx) return;
+						const val = i === 0
+							? (btcDataMap.get(timeStr) ?? 0)
+							: (valDataMap.get(timeStr) ?? 0);
+						c.setCrosshairPosition(val, param.time as Time, s);
 					});
 				} else {
 					setHoveredPoint(null);
@@ -390,15 +437,17 @@ export const ValuationStudio: React.FC = () => {
 		})
 		.map(([key, meta]) => {
 			const metricSignals = components.filter((c) => c.component_name === key);
-			const sortedHistory = [...metricSignals].sort((a, b) => a.date.localeCompare(b.date));
+			const sortedHistory = [...metricSignals].sort((a, b) =>
+				a.date.localeCompare(b.date),
+			);
 
 			const sparklinePoints = sortedHistory.slice(-90).map((s) => ({
 				date: s.date.split("T")[0],
-				value: toNum(s.normalized_score) * 2,
+				value: toNum(s.normalized_score),
 			}));
 
 			const latestSignal = sortedHistory[sortedHistory.length - 1];
-			const score = latestSignal ? toNum(latestSignal.normalized_score) * 2 : 0;
+			const score = latestSignal ? toNum(latestSignal.normalized_score) : 0;
 			const direction = latestSignal ? latestSignal.signal_direction : 0;
 
 			return {
@@ -415,7 +464,9 @@ export const ValuationStudio: React.FC = () => {
 	const handleExportPng = () => {
 		const chartPanel = document.querySelector(".chart-panel");
 		if (!chartPanel) return;
-		const subplots = Array.from(chartPanel.querySelectorAll(".chart-subplot")) as HTMLElement[];
+		const subplots = Array.from(
+			chartPanel.querySelectorAll(".chart-subplot"),
+		) as HTMLElement[];
 		const today = new Date().toISOString().split("T")[0];
 		const filename = selectedMetric
 			? `btc-valuation-${selectedMetric}-${today}.png`
@@ -433,7 +484,9 @@ export const ValuationStudio: React.FC = () => {
 			{selectedMetric ? (
 				<MetricDetailChart
 					metricName={selectedMetric}
-					metricDisplayName={INDICATOR_METADATA[selectedMetric]?.name || selectedMetric}
+					metricDisplayName={
+						INDICATOR_METADATA[selectedMetric]?.name || selectedMetric
+					}
 					onClose={() => setSelectedMetric(null)}
 				/>
 			) : (
@@ -622,7 +675,74 @@ export const ValuationStudio: React.FC = () => {
 					<div
 						className={`chart-panel ${maximized !== null ? "fullscreen" : ""}`}
 						ref={wrapperRef}
+						style={{ position: "relative", pointerEvents: isLoading ? "none" : "auto" }}
 					>
+						{/* Loading overlay */}
+						{isLoading && (
+							<div style={{
+								position: "absolute",
+								top: 0,
+								left: 0,
+								right: 0,
+								bottom: 0,
+								backgroundColor: "rgba(11, 18, 32, 0.8)",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								zIndex: 10,
+								pointerEvents: "all"
+							}}>
+								<div className="text-slate-400 font-mono text-sm animate-pulse flex items-center gap-2">
+									<svg className="animate-spin" style={{ width: "18px", height: "18px", color: "var(--signal-quant)" }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+										<path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									LOADING VALUATION TELEMETRY...
+								</div>
+							</div>
+						)}
+
+						{/* Error overlay */}
+						{currentError && (
+							<div style={{
+								position: "absolute",
+								top: 0,
+								left: 0,
+								right: 0,
+								bottom: 0,
+								backgroundColor: "rgba(11, 18, 32, 0.95)",
+								display: "flex",
+								flexDirection: "column",
+								alignItems: "center",
+								justifyContent: "center",
+								zIndex: 11,
+								gap: "16px",
+								padding: "20px",
+								pointerEvents: "all"
+							}}>
+								<div style={{ color: "#FFAAAA", fontSize: "14px", fontFamily: "JetBrains Mono" }}>
+									ERROR: {currentError}
+								</div>
+								<button
+									onClick={() => {
+										refreshData();
+										setRetryTrigger(prev => prev + 1);
+									}}
+									style={{
+										padding: "8px 16px",
+										backgroundColor: "var(--signal-bear)",
+										color: "#fff",
+										border: "none",
+										borderRadius: "4px",
+										fontWeight: 600,
+										cursor: "pointer"
+									}}
+								>
+									RETRY CONNECTION
+								</button>
+							</div>
+						)}
+
 						{/* BTC Candlestick Pane */}
 						<div
 							className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
@@ -646,8 +766,12 @@ export const ValuationStudio: React.FC = () => {
 									</span>
 									<button
 										className="icon-btn"
-										onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
-										title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
+										onClick={() =>
+											setMaximized(maximized === "btc" ? null : "btc")
+										}
+										title={
+											maximized === "btc" ? "Restore" : "Maximize BTC pane"
+										}
 									>
 										{maximized === "btc" ? "⊡" : "⤢"}
 									</button>
@@ -668,7 +792,8 @@ export const ValuationStudio: React.FC = () => {
 									className="subplot-title"
 									style={{ color: "var(--text-dim)" }}
 								>
-									Valuation Composite [-2.00 → +2.00] · Bubble +1.50 / Discount -1.00
+									Valuation Composite [-2.00 → +2.00] · Bubble +1.50 / Discount
+									-1.00
 								</span>
 								<div className="subplot-controls">
 									<span
@@ -682,9 +807,13 @@ export const ValuationStudio: React.FC = () => {
 									</span>
 									<button
 										className="icon-btn"
-										onClick={() => setMaximized(maximized === "val" ? null : "val")}
+										onClick={() =>
+											setMaximized(maximized === "val" ? null : "val")
+										}
 										title={
-											maximized === "val" ? "Restore" : "Maximize Valuation pane"
+											maximized === "val"
+												? "Restore"
+												: "Maximize Valuation pane"
 										}
 									>
 										{maximized === "val" ? "⊡" : "⤢"}
@@ -708,7 +837,9 @@ export const ValuationStudio: React.FC = () => {
 								marginBottom: "16px",
 							}}
 						>
-							<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+							<div
+								style={{ display: "flex", alignItems: "center", gap: "8px" }}
+							>
 								<Layers size={18} style={{ color: "var(--signal-quant)" }} />
 								<span style={{ fontWeight: 600, fontSize: "15px" }}>
 									Piecewise Linear Component Matrix
@@ -724,8 +855,11 @@ export const ValuationStudio: React.FC = () => {
 											borderRadius: "6px",
 											border: "1px solid var(--border-panel)",
 											backgroundColor:
-												selectedCategory === cat ? "var(--accent)" : "transparent",
-											color: selectedCategory === cat ? "#000" : "var(--text-dim)",
+												selectedCategory === cat
+													? "var(--accent)"
+													: "transparent",
+											color:
+												selectedCategory === cat ? "#000" : "var(--text-dim)",
 											fontWeight: selectedCategory === cat ? 600 : 400,
 											fontSize: "12px",
 											cursor: "pointer",
@@ -747,23 +881,105 @@ export const ValuationStudio: React.FC = () => {
 										onClick={() => setSelectedMetric(ind.key)}
 										role="button"
 										tabIndex={0}
-										onKeyDown={(e) => e.key === 'Enter' && setSelectedMetric(ind.key)}
+										onKeyDown={(e) =>
+											e.key === "Enter" && setSelectedMetric(ind.key)
+										}
 									>
 										<div className="mobile-metric-row-top">
-											<span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+											<span
+												style={{
+													fontSize: "13px",
+													fontWeight: 600,
+													color: "var(--text-main)",
+													flex: 1,
+													overflow: "hidden",
+													textOverflow: "ellipsis",
+													whiteSpace: "nowrap",
+												}}
+											>
 												{ind.name}
 											</span>
-											<span style={{ fontFamily: 'JetBrains Mono', fontSize: '13px', fontWeight: 700, flexShrink: 0, color: ind.score >= 1.0 ? 'var(--signal-bear)' : ind.score <= -1.0 ? 'var(--signal-quant)' : 'var(--text-main)' }}>
-												{ind.score > 0 ? `+${ind.score.toFixed(2)}` : ind.score.toFixed(2)}
+											<span
+												style={{
+													fontFamily: "JetBrains Mono",
+													fontSize: "13px",
+													fontWeight: 700,
+													flexShrink: 0,
+													color:
+														ind.score >= 1.0
+															? "var(--signal-bear)"
+															: ind.score <= -1.0
+																? "var(--signal-quant)"
+																: "var(--text-main)",
+												}}
+											>
+												{ind.score > 0
+													? `+${ind.score.toFixed(2)}`
+													: ind.score.toFixed(2)}
 											</span>
 										</div>
 										<div className="mobile-metric-row-bottom">
-											<span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontFamily: 'JetBrains Mono', flexShrink: 0, backgroundColor: ind.category === 'Fundamental' ? 'rgba(96,165,250,0.1)' : ind.category === 'Technical' ? 'rgba(168,85,247,0.1)' : 'rgba(245,158,11,0.1)', color: ind.category === 'Fundamental' ? 'var(--signal-quant)' : ind.category === 'Technical' ? 'var(--signal-pca)' : 'var(--accent)' }}>
+											<span
+												style={{
+													fontSize: "10px",
+													padding: "2px 6px",
+													borderRadius: "4px",
+													fontFamily: "JetBrains Mono",
+													flexShrink: 0,
+													backgroundColor:
+														ind.category === "Fundamental"
+															? "rgba(96,165,250,0.1)"
+															: ind.category === "Technical"
+																? "rgba(168,85,247,0.1)"
+																: "rgba(245,158,11,0.1)",
+													color:
+														ind.category === "Fundamental"
+															? "var(--signal-quant)"
+															: ind.category === "Technical"
+																? "var(--signal-pca)"
+																: "var(--accent)",
+												}}
+											>
 												{ind.category}
 											</span>
-											<Sparkline data={ind.sparklineData} color={ind.direction === -1 ? '#22C55E' : ind.direction === 1 ? '#EF4444' : '#64748B'} />
-											<span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', fontFamily: 'JetBrains Mono', marginLeft: 'auto', flexShrink: 0, backgroundColor: ind.direction === 1 ? 'rgba(239,68,68,0.15)' : ind.direction === -1 ? 'rgba(96,165,250,0.15)' : 'rgba(255,255,255,0.05)', color: ind.direction === 1 ? 'var(--signal-bear)' : ind.direction === -1 ? 'var(--signal-quant)' : 'var(--text-dim)' }}>
-												{ind.direction === 1 ? 'OVER' : ind.direction === -1 ? 'DISC' : 'NEUT'}
+											<Sparkline
+												data={ind.sparklineData}
+												color={
+													ind.direction === -1
+														? "#22C55E"
+														: ind.direction === 1
+															? "#EF4444"
+															: "#64748B"
+												}
+											/>
+											<span
+												style={{
+													fontSize: "10px",
+													fontWeight: 700,
+													padding: "2px 8px",
+													borderRadius: "10px",
+													fontFamily: "JetBrains Mono",
+													marginLeft: "auto",
+													flexShrink: 0,
+													backgroundColor:
+														ind.direction === 1
+															? "rgba(239,68,68,0.15)"
+															: ind.direction === -1
+																? "rgba(96,165,250,0.15)"
+																: "rgba(255,255,255,0.05)",
+													color:
+														ind.direction === 1
+															? "var(--signal-bear)"
+															: ind.direction === -1
+																? "var(--signal-quant)"
+																: "var(--text-dim)",
+												}}
+											>
+												{ind.direction === 1
+													? "OVER"
+													: ind.direction === -1
+														? "DISC"
+														: "NEUT"}
 											</span>
 										</div>
 									</div>
@@ -771,7 +987,7 @@ export const ValuationStudio: React.FC = () => {
 							</div>
 						) : (
 							/* Desktop: Full Table */
-							<div style={{ overflowX: 'auto' }}>
+							<div style={{ overflowX: "auto" }}>
 								<table
 									style={{
 										width: "100%",
@@ -792,7 +1008,9 @@ export const ValuationStudio: React.FC = () => {
 											<th style={{ padding: "12px 8px" }}>Indicator Name</th>
 											<th style={{ padding: "12px 8px" }}>Category</th>
 											<th style={{ padding: "12px 8px" }}>Description</th>
-											<th style={{ padding: "12px 8px", textAlign: "center" }}>Trend</th>
+											<th style={{ padding: "12px 8px", textAlign: "center" }}>
+												Trend
+											</th>
 											<th style={{ padding: "12px 8px", textAlign: "right" }}>
 												Piecewise Score [-2, +2]
 											</th>
@@ -846,10 +1064,17 @@ export const ValuationStudio: React.FC = () => {
 														{ind.category}
 													</span>
 												</td>
-												<td style={{ padding: "14px 8px", color: "var(--text-dim)" }}>
+												<td
+													style={{
+														padding: "14px 8px",
+														color: "var(--text-dim)",
+													}}
+												>
 													{ind.description}
 												</td>
-												<td style={{ padding: "14px 8px", textAlign: "center" }}>
+												<td
+													style={{ padding: "14px 8px", textAlign: "center" }}
+												>
 													<Sparkline
 														data={ind.sparklineData}
 														color={
@@ -879,7 +1104,9 @@ export const ValuationStudio: React.FC = () => {
 														? `+${ind.score.toFixed(3)}`
 														: ind.score.toFixed(3)}
 												</td>
-												<td style={{ padding: "14px 8px", textAlign: "center" }}>
+												<td
+													style={{ padding: "14px 8px", textAlign: "center" }}
+												>
 													<span
 														style={{
 															fontSize: "11px",

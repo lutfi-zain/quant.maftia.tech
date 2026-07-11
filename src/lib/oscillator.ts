@@ -9,9 +9,9 @@ export function mapToOscillator(
   t_plus_1: number | null,
   t_minus_1: number | null,
   t_minus_2: number | null
-): number | null {
+): number {
   if (rawValue === null || isNaN(rawValue)) {
-    return null
+    return 0.0
   }
 
   if (t_plus_2 === null && t_plus_1 === null && t_minus_1 === null && t_minus_2 === null) {
@@ -44,7 +44,7 @@ export function mapToOscillator(
       if (rawValue <= t_plus_2) {
         return 2.0
       } else if (rawValue >= t_plus_1) {
-        return null
+        return 0.0
       } else {
         return 2.0 - safe_div(rawValue - t_plus_2, t_plus_1 - t_plus_2)
       }
@@ -53,7 +53,7 @@ export function mapToOscillator(
       if (rawValue >= t_plus_2) {
         return 2.0
       } else if (rawValue <= t_plus_1) {
-        return null
+        return 0.0
       } else {
         return 1.0 + safe_div(rawValue - t_plus_1, t_plus_2 - t_plus_1)
       }
@@ -67,7 +67,7 @@ export function mapToOscillator(
       if (rawValue >= t_minus_2) {
         return -2.0
       } else if (rawValue <= t_minus_1) {
-        return null
+        return 0.0
       } else {
         return -1.0 - safe_div(rawValue - t_minus_1, t_minus_2 - t_minus_1)
       }
@@ -76,7 +76,7 @@ export function mapToOscillator(
       if (rawValue <= t_minus_2) {
         return -2.0
       } else if (rawValue >= t_minus_1) {
-        return null
+        return 0.0
       } else {
         return -2.0 + safe_div(rawValue - t_minus_2, t_minus_1 - t_minus_2)
       }

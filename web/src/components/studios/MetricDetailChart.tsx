@@ -2,8 +2,26 @@ import type React from "react";
 import { useEffect, useState, useRef } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { BottomSheet } from "../ui/BottomSheet";
-import { createChart, type IChartApi, ColorType, CrosshairMode, type ISeriesApi, LineStyle, PriceScaleMode, CandlestickSeries, LineSeries, type Time } from "lightweight-charts";
-import { ArrowLeft, Save, Sparkles, Maximize2, Minimize2, Download } from "lucide-react";
+import {
+	createChart,
+	type IChartApi,
+	ColorType,
+	CrosshairMode,
+	type ISeriesApi,
+	LineStyle,
+	PriceScaleMode,
+	CandlestickSeries,
+	LineSeries,
+	type Time,
+} from "lightweight-charts";
+import {
+	ArrowLeft,
+	Save,
+	Sparkles,
+	Maximize2,
+	Minimize2,
+	Download,
+} from "lucide-react";
 import { quantClient } from "../../api/client";
 import { mapToOscillator } from "../../lib/oscillator";
 import { exportChartsToPng } from "../../lib/exportPng";
@@ -21,7 +39,7 @@ interface MetricDetailChartProps {
 
 function getChartYAxisWidth(): number {
 	const raw = getComputedStyle(document.documentElement)
-		.getPropertyValue('--chart-yaxis-width')
+		.getPropertyValue("--chart-yaxis-width")
 		.trim();
 	return Number(raw) || 85;
 }
@@ -53,7 +71,11 @@ function makeCommonOptions(yAxisWidth: number) {
 	};
 }
 
-export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName, metricDisplayName, onClose }) => {
+export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
+	metricName,
+	metricDisplayName,
+	onClose,
+}) => {
 	const [loading, setLoading] = useState(true);
 	const [timeseriesData, setTimeseriesData] = useState<any>(null);
 	const [thresholds, setThresholds] = useState<any>({
@@ -64,23 +86,40 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		t_plus_2: 0,
 	});
 	const [saving, setSaving] = useState(false);
-	const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-	const [maximizedPanel, setMaximizedPanel] = useState<"btc" | "raw" | "osc" | null>(null);
+	const [toast, setToast] = useState<{
+		type: "success" | "error";
+		message: string;
+	} | null>(null);
+	const [maximizedPanel, setMaximizedPanel] = useState<
+		"btc" | "raw" | "osc" | null
+	>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const isMobile = useIsMobile();
 	const [sheetOpen, setSheetOpen] = useState(false);
+
+	const savedThresholdsRef = useRef<any>(null);
+	const [isDirty, setIsDirty] = useState(false);
+	const [loadingDefaults, setLoadingDefaults] = useState(false);
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const rawContainerRef = useRef<HTMLDivElement>(null);
 	const oscContainerRef = useRef<HTMLDivElement>(null);
 
-	const chartsRef = useRef<{ btc: IChartApi | null; raw: IChartApi | null; osc: IChartApi | null }>({
+	const chartsRef = useRef<{
+		btc: IChartApi | null;
+		raw: IChartApi | null;
+		osc: IChartApi | null;
+	}>({
 		btc: null,
 		raw: null,
 		osc: null,
 	});
-	const seriesRef = useRef<{ btc: ISeriesApi<"Candlestick"> | null; raw: ISeriesApi<"Line"> | null; osc: ISeriesApi<"Line"> | null }>({
+	const seriesRef = useRef<{
+		btc: ISeriesApi<"Candlestick"> | null;
+		raw: ISeriesApi<"Line"> | null;
+		osc: ISeriesApi<"Line"> | null;
+	}>({
 		btc: null,
 		raw: null,
 		osc: null,
@@ -90,17 +129,36 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
+	const checkIfDirty = (current: any) => {
+		if (!savedThresholdsRef.current) return false;
+		const keys = ["t_minus_2", "t_minus_1", "t_zero", "t_plus_1", "t_plus_2"];
+		for (const k of keys) {
+			const savedVal = savedThresholdsRef.current[k];
+			const curVal = current[k];
+			const sNum = savedVal === null ? null : Number(savedVal);
+			const cNum = curVal === null ? null : Number(curVal);
+			if (sNum !== cNum) return true;
+		}
+		return false;
+	};
+
 	// Load metric timeseries & threshold config
 	useEffect(() => {
 		let isMounted = true;
 		setLoading(true);
+		setIsDirty(false);
+		savedThresholdsRef.current = null;
 
-		Promise.all([quantClient.getMetricTimeseries(metricName), quantClient.getMetricConfig(metricName)])
+		Promise.all([
+			quantClient.getMetricTimeseries(metricName),
+			quantClient.getMetricConfig(metricName),
+		])
 			.then(([tsRes, configRes]) => {
 				if (!isMounted) return;
 				setTimeseriesData(tsRes.data);
 				if (configRes && configRes.thresholds) {
 					setThresholds(configRes.thresholds);
+					savedThresholdsRef.current = configRes.thresholds;
 				}
 				setLoading(false);
 			})
@@ -116,21 +174,52 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 
 	// Initialize charts
 	useEffect(() => {
-		if (loading || !timeseriesData || !btcContainerRef.current || !rawContainerRef.current || !oscContainerRef.current) return;
+		if (
+			loading ||
+			!timeseriesData ||
+			!btcContainerRef.current ||
+			!rawContainerRef.current ||
+			!oscContainerRef.current
+		)
+			return;
 
 		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		const btcHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? (isMobile ? 160 : 220) : 0;
-		const rawHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 180) : 0;
-		const oscHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 160) : 0;
+		const btcHeight =
+			maximizedPanel === "btc"
+				? 500
+				: maximizedPanel === null
+					? isMobile
+						? 160
+						: 220
+					: 0;
+		const rawHeight =
+			maximizedPanel === "raw"
+				? 500
+				: maximizedPanel === null
+					? isMobile
+						? 120
+						: 180
+					: 0;
+		const oscHeight =
+			maximizedPanel === "osc"
+				? 500
+				: maximizedPanel === null
+					? isMobile
+						? 120
+						: 160
+					: 0;
 
 		// 1. BTC Price Chart
 		const btcChart = createChart(btcContainerRef.current, {
 			...common,
 			width: w,
 			height: btcHeight,
-			timeScale: { ...common.timeScale, visible: btcHeight > 0 && rawHeight === 0 && oscHeight === 0 },
+			timeScale: {
+				...common.timeScale,
+				visible: btcHeight > 0 && rawHeight === 0 && oscHeight === 0,
+			},
 		});
 		const btcSeries = btcChart.addSeries(CandlestickSeries, {
 			upColor: "#22C55E",
@@ -154,7 +243,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			...common,
 			width: w,
 			height: rawHeight,
-			timeScale: { ...common.timeScale, visible: rawHeight > 0 && oscHeight === 0 },
+			timeScale: {
+				...common.timeScale,
+				visible: rawHeight > 0 && oscHeight === 0,
+			},
 		});
 		rawChart.priceScale("right").applyOptions({
 			minimumWidth: getChartYAxisWidth(),
@@ -210,13 +302,33 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 
 		// Compute initial oscillator values client-side
 		const oscData = timeseriesData.raw_values.map((p: any) => {
-			const oscVal = mapToOscillator(p.value, thresholds.t_plus_2, thresholds.t_plus_1, thresholds.t_minus_1, thresholds.t_minus_2);
+			const oscVal = mapToOscillator(
+				p.value,
+				thresholds.t_plus_2,
+				thresholds.t_plus_1,
+				thresholds.t_minus_1,
+				thresholds.t_minus_2,
+			);
 			return {
 				time: p.date as Time,
 				value: oscVal ?? 0.0,
 			};
 		});
 		oscSeries.setData(oscData);
+
+		// Build O(1) lookups for crosshair synchronization
+		const btcDataMap = new Map<string, number>();
+		const rawDataMap = new Map<string, number>();
+		const oscDataMap = new Map<string, number>();
+
+		for (const p of timeseriesData.btc_ohlc) {
+			btcDataMap.set(p.date, p.close);
+		}
+		for (let i = 0; i < timeseriesData.raw_values.length; i++) {
+			const p = timeseriesData.raw_values[i];
+			rawDataMap.set(p.date, p.value);
+			oscDataMap.set(p.date, oscData[i].value);
+		}
 
 		// Reference lines on Oscillator chart
 		oscSeries.createPriceLine({
@@ -228,12 +340,28 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			title: "Bottom (+2.00)",
 		});
 		oscSeries.createPriceLine({
+			price: 1.0,
+			color: "#4ADE80",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: true,
+			title: "Opportunity (+1.00)",
+		});
+		oscSeries.createPriceLine({
 			price: 0,
 			color: "#64748B",
 			lineWidth: 1,
 			lineStyle: LineStyle.Dashed,
 			axisLabelVisible: true,
 			title: "Neutral (0.00)",
+		});
+		oscSeries.createPriceLine({
+			price: -1.0,
+			color: "#F87171",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: true,
+			title: "Warning (-1.00)",
 		});
 		oscSeries.createPriceLine({
 			price: -2.0,
@@ -255,13 +383,20 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			{ chart: oscChart, series: oscSeries },
 		];
 
-		allCharts.forEach(({ chart, series }, idx) => {
+		allCharts.forEach(({ chart }, idx) => {
 			chart.subscribeCrosshairMove((param) => {
 				if (isSyncingRef.current) return;
 				isSyncingRef.current = true;
 				if (param.time) {
+					const timeStr = param.time as string;
 					allCharts.forEach(({ chart: c, series: s }, i) => {
-						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
+						if (i === idx) return;
+						const val = i === 0
+							? (btcDataMap.get(timeStr) ?? 0)
+							: i === 1
+								? (rawDataMap.get(timeStr) ?? 0)
+								: (oscDataMap.get(timeStr) ?? 0);
+						c.setCrosshairPosition(val, param.time as Time, s);
 					});
 				} else {
 					allCharts.forEach(({ chart: c }, i) => {
@@ -354,6 +489,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 			[key]: numVal,
 		};
 		setThresholds(updated);
+		setIsDirty(checkIfDirty(updated));
 
 		// Real-time update chart elements
 		const rawSeries = seriesRef.current.raw;
@@ -364,7 +500,13 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		const oscSeries = seriesRef.current.osc;
 		if (oscSeries && timeseriesData) {
 			const oscData = timeseriesData.raw_values.map((p: any) => {
-				const oscVal = mapToOscillator(p.value, updated.t_plus_2, updated.t_plus_1, updated.t_minus_1, updated.t_minus_2);
+				const oscVal = mapToOscillator(
+					p.value,
+					updated.t_plus_2,
+					updated.t_plus_1,
+					updated.t_minus_1,
+					updated.t_minus_2,
+				);
 				return {
 					time: p.date as Time,
 					value: oscVal ?? 0.0,
@@ -381,14 +523,78 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 
 		quantClient
 			.saveMetricConfig(metricName, thresholds)
-			.then(() => {
+			.then(() => quantClient.renormalizeMetric(metricName))
+			.then((renormResult) => {
 				setSaving(false);
-				setToast({ type: "success", message: "Threshold configurations saved successfully" });
+				savedThresholdsRef.current = thresholds;
+				setIsDirty(false);
+				setToast({
+					type: "success",
+					message: `Threshold saved + renormalized (${renormResult.rows_updated} rows)`,
+				});
 				setTimeout(() => setToast(null), 3000);
 			})
 			.catch((err) => {
 				setSaving(false);
-				setToast({ type: "error", message: `Failed to save configurations: ${err.message || err}` });
+				setToast({
+					type: "error",
+					message: `Failed to save configurations: ${err.message || err}`,
+				});
+				setTimeout(() => setToast(null), 4000);
+			});
+	};
+
+	// Reset thresholds to defaults
+	const handleResetToDefaults = () => {
+		setLoadingDefaults(true);
+		quantClient
+			.fetchMetricDefaults()
+			.then((res) => {
+				setLoadingDefaults(false);
+				if (res && res.defaults && res.defaults[metricName]) {
+					const defaults = res.defaults[metricName];
+					const updated = {
+						t_minus_2: defaults.t_minus_2,
+						t_minus_1: defaults.t_minus_1,
+						t_zero: defaults.t_zero,
+						t_plus_1: defaults.t_plus_1,
+						t_plus_2: defaults.t_plus_2,
+					};
+					setThresholds(updated);
+					setIsDirty(checkIfDirty(updated));
+
+					// Real-time update chart elements
+					const rawSeries = seriesRef.current.raw;
+					if (rawSeries) {
+						updateRawPriceLines(rawSeries, updated);
+					}
+
+					const oscSeries = seriesRef.current.osc;
+					if (oscSeries && timeseriesData) {
+						const oscData = timeseriesData.raw_values.map((p: any) => {
+							const oscVal = mapToOscillator(
+								p.value,
+								updated.t_plus_2,
+								updated.t_plus_1,
+								updated.t_minus_1,
+								updated.t_minus_2,
+							);
+							return {
+								time: p.date as Time,
+								value: oscVal ?? 0.0,
+							};
+						});
+						oscSeries.setData(oscData);
+					}
+				}
+			})
+			.catch((err) => {
+				setLoadingDefaults(false);
+				console.error("Failed to fetch metric defaults:", err);
+				setToast({
+					type: "error",
+					message: `Failed to load defaults: ${err.message || err}`,
+				});
 				setTimeout(() => setToast(null), 4000);
 			});
 	};
@@ -396,7 +602,9 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 	// Trigger PNG download of the detailed chart subplots
 	const handleExportPng = () => {
 		if (!wrapperRef.current) return;
-		const subplots = Array.from(wrapperRef.current.querySelectorAll(".chart-subplot")) as HTMLElement[];
+		const subplots = Array.from(
+			wrapperRef.current.querySelectorAll(".chart-subplot"),
+		) as HTMLElement[];
 		const today = new Date().toISOString().split("T")[0];
 		exportChartsToPng(subplots, `btc-valuation-${metricName}-${today}.png`);
 	};
@@ -406,13 +614,38 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		const { btc, raw, osc } = chartsRef.current;
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		const bHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? (isMobile ? 160 : 220) : 0;
-		const rHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 180) : 0;
-		const oHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 160) : 0;
+		const bHeight =
+			maximizedPanel === "btc"
+				? 500
+				: maximizedPanel === null
+					? isMobile
+						? 160
+						: 220
+					: 0;
+		const rHeight =
+			maximizedPanel === "raw"
+				? 500
+				: maximizedPanel === null
+					? isMobile
+						? 120
+						: 180
+					: 0;
+		const oHeight =
+			maximizedPanel === "osc"
+				? 500
+				: maximizedPanel === null
+					? isMobile
+						? 120
+						: 160
+					: 0;
 
 		if (btc) {
 			btc.resize(w, bHeight);
-			btc.timeScale().applyOptions({ visible: bHeight > 0 && rHeight === 0 && oHeight === 0 });
+			btc
+				.timeScale()
+				.applyOptions({
+					visible: bHeight > 0 && rHeight === 0 && oHeight === 0,
+				});
 		}
 		if (raw) {
 			raw.resize(w, rHeight);
@@ -436,7 +669,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 
 	if (loading) {
 		return (
-			<div className="glass-card flex flex-col items-center justify-center" style={{ height: "400px" }}>
+			<div
+				className="glass-card flex flex-col items-center justify-center"
+				style={{ height: "400px" }}
+			>
 				<div className="text-slate-400 font-mono text-sm animate-pulse flex items-center gap-2">
 					<Sparkles className="animate-spin text-sky-400" size={18} />
 					FETCHING METRIC CYCLE HISTORY...
@@ -445,15 +681,91 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 		);
 	}
 
-	const bHeight = maximizedPanel === "btc" ? 500 : maximizedPanel === null ? (isMobile ? 160 : 220) : 0;
-	const rHeight = maximizedPanel === "raw" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 180) : 0;
-	const oHeight = maximizedPanel === "osc" ? 500 : maximizedPanel === null ? (isMobile ? 120 : 160) : 0;
+	const bHeight =
+		maximizedPanel === "btc"
+			? 500
+			: maximizedPanel === null
+				? isMobile
+					? 160
+					: 220
+				: 0;
+	const rHeight =
+		maximizedPanel === "raw"
+			? 500
+			: maximizedPanel === null
+				? isMobile
+					? 120
+					: 180
+				: 0;
+	const oHeight =
+		maximizedPanel === "osc"
+			? 500
+			: maximizedPanel === null
+				? isMobile
+					? 120
+					: 160
+				: 0;
+
+	// Auto-detect direction
+	let isInverted = false;
+	if (thresholds.t_plus_2 !== null && thresholds.t_minus_2 !== null) {
+		isInverted = thresholds.t_plus_2 > thresholds.t_minus_2;
+	} else if (thresholds.t_plus_2 !== null && thresholds.t_plus_1 !== null) {
+		isInverted = thresholds.t_plus_2 > thresholds.t_plus_1;
+	} else if (thresholds.t_minus_1 !== null && thresholds.t_minus_2 !== null) {
+		isInverted = thresholds.t_minus_1 > thresholds.t_minus_2;
+	}
 
 	const thresholdEditorContent = (
 		<>
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+				{/* Direction Badge */}
+				<span style={{
+					fontSize: "10px",
+					fontWeight: 700,
+					padding: "2px 8px",
+					borderRadius: "4px",
+					fontFamily: "JetBrains Mono",
+					backgroundColor: isInverted ? "rgba(245,158,11,0.15)" : "rgba(96,165,250,0.15)",
+					color: isInverted ? "var(--accent)" : "var(--signal-quant)"
+				}}>
+					{isInverted ? "DIR: INVERTED" : "DIR: NORMAL"}
+				</span>
+				
+				{/* Unsaved Changes badge */}
+				{isDirty && (
+					<span className="animate-pulse" style={{
+						fontSize: "10px",
+						fontWeight: 700,
+						color: "#FFAAAA",
+						fontFamily: "JetBrains Mono",
+						display: "flex",
+						alignItems: "center",
+						gap: "4px"
+					}}>
+						<span style={{
+							width: "6px",
+							height: "6px",
+							backgroundColor: "#EF4444",
+							borderRadius: "50%",
+							display: "inline-block"
+						}} />
+						UNSAVED CHANGES
+					</span>
+				)}
+			</div>
+
 			<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 				<div>
-					<label style={{ display: "block", fontSize: "11px", color: "#EF4444", fontWeight: 600, marginBottom: "4px" }}>
+					<label
+						style={{
+							display: "block",
+							fontSize: "11px",
+							color: "#EF4444",
+							fontWeight: 600,
+							marginBottom: "4px",
+						}}
+					>
 						Peak (t_minus_2)
 					</label>
 					<input
@@ -461,12 +773,29 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						step="any"
 						value={thresholds.t_minus_2 ?? ""}
 						onChange={(e) => handleThresholdChange("t_minus_2", e.target.value)}
-						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+						style={{
+							width: "100%",
+							padding: "6px 8px",
+							backgroundColor: "#060a13",
+							border: "1px solid var(--border-panel)",
+							borderRadius: "4px",
+							color: "#fff",
+							fontFamily: "JetBrains Mono",
+							fontSize: "12px",
+						}}
 					/>
 				</div>
 
 				<div>
-					<label style={{ display: "block", fontSize: "11px", color: "#F87171", fontWeight: 600, marginBottom: "4px" }}>
+					<label
+						style={{
+							display: "block",
+							fontSize: "11px",
+							color: "#F87171",
+							fontWeight: 600,
+							marginBottom: "4px",
+						}}
+					>
 						Warning (t_minus_1)
 					</label>
 					<input
@@ -474,12 +803,29 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						step="any"
 						value={thresholds.t_minus_1 ?? ""}
 						onChange={(e) => handleThresholdChange("t_minus_1", e.target.value)}
-						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+						style={{
+							width: "100%",
+							padding: "6px 8px",
+							backgroundColor: "#060a13",
+							border: "1px solid var(--border-panel)",
+							borderRadius: "4px",
+							color: "#fff",
+							fontFamily: "JetBrains Mono",
+							fontSize: "12px",
+						}}
 					/>
 				</div>
 
 				<div>
-					<label style={{ display: "block", fontSize: "11px", color: "#64748B", fontWeight: 600, marginBottom: "4px" }}>
+					<label
+						style={{
+							display: "block",
+							fontSize: "11px",
+							color: "#64748B",
+							fontWeight: 600,
+							marginBottom: "4px",
+						}}
+					>
 						Neutral (t_zero)
 					</label>
 					<input
@@ -487,12 +833,29 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						step="any"
 						value={thresholds.t_zero ?? ""}
 						onChange={(e) => handleThresholdChange("t_zero", e.target.value)}
-						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+						style={{
+							width: "100%",
+							padding: "6px 8px",
+							backgroundColor: "#060a13",
+							border: "1px solid var(--border-panel)",
+							borderRadius: "4px",
+							color: "#fff",
+							fontFamily: "JetBrains Mono",
+							fontSize: "12px",
+						}}
 					/>
 				</div>
 
 				<div>
-					<label style={{ display: "block", fontSize: "11px", color: "#4ADE80", fontWeight: 600, marginBottom: "4px" }}>
+					<label
+						style={{
+							display: "block",
+							fontSize: "11px",
+							color: "#4ADE80",
+							fontWeight: 600,
+							marginBottom: "4px",
+						}}
+					>
 						Opportunity (t_plus_1)
 					</label>
 					<input
@@ -500,12 +863,29 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						step="any"
 						value={thresholds.t_plus_1 ?? ""}
 						onChange={(e) => handleThresholdChange("t_plus_1", e.target.value)}
-						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+						style={{
+							width: "100%",
+							padding: "6px 8px",
+							backgroundColor: "#060a13",
+							border: "1px solid var(--border-panel)",
+							borderRadius: "4px",
+							color: "#fff",
+							fontFamily: "JetBrains Mono",
+							fontSize: "12px",
+						}}
 					/>
 				</div>
 
 				<div>
-					<label style={{ display: "block", fontSize: "11px", color: "#22C55E", fontWeight: 600, marginBottom: "4px" }}>
+					<label
+						style={{
+							display: "block",
+							fontSize: "11px",
+							color: "#22C55E",
+							fontWeight: 600,
+							marginBottom: "4px",
+						}}
+					>
 						Bottom (t_plus_2)
 					</label>
 					<input
@@ -513,7 +893,16 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						step="any"
 						value={thresholds.t_plus_2 ?? ""}
 						onChange={(e) => handleThresholdChange("t_plus_2", e.target.value)}
-						style={{ width: "100%", padding: "6px 8px", backgroundColor: "#060a13", border: "1px solid var(--border-panel)", borderRadius: "4px", color: "#fff", fontFamily: "JetBrains Mono", fontSize: "12px" }}
+						style={{
+							width: "100%",
+							padding: "6px 8px",
+							backgroundColor: "#060a13",
+							border: "1px solid var(--border-panel)",
+							borderRadius: "4px",
+							color: "#fff",
+							fontFamily: "JetBrains Mono",
+							fontSize: "12px",
+						}}
 					/>
 				</div>
 			</div>
@@ -542,6 +931,30 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 				{saving ? "SAVING CONFIG..." : "SAVE CONFIG"}
 			</button>
 
+			<button
+				onClick={handleResetToDefaults}
+				disabled={loadingDefaults}
+				style={{
+					marginTop: "6px",
+					width: "100%",
+					padding: "8px",
+					backgroundColor: "transparent",
+					border: "1px solid rgba(255,255,255,0.15)",
+					color: "var(--text-dim)",
+					borderRadius: "4px",
+					fontWeight: 600,
+					fontSize: "11px",
+					cursor: loadingDefaults ? "not-allowed" : "pointer",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: "6px",
+					opacity: loadingDefaults ? 0.7 : 1,
+				}}
+			>
+				{loadingDefaults ? "LOADING DEFAULTS..." : "RESET TO DEFAULTS"}
+			</button>
+
 			{toast && (
 				<div
 					style={{
@@ -550,7 +963,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						fontSize: "11px",
 						lineHeight: "1.3",
 						fontFamily: "JetBrains Mono",
-						backgroundColor: toast.type === "success" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+						backgroundColor:
+							toast.type === "success"
+								? "rgba(34,197,94,0.15)"
+								: "rgba(239,68,68,0.15)",
 						color: toast.type === "success" ? "var(--signal-quant)" : "#FFAAAA",
 						border: `1px solid ${toast.type === "success" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
 					}}
@@ -564,20 +980,47 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 	return (
 		<div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 			{/* Metric Detail Header Navigation */}
-			<div className="glass-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+			<div
+				className="glass-card"
+				style={{
+					padding: "16px 20px",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "space-between",
+				}}
+			>
 				<div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-					<button onClick={onClose} className="icon-btn flex items-center justify-center" style={{ width: "36px", height: "36px" }} title="Back to Composite">
+					<button
+						onClick={onClose}
+						className="icon-btn flex items-center justify-center"
+						style={{ width: "36px", height: "36px" }}
+						title="Back to Composite"
+					>
 						<ArrowLeft size={18} />
 					</button>
 					<div>
-						<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--signal-quant)" }}>DETAILED COMPONENT ZOOM</span>
-						<h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{metricDisplayName}</h3>
+						<span
+							style={{
+								fontSize: "11px",
+								fontWeight: 600,
+								color: "var(--signal-quant)",
+							}}
+						>
+							DETAILED COMPONENT ZOOM
+						</span>
+						<h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
+							{metricDisplayName}
+						</h3>
 					</div>
 				</div>
 
 				<div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
 					{maximizedPanel !== null && (
-						<button onClick={() => setMaximizedPanel(null)} className="icon-btn flex items-center gap-1" style={{ fontSize: "12px", width: "auto", padding: "0 12px" }}>
+						<button
+							onClick={() => setMaximizedPanel(null)}
+							className="icon-btn flex items-center gap-1"
+							style={{ fontSize: "12px", width: "auto", padding: "0 12px" }}
+						>
 							<Minimize2 size={14} /> Restore subplots
 						</button>
 					)}
@@ -601,10 +1044,16 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 						<Download size={14} /> SAVE PNG
 					</button>
 					<div className="toggle-group">
-						<button className={`toggle-btn ${!isLogScale ? "active" : ""}`} onClick={() => setIsLogScale(false)}>
+						<button
+							className={`toggle-btn ${!isLogScale ? "active" : ""}`}
+							onClick={() => setIsLogScale(false)}
+						>
 							LIN
 						</button>
-						<button className={`toggle-btn ${isLogScale ? "active" : ""}`} onClick={() => setIsLogScale(true)}>
+						<button
+							className={`toggle-btn ${isLogScale ? "active" : ""}`}
+							onClick={() => setIsLogScale(true)}
+						>
 							LOG
 						</button>
 					</div>
@@ -628,62 +1077,141 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({ metricName
 				</div>
 			</div>
 
-			<div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 280px", gap: "20px", alignItems: "start" }}>
+			<div
+				style={{
+					display: "grid",
+					gridTemplateColumns: isMobile ? "1fr" : "1fr 280px",
+					gap: "20px",
+					alignItems: "start",
+				}}
+			>
 				{/* The 3-panel Chart Subplots */}
 				<div className="chart-panel" ref={wrapperRef}>
 					{/* Subplot 1: BTC price */}
-					<div className={`chart-subplot ${bHeight === 0 ? "chart-subplot-hidden" : ""}`}>
+					<div
+						className={`chart-subplot ${bHeight === 0 ? "chart-subplot-hidden" : ""}`}
+					>
 						<div className="chart-subplot-header">
 							<span className="subplot-title">BTC Price (Candlestick)</span>
 							<div className="subplot-controls">
 								<span className="px-width">85px</span>
-								<button onClick={() => setMaximizedPanel(maximizedPanel === "btc" ? null : "btc")} className="icon-btn" title="Toggle maximize BTC subplot">
-									{maximizedPanel === "btc" ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+								<button
+									onClick={() =>
+										setMaximizedPanel(maximizedPanel === "btc" ? null : "btc")
+									}
+									className="icon-btn"
+									title="Toggle maximize BTC subplot"
+								>
+									{maximizedPanel === "btc" ? (
+										<Minimize2 size={13} />
+									) : (
+										<Maximize2 size={13} />
+									)}
 								</button>
 							</div>
 						</div>
-						<div ref={btcContainerRef} style={{ width: "100%", height: `${bHeight}px` }} />
+						<div
+							ref={btcContainerRef}
+							style={{ width: "100%", height: `${bHeight}px` }}
+						/>
 					</div>
 
 					{/* Subplot 2: Raw metric values */}
-					<div className={`chart-subplot ${rHeight === 0 ? "chart-subplot-hidden" : ""}`}>
+					<div
+						className={`chart-subplot ${rHeight === 0 ? "chart-subplot-hidden" : ""}`}
+					>
 						<div className="chart-subplot-header">
-							<span className="subplot-title">Raw Metric Timeseries & Thresholds</span>
+							<span className="subplot-title">
+								Raw Metric Timeseries & Thresholds
+							</span>
 							<div className="subplot-controls">
 								<span className="px-width">85px</span>
-								<button onClick={() => setMaximizedPanel(maximizedPanel === "raw" ? null : "raw")} className="icon-btn" title="Toggle maximize Raw subplot">
-									{maximizedPanel === "raw" ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+								<button
+									onClick={() =>
+										setMaximizedPanel(maximizedPanel === "raw" ? null : "raw")
+									}
+									className="icon-btn"
+									title="Toggle maximize Raw subplot"
+								>
+									{maximizedPanel === "raw" ? (
+										<Minimize2 size={13} />
+									) : (
+										<Maximize2 size={13} />
+									)}
 								</button>
 							</div>
 						</div>
-						<div ref={rawContainerRef} style={{ width: "100%", height: `${rHeight}px` }} />
+						<div
+							ref={rawContainerRef}
+							style={{ width: "100%", height: `${rHeight}px` }}
+						/>
 					</div>
 
 					{/* Subplot 3: Piecewise normalized oscillator */}
-					<div className={`chart-subplot ${oHeight === 0 ? "chart-subplot-hidden" : ""}`}>
+					<div
+						className={`chart-subplot ${oHeight === 0 ? "chart-subplot-hidden" : ""}`}
+					>
 						<div className="chart-subplot-header">
-							<span className="subplot-title">Piecewise Mapped Oscillator [-2.00, +2.00]</span>
+							<span className="subplot-title">
+								Piecewise Mapped Oscillator [-2.00, +2.00]
+							</span>
 							<div className="subplot-controls">
 								<span className="px-width">85px</span>
-								<button onClick={() => setMaximizedPanel(maximizedPanel === "osc" ? null : "osc")} className="icon-btn" title="Toggle maximize Oscillator subplot">
-									{maximizedPanel === "osc" ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+								<button
+									onClick={() =>
+										setMaximizedPanel(maximizedPanel === "osc" ? null : "osc")
+									}
+									className="icon-btn"
+									title="Toggle maximize Oscillator subplot"
+								>
+									{maximizedPanel === "osc" ? (
+										<Minimize2 size={13} />
+									) : (
+										<Maximize2 size={13} />
+									)}
 								</button>
 							</div>
 						</div>
-						<div ref={oscContainerRef} style={{ width: "100%", height: `${oHeight}px` }} />
+						<div
+							ref={oscContainerRef}
+							style={{ width: "100%", height: `${oHeight}px` }}
+						/>
 					</div>
 				</div>
 
 				{/* Threshold Editor: BottomSheet on mobile, inline sidebar on desktop */}
 				{isMobile ? (
-					<BottomSheet isOpen={sheetOpen} state="peek" onClose={() => setSheetOpen(false)} title="Piecewise Threshold Editor">
-						<div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+					<BottomSheet
+						isOpen={sheetOpen}
+						state="peek"
+						onClose={() => setSheetOpen(false)}
+						title="Piecewise Threshold Editor"
+					>
+						<div
+							style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+						>
 							{thresholdEditorContent}
 						</div>
 					</BottomSheet>
 				) : (
-					<div className="glass-card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-						<h4 style={{ fontSize: "14px", fontWeight: 700, margin: 0, borderBottom: "1px solid var(--border-panel)", paddingBottom: "8px" }}>
+					<div
+						className="glass-card"
+						style={{
+							padding: "20px",
+							display: "flex",
+							flexDirection: "column",
+							gap: "16px",
+						}}
+					>
+						<h4
+							style={{
+								fontSize: "14px",
+								fontWeight: 700,
+								margin: 0,
+								borderBottom: "1px solid var(--border-panel)",
+								paddingBottom: "8px",
+							}}
+						>
 							Piecewise Threshold Editor
 						</h4>
 						{thresholdEditorContent}

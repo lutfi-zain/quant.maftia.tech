@@ -10,6 +10,7 @@ export function exportChartsToPng(
 
 	const dpr = window.devicePixelRatio || 1;
 	const footerHeight = 40; // 40px watermark area
+	const PANEL_GAP = 16; // 16px gap between subplots
 
 	// 1. Calculate dimensions
 	// Filter out containers with 0 height (collapsed panes)
@@ -21,6 +22,7 @@ export function exportChartsToPng(
 	for (const c of activeContainers) {
 		totalHeight += c.clientHeight;
 	}
+	totalHeight += (activeContainers.length - 1) * PANEL_GAP;
 	totalHeight += footerHeight;
 
 	// 2. Create composite canvas
@@ -60,7 +62,7 @@ export function exportChartsToPng(
 			);
 		}
 
-		currentY += container.clientHeight;
+		currentY += container.clientHeight + PANEL_GAP;
 	}
 
 	// 4. Draw branded watermark footer

@@ -1,4 +1,4 @@
-import {
+import type {
 	DailyAnalyticsPoint,
 	CircuitBreakersResponse,
 	ComponentSignal,
@@ -21,17 +21,26 @@ function verifyCausalData<T extends { date: string }>(data: T[]): T[] {
 	const now = new Date();
 	const todayStr = now.toISOString().split("T")[0];
 	// Filter out any anomalous future dates beyond current observation window
-	const filtered = data.filter((item) => item && typeof item.date === "string" && item.date <= todayStr);
+	const filtered = data.filter(
+		(item) => item && typeof item.date === "string" && item.date <= todayStr,
+	);
 	const uniqueMap = new Map<string, T>();
 	for (const item of filtered) {
 		const compName = (item as any).component_name;
 		const sysSource = (item as any).system_source;
-		const key = compName && sysSource ? `${sysSource}_${compName}_${item.date}` : compName ? `${compName}_${item.date}` : item.date;
+		const key =
+			compName && sysSource
+				? `${sysSource}_${compName}_${item.date}`
+				: compName
+					? `${compName}_${item.date}`
+					: item.date;
 		if (!uniqueMap.has(key)) {
 			uniqueMap.set(key, item);
 		}
 	}
-	return Array.from(uniqueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+	return Array.from(uniqueMap.values()).sort((a, b) =>
+		a.date.localeCompare(b.date),
+	);
 }
 
 export const quantClient = {
@@ -42,34 +51,59 @@ export const quantClient = {
 	},
 
 	async getDailyAnalytics(limit?: number): Promise<DailyAnalyticsPoint[]> {
-		const url = new URL(`${API_BASE}/api/v1/quant/daily`, window.location.origin);
+		const url = new URL(
+			`${API_BASE}/api/v1/quant/daily`,
+			window.location.origin,
+		);
 		if (limit) url.searchParams.set("limit", limit.toString());
 
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch daily analytics: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch daily analytics: ${res.statusText}`);
 		const json = await res.json();
-		const rawList: any[] = Array.isArray(json) ? json : Array.isArray(json.data) ? json.data : [];
+		const rawList: any[] = Array.isArray(json)
+			? json
+			: Array.isArray(json.data)
+				? json.data
+				: [];
 
 		// Map raw backend points into flat DailyAnalyticsPoint
 		const mapped: DailyAnalyticsPoint[] = rawList.map((item) => ({
 			...item,
 			date: item.date,
-			open: item.master_ohlcv?.open ?? (typeof item.open === "number" ? item.open : 0),
-			high: item.master_ohlcv?.high ?? (typeof item.high === "number" ? item.high : 0),
-			low: item.master_ohlcv?.low ?? (typeof item.low === "number" ? item.low : 0),
-			close: item.master_ohlcv?.close ?? (typeof item.close === "number" ? item.close : 0),
-			volume: item.master_ohlcv?.volume ?? (typeof item.volume === "number" ? item.volume : 0),
+			open:
+				item.master_ohlcv?.open ??
+				(typeof item.open === "number" ? item.open : 0),
+			high:
+				item.master_ohlcv?.high ??
+				(typeof item.high === "number" ? item.high : 0),
+			low:
+				item.master_ohlcv?.low ?? (typeof item.low === "number" ? item.low : 0),
+			close:
+				item.master_ohlcv?.close ??
+				(typeof item.close === "number" ? item.close : 0),
+			volume:
+				item.master_ohlcv?.volume ??
+				(typeof item.volume === "number" ? item.volume : 0),
 			valuation_composite:
 				item.valuation_composite?.score ??
-				(typeof item.valuation_composite === "number" ? item.valuation_composite : 0),
-			lttd_regime: item.lttd_regime?.regime ?? (typeof item.lttd_regime === "string" ? item.lttd_regime : "SIDEWAYS"),
+				(typeof item.valuation_composite === "number"
+					? item.valuation_composite
+					: 0),
+			lttd_regime:
+				item.lttd_regime?.regime ??
+				(typeof item.lttd_regime === "string" ? item.lttd_regime : "SIDEWAYS"),
 			lttd_prob_bull: item.lttd_regime?.prob_bull ?? 0,
 			lttd_prob_bear: item.lttd_regime?.prob_bear ?? 0,
 			lttd_prob_sideways: item.lttd_regime?.prob_sideways ?? 1,
-			mttd_imo: item.mttd_imo?.oscillator ?? (typeof item.mttd_imo === "number" ? item.mttd_imo : 0),
+			mttd_imo:
+				item.mttd_imo?.oscillator ??
+				(typeof item.mttd_imo === "number" ? item.mttd_imo : 0),
 			mttd_er_ratio: item.mttd_imo?.efficiency_ratio ?? 0,
 			mttd_shannon_entropy: item.mttd_imo?.shannon_entropy ?? 0,
-			ichimoku_imo: item.ichimoku_imo?.oscillator ?? (typeof item.ichimoku_imo === "number" ? item.ichimoku_imo : 0),
+			ichimoku_imo:
+				item.ichimoku_imo?.oscillator ??
+				(typeof item.ichimoku_imo === "number" ? item.ichimoku_imo : 0),
 		}));
 
 		return verifyCausalData(mapped);
@@ -77,12 +111,15 @@ export const quantClient = {
 
 	async getCircuitBreakers(): Promise<CircuitBreakersResponse> {
 		const res = await fetch(`${API_BASE}/api/v1/system/circuit-breakers`);
-		if (!res.ok) throw new Error(`Failed to fetch circuit breakers: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch circuit breakers: ${res.statusText}`);
 		const json = await res.json();
 		const cb = json.circuit_breakers || {};
 		const valScore = cb.bubble_warning?.current_valuation_score ?? 0;
-		const lttdRegime = cb.sideways_zero_exposure_lock?.current_regime ?? "SIDEWAYS";
-		const probSideways = cb.sideways_zero_exposure_lock?.current_prob_sideways ?? 0;
+		const lttdRegime =
+			cb.sideways_zero_exposure_lock?.current_regime ?? "SIDEWAYS";
+		const probSideways =
+			cb.sideways_zero_exposure_lock?.current_prob_sideways ?? 0;
 		const isSidewaysOverride = cb.sideways_zero_exposure_lock?.active ?? false;
 
 		return {
@@ -111,34 +148,54 @@ export const quantClient = {
 		};
 	},
 
-	async getComponents(systemSource?: string, date?: string, limit?: number): Promise<ComponentSignal[]> {
-		const url = new URL(`${API_BASE}/api/v1/quant/components`, window.location.origin);
+	async getComponents(
+		systemSource?: string,
+		date?: string,
+		limit?: number,
+	): Promise<ComponentSignal[]> {
+		const url = new URL(
+			`${API_BASE}/api/v1/quant/components`,
+			window.location.origin,
+		);
 		if (systemSource) url.searchParams.set("system", systemSource);
 		if (date) url.searchParams.set("date", date);
 		if (limit) url.searchParams.set("limit", limit.toString());
 
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch component signals: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch component signals: ${res.statusText}`);
 		const json = await res.json();
-		const rawList: any[] = Array.isArray(json) ? json : Array.isArray(json.data) ? json.data : [];
+		const rawList: any[] = Array.isArray(json)
+			? json
+			: Array.isArray(json.data)
+				? json.data
+				: [];
 		return verifyCausalData(rawList);
 	},
 
-	async getMetricTimeseries(metricName: string): Promise<MetricTimeseriesResponse> {
+	async getMetricTimeseries(
+		metricName: string,
+	): Promise<MetricTimeseriesResponse> {
 		const res = await fetch(`${API_BASE}/api/v1/quant/metric/${metricName}`);
-		if (!res.ok) throw new Error(`Failed to fetch metric timeseries: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch metric timeseries: ${res.statusText}`);
 		const json = (await res.json()) as MetricTimeseriesResponse;
 		if (json && json.data) {
 			json.data.raw_values = verifyCausalData(json.data.raw_values);
-			json.data.normalized_values = verifyCausalData(json.data.normalized_values);
+			json.data.normalized_values = verifyCausalData(
+				json.data.normalized_values,
+			);
 			json.data.btc_ohlc = verifyCausalData(json.data.btc_ohlc);
 		}
 		return json;
 	},
 
 	async getMetricConfig(metricName: string): Promise<MetricThresholdConfig> {
-		const res = await fetch(`${API_BASE}/api/v1/quant/metric/${metricName}/config`);
-		if (!res.ok) throw new Error(`Failed to fetch metric config: ${res.statusText}`);
+		const res = await fetch(
+			`${API_BASE}/api/v1/quant/metric/${metricName}/config`,
+		);
+		if (!res.ok)
+			throw new Error(`Failed to fetch metric config: ${res.statusText}`);
 		return res.json();
 	},
 
@@ -152,12 +209,37 @@ export const quantClient = {
 			t_plus_2: number | null;
 		},
 	): Promise<MetricThresholdSaveResponse> {
-		const res = await fetch(`${API_BASE}/api/v1/quant/metric/${metricName}/config`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(config),
-		});
-		if (!res.ok) throw new Error(`Failed to save metric config: ${res.statusText}`);
+		const res = await fetch(
+			`${API_BASE}/api/v1/quant/metric/${metricName}/config`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(config),
+			},
+		);
+		if (!res.ok)
+			throw new Error(`Failed to save metric config: ${res.statusText}`);
+		return res.json();
+	},
+
+	async renormalizeMetric(
+		metricName: string,
+	): Promise<{ status: string; metric_name: string; rows_updated: number }> {
+		const res = await fetch(
+			`${API_BASE}/api/v1/quant/metric/${metricName}/renormalize`,
+			{
+				method: "POST",
+			},
+		);
+		if (!res.ok)
+			throw new Error(`Failed to renormalize metric: ${res.statusText}`);
+		return res.json();
+	},
+
+	async fetchMetricDefaults(): Promise<{ status: string; defaults: any }> {
+		const res = await fetch(`${API_BASE}/api/v1/quant/metric/defaults`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch defaults config: ${res.statusText}`);
 		return res.json();
 	},
 };
