@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Metric detail chart oscillator panel shows 5 reference lines
 The `MetricDetailChart` oscillator panel SHALL display exactly 5 horizontal reference lines at `+2.0`, `+1.0`, `0`, `-1.0`, `-2.0`. The previous implementation showed only 3 lines (`+2.0`, `0`, `-2.0`), omitting `+1.0` and `-1.0`.
@@ -10,8 +10,6 @@ The `MetricDetailChart` oscillator panel SHALL display exactly 5 horizontal refe
 #### Scenario: Reference lines persist across threshold edits
 - **WHEN** the user edits threshold values in the threshold editor
 - **THEN** all 5 oscillator reference lines remain visible (threshold changes affect only the raw metric panel)
-
-## ADDED Requirements
 
 ### Requirement: Threshold editor direction badge and dirty indicator
 The `MetricDetailChart` threshold editor SHALL include:

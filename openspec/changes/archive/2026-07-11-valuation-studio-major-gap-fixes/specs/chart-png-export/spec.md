@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: PNG export includes 16px gap between subplot canvases
 The `exportChartsToPng` utility SHALL add a 16px vertical gap between each subplot canvas when compositing the final export image, matching the visual gap between chart panels in the UI.

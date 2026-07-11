@@ -1,6 +1,6 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: Sparkline values drawn from normalized_score without multiplier
+### Requirement: Sparkline Y values bounded to [-2.0, +2.0]
 The `MetricSparkline` component and its parent data mapping in `ValuationStudio.tsx` SHALL use `normalized_score` values directly (no `* 2` multiplier). Sparkline Y values MUST be bounded to `[-2.0, +2.0]` matching the stored `UnifiedComponentSignals.normalized_score` range.
 
 #### Scenario: Sparkline polyline points bounded to [-2.0, +2.0]
