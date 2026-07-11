@@ -3,6 +3,16 @@ import { executeQuery } from '../db.js'
 
 export const componentsRouter = new Hono()
 
+function normalizeSystemSource(rawInput?: string): string | null {
+  if (!rawInput) return null
+  const s = rawInput.trim().toUpperCase()
+  if (s.includes('VALUATION')) return 'VALUATION'
+  if (s.includes('LTTD') && !s.includes('ICHIMOKU')) return 'LTTD'
+  if (s.includes('MTTD')) return 'MTTD'
+  if (s.includes('ICHIMOKU')) return 'ICHIMOKU'
+  return s
+}
+
 componentsRouter.get('/', (c) => {
   const query = c.req.query()
   const today = new Date().toISOString().split('T')[0]
@@ -39,9 +49,10 @@ componentsRouter.get('/', (c) => {
   }
 
   const systemSource = query.system || query.system_source
-  if (systemSource) {
+  const normalizedSystem = normalizeSystemSource(systemSource)
+  if (normalizedSystem) {
     conditions.push(`system_source = ?`)
-    params.push(systemSource.toUpperCase())
+    params.push(normalizedSystem)
   }
 
   const componentName = query.component || query.component_name

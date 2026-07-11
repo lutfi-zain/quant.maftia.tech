@@ -24,8 +24,11 @@ function verifyCausalData<T extends { date: string }>(data: T[]): T[] {
 	const filtered = data.filter((item) => item && typeof item.date === "string" && item.date <= todayStr);
 	const uniqueMap = new Map<string, T>();
 	for (const item of filtered) {
-		if (!uniqueMap.has(item.date)) {
-			uniqueMap.set(item.date, item);
+		const compName = (item as any).component_name;
+		const sysSource = (item as any).system_source;
+		const key = compName && sysSource ? `${sysSource}_${compName}_${item.date}` : compName ? `${compName}_${item.date}` : item.date;
+		if (!uniqueMap.has(key)) {
+			uniqueMap.set(key, item);
 		}
 	}
 	return Array.from(uniqueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
