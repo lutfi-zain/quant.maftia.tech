@@ -24,16 +24,64 @@
 
 - [ ] 3.1 `BentoSummary.tsx`: Reduce grid gap from `20px` to `10px`, reduce card padding from `20px` to `12px`, reduce primary metric font-size from `32px` to `26px` (LTTD from `28px` to `24px`), tighten bottom section margin/padding from `16px/12px` to `10px/8px`
 
-## 4. Studio Inline Style Audit
+## 4. ValuationStudio.tsx
 
-- [ ] 4.1 `ValuationStudio.tsx`: Audit and reduce any inline `padding`, `gap`, `borderRadius` values to match new compact tokens
-- [ ] 4.2 `LttdLab.tsx`: Same audit — reduce inline spacing overrides
-- [ ] 4.3 `MttdConsole.tsx`: Same audit — reduce inline spacing overrides
-- [ ] 4.4 `IchimokuTerminal.tsx`: Same audit — reduce inline spacing overrides
+- [ ] 4.1 Outer container: reduce `gap: "24px"` → `"16px"` (L~493 wrapper div)
+- [ ] 4.2 Header glass-card: reduce `padding: "20px 24px"` → `"12px 16px"`
+- [ ] 4.3 Circuit breaker status card: reduce `padding: "20px"` → `"12px"` (L~559 `.glass-card`)
+- [ ] 4.4 Threshold editor pill: reduce `borderRadius: "6px"` → `"4px"` (L649)
+- [ ] 4.5 Indicator list row: reduce `borderRadius: "4px"` already OK, reduce padding if any
+- [ ] 4.6 Direction badge: reduce `borderRadius: "10px"` → `"4px"` (L960)
+- [ ] 4.7 Threshold editor modal: reduce `borderRadius: "12px"` → `"4px"` (L1115)
+- [ ] 4.8 Component table `.glass-card`: reduce `padding: "20px"` → `"12px"` (L831)
 
-## 5. Verification
+## 5. LttdLab.tsx
 
-- [ ] 5.1 Visual check: all cards render with `4px` radius, no glassmorphism blur, no hover lift
-- [ ] 5.2 Chart verification: 85px Y-axis lock and crosshair sync still functional across all studios
-- [ ] 5.3 Mobile verification: layout still works correctly at `<768px` with bottom tab bar
-- [ ] 5.4 Run `python3 run_report_pipeline.py` to confirm backend pipeline unaffected
+- [ ] 5.1 Outer container: reduce `gap: "24px"` → `"16px"` (L449)
+- [ ] 5.2 Header glass-card: reduce `padding: "20px 24px"` → `"12px 16px"` (L455)
+- [ ] 5.3 Regime stat metric cards: reduce `gap: "24px"` → `"16px"` (L494)
+- [ ] 5.4 Stat glass-cards (3×): reduce `padding: "16px"` → `"12px"` (L582, L613, L644)
+- [ ] 5.5 Regime status card: reduce `padding: "10px 16px"` → `"8px 12px"` (L517)
+- [ ] 5.6 Direction badge: reduce `borderRadius: "10px"` → `"4px"` (L904)
+- [ ] 5.7 Component table `.glass-card`: reduce `padding: "20px"` → `"12px"` (L835)
+- [ ] 5.8 Data table `th` cells: reduce `padding: "12px 8px"` → `"8px 6px"` (L949-L955)
+- [ ] 5.9 Data table `td` cells: reduce `padding: "14px 8px"` → `"10px 6px"` (L971-L1013)
+
+## 6. MttdConsole.tsx
+
+- [ ] 6.1 Outer container: reduce `gap: "24px"` → `"16px"` (L470)
+- [ ] 6.2 Header glass-card: reduce `padding: "20px 24px"` → `"12px 16px"` (L476)
+- [ ] 6.3 Three gate status cards: reduce `borderRadius: "8px"` → `"4px"` (L625, L684, L743)
+- [ ] 6.4 Gate status cards stat metric: reduce `gap: "24px"` → `"16px"` (L~515)
+- [ ] 6.5 Gate family badge: reduce `borderRadius: "6px"` → `"4px"` (L956)
+- [ ] 6.6 Direction badge: reduce `borderRadius: "10px"` → `"4px"` (L991)
+- [ ] 6.7 Component table `.glass-card`: reduce `padding: "20px"` → `"12px"` (L922)
+- [ ] 6.8 Data table `th` cells: reduce `padding: "12px 8px"` → `"8px 6px"`
+- [ ] 6.9 Data table `td` cells: reduce `padding: "14px 8px"` → `"10px 6px"`
+
+## 7. IchimokuTerminal.tsx
+
+- [ ] 7.1 Outer container: reduce `gap: "24px"` → `"16px"` (L615)
+- [ ] 7.2 Header glass-card: reduce `padding: "20px 24px"` → `"12px 16px"` (L621)
+- [ ] 7.3 Ichimoku state metric cards: reduce `gap: "24px"` → `"16px"` (L660)
+- [ ] 7.4 State card: reduce `padding: "10px 16px"` → `"8px 12px"` (L680)
+- [ ] 7.5 Direction badge: reduce `borderRadius: "10px"` → `"4px"` (L925)
+- [ ] 7.6 Component table `.glass-card`: reduce `padding: "20px"` → `"12px"` (L893)
+- [ ] 7.7 Data table `th` cells: reduce `padding: "12px 8px"` → `"8px 6px"` (L951-L958)
+- [ ] 7.8 Data table `td` cells: reduce `padding: "14px 8px"` → `"10px 6px"` (L974-L1026)
+
+## 8. MetricDetailChart.tsx
+
+- [ ] 8.1 Header glass-card: reduce `padding: "16px 20px"` → `"12px 16px"` (L986)
+- [ ] 8.2 Header stat row: reduce `gap: "16px"` → `"10px"` (L992)
+- [ ] 8.3 Chart controls row: reduce `gap: "12px"` → `"8px"` (L1017)
+- [ ] 8.4 Outer wrapper: reduce `gap: "20px"` → `"12px"` (L981, L1084)
+- [ ] 8.5 Stat detail panel: reduce `padding: "20px"` → `"12px"`, `gap: "16px"` → `"10px"` (L1200, L1203)
+- [ ] 8.6 Button pills: reduce `borderRadius: "6px"` → `"4px"` (L1037, L1068)
+
+## 9. Verification
+
+- [ ] 9.1 Visual check: all cards render with `4px` radius, no glassmorphism blur, no hover lift
+- [ ] 9.2 Chart verification: 85px Y-axis lock and crosshair sync still functional across all studios
+- [ ] 9.3 Mobile verification: layout still works correctly at `<768px` with bottom tab bar
+- [ ] 9.4 Run `python3 run_report_pipeline.py` to confirm backend pipeline unaffected
