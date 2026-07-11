@@ -48,10 +48,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
           marginLeft: isMobile ? '0' : '260px',
           flex: 1,
           minWidth: 0,
-          padding: isMobile ? '16px 16px 72px 16px' : '24px 32px',
+          padding: isMobile ? '12px 10px 68px 10px' : '24px 32px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '24px',
+          gap: isMobile ? '12px' : '24px',
         }}
       >
         {/* Desktop Top Header — hidden on mobile */}

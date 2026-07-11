@@ -694,5 +694,41 @@ pre,
 		bottom: 56px;
 		height: calc(100dvh - 56px) !important;
 	}
+
+	/* ── Mobile Padding & Margin Tightening (Maximizes Usable Screen Real Estate) ── */
+	.glass-card {
+		padding: 12px 14px !important;
+		border-radius: 10px !important;
+	}
+
+	.chart-panel {
+		padding: 8px 6px !important;
+		border-radius: 10px !important;
+		gap: 8px !important;
+	}
+
+	.chart-subplot-header {
+		padding-bottom: 4px !important;
+		margin-bottom: 4px !important;
+	}
+
+	/* Reduce heavy inline vertical gaps between stacked sections */
+	div[style*="gap: 24px"],
+	div[style*="gap: 20px"] {
+		gap: 12px !important;
+	}
+
+	/* Reduce heavy inline padding inside cards and headers */
+	div[style*="padding: 20px 24px"],
+	div[style*="padding: 24px"],
+	div[style*="padding: 20px"] {
+		padding: 12px 14px !important;
+	}
+
+	/* Compact metric row spacing */
+	.mobile-metric-row {
+		padding: 10px 8px !important;
+		min-height: 50px !important;
+	}
 }
 
