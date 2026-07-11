@@ -17,7 +17,7 @@ import {
 	AreaSeries,
 	PriceScaleMode,
 } from "lightweight-charts";
-import { TrendingUp, ShieldCheck, RefreshCcw, Layers } from "lucide-react";
+import { TrendingUp, ShieldCheck, RefreshCcw, Layers, Maximize2, Minimize2 } from "lucide-react";
 
 type MaximizedPanel = null | "btc" | "imo" | "scomp";
 
@@ -798,7 +798,7 @@ export const IchimokuTerminal: React.FC = () => {
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
 								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
 							>
-								{maximized === "btc" ? "⊡" : "⤢"}
+								{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>
@@ -835,7 +835,7 @@ export const IchimokuTerminal: React.FC = () => {
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
 								title={maximized === "imo" ? "Restore" : "Maximize IMO pane"}
 							>
-								{maximized === "imo" ? "⊡" : "⤢"}
+								{maximized === "imo" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>
@@ -878,7 +878,7 @@ export const IchimokuTerminal: React.FC = () => {
 									maximized === "scomp" ? "Restore" : "Maximize S-Comp pane"
 								}
 							>
-								{maximized === "scomp" ? "⊡" : "⤢"}
+								{maximized === "scomp" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>

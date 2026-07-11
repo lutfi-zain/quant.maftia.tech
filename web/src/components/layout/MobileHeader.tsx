@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Radio } from 'lucide-react';
+import { RefreshCw, Radio, Menu, X } from 'lucide-react';
 import type { ActiveTab } from './Sidebar';
 import { useTerminal } from '../../context/TerminalContext';
 
@@ -36,7 +36,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ activeTab, wsStatus 
       {/* Sticky Header Bar */}
       <header className="mobile-header">
         <button className="hamburger-btn" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
-          ☰
+          <Menu size={20} />
         </button>
         <span className="mobile-header-title">{SHORT_TITLES[activeTab]}</span>
         {/* Sync controls */}
@@ -83,8 +83,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ activeTab, wsStatus 
                   </div>
                 </div>
               </div>
-              <button onClick={() => setDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>
-                ✕
+              <button onClick={() => setDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
               </button>
             </div>
 

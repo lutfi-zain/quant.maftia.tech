@@ -23,6 +23,8 @@ import {
 	CheckCircle2,
 	AlertTriangle,
 	Layers,
+	Maximize2,
+	Minimize2,
 } from "lucide-react";
 
 type MaximizedPanel = null | "btc" | "hmm" | "vol";
@@ -745,10 +747,14 @@ export const LttdLab: React.FC = () => {
 							</span>
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
-								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
+								onClick={() =>
+									setMaximized(maximized === "btc" ? null : "btc")
+								}
+								title={
+									maximized === "btc" ? "Restore" : "Maximize BTC pane"
+								}
 							>
-								{maximized === "btc" ? "⊡" : "⤢"}
+								{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>
@@ -781,10 +787,14 @@ export const LttdLab: React.FC = () => {
 							</span>
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "hmm" ? null : "hmm")}
-								title={maximized === "hmm" ? "Restore" : "Maximize HMM pane"}
+								onClick={() =>
+									setMaximized(maximized === "hmm" ? null : "hmm")
+								}
+								title={
+									maximized === "hmm" ? "Restore" : "Maximize HMM pane"
+								}
 							>
-								{maximized === "hmm" ? "⊡" : "⤢"}
+								{maximized === "hmm" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>
@@ -817,10 +827,14 @@ export const LttdLab: React.FC = () => {
 							</span>
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "vol" ? null : "vol")}
-								title={maximized === "vol" ? "Restore" : "Maximize Vol pane"}
+								onClick={() =>
+									setMaximized(maximized === "vol" ? null : "vol")
+								}
+								title={
+									maximized === "vol" ? "Restore" : "Maximize Vol pane"
+								}
 							>
-								{maximized === "vol" ? "⊡" : "⤢"}
+								{maximized === "vol" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>

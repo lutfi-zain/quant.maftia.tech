@@ -17,7 +17,7 @@ import {
 	AreaSeries,
 	PriceScaleMode,
 } from "lightweight-charts";
-import { Activity, ShieldCheck, ShieldAlert, Layers, Lock } from "lucide-react";
+import { Activity, ShieldCheck, ShieldAlert, Layers, Lock, Maximize2, Minimize2 } from "lucide-react";
 
 type MaximizedPanel = null | "btc" | "imo" | "gates";
 
@@ -831,7 +831,7 @@ export const MttdConsole: React.FC = () => {
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
 								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
 							>
-								{maximized === "btc" ? "⊡" : "⤢"}
+								{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>
@@ -867,7 +867,7 @@ export const MttdConsole: React.FC = () => {
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
 								title={maximized === "imo" ? "Restore" : "Maximize IMO pane"}
 							>
-								{maximized === "imo" ? "⊡" : "⤢"}
+								{maximized === "imo" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>
@@ -907,7 +907,7 @@ export const MttdConsole: React.FC = () => {
 									maximized === "gates" ? "Restore" : "Maximize Gates pane"
 								}
 							>
-								{maximized === "gates" ? "⊡" : "⤢"}
+								{maximized === "gates" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 							</button>
 						</div>
 					</div>

@@ -15,7 +15,7 @@ import {
 	AreaSeries,
 	PriceScaleMode,
 } from "lightweight-charts";
-import { AlertTriangle, CheckCircle2, Layers, Download } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Layers, Download, Maximize2, Minimize2 } from "lucide-react";
 import { Sparkline } from "../Sparkline";
 import { MetricDetailChart } from "./MetricDetailChart";
 import { exportChartsToPng } from "../../lib/exportPng";
@@ -773,7 +773,7 @@ export const ValuationStudio: React.FC = () => {
 											maximized === "btc" ? "Restore" : "Maximize BTC pane"
 										}
 									>
-										{maximized === "btc" ? "⊡" : "⤢"}
+										{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 									</button>
 								</div>
 							</div>
@@ -816,7 +816,7 @@ export const ValuationStudio: React.FC = () => {
 												: "Maximize Valuation pane"
 										}
 									>
-										{maximized === "val" ? "⊡" : "⤢"}
+										{maximized === "val" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
 									</button>
 								</div>
 							</div>
