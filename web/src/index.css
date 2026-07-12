@@ -8,7 +8,8 @@
 	--bg-chart: #0c0d0e;
 
 	/* Font Families */
-	--font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	--font-sans:
+		"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 	--font-mono: "Geist Mono", "JetBrains Mono", monospace;
 
 	/* Borders */
@@ -114,7 +115,9 @@ pre,
 	border: 1px solid var(--border-card);
 	border-radius: var(--radius-md);
 	box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.24);
-	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	transition:
+		border-color 0.15s ease,
+		box-shadow 0.15s ease;
 }
 
 .glass-card:hover {
@@ -561,28 +564,48 @@ pre,
 
 /* ─── Animation Keyframes ─── */
 @keyframes slideInLeft {
-	from { transform: translateX(-100%); }
-	to   { transform: translateX(0); }
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(0);
+	}
 }
 
 @keyframes slideOutLeft {
-	from { transform: translateX(0); }
-	to   { transform: translateX(-100%); }
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-100%);
+	}
 }
 
 @keyframes slideUpSheet {
-	from { transform: translateY(100%); }
-	to   { transform: translateY(0); }
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
+	}
 }
 
 @keyframes slideDownSheet {
-	from { transform: translateY(0); }
-	to   { transform: translateY(100%); }
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(100%);
+	}
 }
 
 /* ─── Utility: visibility toggling ─── */
-.mobile-hidden  { display: none !important; }
-.desktop-hidden { display: block !important; }
+.mobile-hidden {
+	display: none !important;
+}
+.desktop-hidden {
+	display: block !important;
+}
 
 /* ─── Bottom Tab Bar ─── */
 .mobile-bottom-tab-bar {
@@ -622,7 +645,7 @@ pre,
 
 .mobile-tab-btn span {
 	font-size: 9px;
-	font-family: 'Geist', sans-serif;
+	font-family: "Geist", sans-serif;
 	font-weight: 600;
 	letter-spacing: 0.3px;
 	text-transform: uppercase;
@@ -649,7 +672,7 @@ pre,
 	flex: 1;
 	font-size: 13px;
 	font-weight: 700;
-	font-family: 'Geist', sans-serif;
+	font-family: "Geist", sans-serif;
 	color: var(--text-main);
 	white-space: nowrap;
 	overflow: hidden;
@@ -697,8 +720,12 @@ pre,
 }
 
 @keyframes fadeIn {
-	from { opacity: 0; }
-	to   { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 /* ─── Mobile Compact List Rows ─── */
@@ -757,7 +784,9 @@ pre,
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
-	transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.3s ease;
+	transition:
+		transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+		max-height 0.3s ease;
 	will-change: transform;
 }
 
@@ -782,7 +811,7 @@ pre,
 }
 
 .bottom-sheet-handle-bar::after {
-	content: '';
+	content: "";
 	width: 36px;
 	height: 4px;
 	border-radius: 2px;
@@ -804,11 +833,17 @@ pre,
 	}
 
 	/* Show mobile-only elements */
-	.mobile-bottom-tab-bar { display: flex; }
-	.mobile-header         { display: flex; }
+	.mobile-bottom-tab-bar {
+		display: flex;
+	}
+	.mobile-header {
+		display: flex;
+	}
 
 	/* Hide desktop-only elements */
-	.desktop-only { display: none !important; }
+	.desktop-only {
+		display: none !important;
+	}
 
 	/* Touch targets (enforce crisp institutional touch target on mobile without header collision) */
 	.icon-btn {
@@ -853,9 +888,11 @@ pre,
 	}
 
 	/* Chart fullscreen on mobile: account for bottom tab, zero out padding */
+	/* Use bottom instead of height so CSS properly stops 56px above viewport bottom */
 	.chart-panel.fullscreen {
+		top: 0;
 		bottom: 56px;
-		height: calc(100dvh - 56px) !important;
+		height: auto !important;
 		padding: 0 !important;
 	}
 
@@ -1050,7 +1087,7 @@ pre,
 
 .marquee-container::before,
 .marquee-container::after {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	bottom: 0;
@@ -1118,12 +1155,16 @@ pre,
 	justify-content: space-between;
 	cursor: pointer;
 	overflow: hidden;
-	transition: flex 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+	transition:
+		flex 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+		background 0.3s ease,
+		border-color 0.3s ease,
+		box-shadow 0.3s ease;
 	position: relative;
 }
 
 .accordion-slice::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -1155,7 +1196,10 @@ pre,
 
 /* ─── Tactile Button & Card Physics (Anti-Slop Micro-interactions) ─── */
 .hover-physics-card {
-	transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+	transition:
+		transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+		border-color 0.25s ease,
+		box-shadow 0.25s ease;
 }
 
 .hover-physics-card:hover {
@@ -1187,13 +1231,18 @@ pre,
 }
 
 .terminal-scanline::after {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	left: 0;
 	right: 0;
 	height: 40px;
-	background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		var(--accent),
+		transparent
+	);
 	animation: scanline 2.8s linear infinite;
 }
 
@@ -1454,6 +1503,3 @@ pre,
 	background: rgba(234, 179, 8, 0.08);
 	color: #eab308;
 }
-
-
-

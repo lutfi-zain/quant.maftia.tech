@@ -224,6 +224,31 @@ export const MttdConsole: React.FC = () => {
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
+		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		if (isMobile && maximized !== null) {
+			const containerH = wrapperRef.current?.clientHeight;
+			if (containerH && containerH > 0) {
+				const total = heights.btc + heights.imo + heights.gates;
+				if (total > 0) {
+					btc.resize(w, Math.round(containerH * (heights.btc / total)));
+					if (imo) imo.resize(w, Math.round(containerH * (heights.imo / total)));
+					if (gates) gates.resize(w, Math.round(containerH * (heights.gates / total)));
+					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+						{ chart: imo, h: heights.imo, id: "imo" },
+						{ chart: gates, h: heights.gates, id: "gates" },
+					];
+					const visiblePanels = panels.filter((p) => p.h > 0);
+					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
+					btc.timeScale().applyOptions({ visible: heights.imo === 0 && heights.gates === 0 });
+					panels.forEach(({ chart, h, id }) => {
+						if (!chart) return;
+						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+					});
+					return;
+				}
+			}
+		}
+
 		btc.resize(w, heights.btc);
 		if (imo) imo.resize(w, heights.imo);
 		if (gates) gates.resize(w, heights.gates);

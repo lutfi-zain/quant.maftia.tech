@@ -38,7 +38,7 @@ const GRID_COLOR = "rgba(255,255,255,0.03)";
 
 function getChartYAxisWidth(): number {
 	const raw = getComputedStyle(document.documentElement)
-		.getPropertyValue('--chart-yaxis-width')
+		.getPropertyValue("--chart-yaxis-width")
 		.trim();
 	return Number(raw) || 85;
 }
@@ -153,15 +153,24 @@ export const LttdLab: React.FC = () => {
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
-	useGSAP(() => {
-		if (studioContainerRef.current) {
-			gsap.fromTo(
-				studioContainerRef.current.children,
-				{ y: 18, opacity: 0 },
-				{ y: 0, opacity: 1, duration: 0.55, stagger: 0.08, ease: "power3.out" }
-			);
-		}
-	}, { scope: studioContainerRef });
+	useGSAP(
+		() => {
+			if (studioContainerRef.current) {
+				gsap.fromTo(
+					studioContainerRef.current.children,
+					{ y: 18, opacity: 0 },
+					{
+						y: 0,
+						opacity: 1,
+						duration: 0.55,
+						stagger: 0.08,
+						ease: "power3.out",
+					},
+				);
+			}
+		},
+		{ scope: studioContainerRef },
+	);
 
 	useEffect(() => {
 		quantClient
@@ -189,6 +198,32 @@ export const LttdLab: React.FC = () => {
 		if (!btc) return;
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
+
+		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		if (isMobile && maximized !== null) {
+			const containerH = wrapperRef.current?.clientHeight;
+			if (containerH && containerH > 0) {
+				const total = heights.btc + heights.hmm + heights.vol;
+				if (total > 0) {
+					btc.resize(w, Math.round(containerH * (heights.btc / total)));
+					if (hmm) hmm.resize(w, Math.round(containerH * (heights.hmm / total)));
+					if (vol) vol.resize(w, Math.round(containerH * (heights.vol / total)));
+					// Determine which pane is bottom-most visible
+					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+						{ chart: hmm, h: heights.hmm, id: "hmm" },
+						{ chart: vol, h: heights.vol, id: "vol" },
+					];
+					const visiblePanels = panels.filter((p) => p.h > 0);
+					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
+					btc.timeScale().applyOptions({ visible: heights.hmm === 0 && heights.vol === 0 });
+					panels.forEach(({ chart, h, id }) => {
+						if (!chart) return;
+						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+					});
+					return;
+				}
+			}
+		}
 
 		btc.resize(w, heights.btc);
 		if (hmm) hmm.resize(w, heights.hmm);
@@ -472,8 +507,12 @@ export const LttdLab: React.FC = () => {
 			<div className="studio-telemetry-banner">
 				<div className="studio-banner-left">
 					<div className="studio-banner-tags">
-						<span className="studio-tag-layer">LAYER 02 · REGIME CLASSIFICATION</span>
-						<span className="studio-tag-fn">hmm.GaussianHMM(n_components=3)</span>
+						<span className="studio-tag-layer">
+							LAYER 02 · REGIME CLASSIFICATION
+						</span>
+						<span className="studio-tag-fn">
+							hmm.GaussianHMM(n_components=3)
+						</span>
 					</div>
 					<h2 className="studio-banner-title">
 						LTTD 3-State Gaussian HMM Macro Trend Engine
@@ -684,14 +723,14 @@ export const LttdLab: React.FC = () => {
 							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
-								onClick={() =>
-									setMaximized(maximized === "btc" ? null : "btc")
-								}
-								title={
-									maximized === "btc" ? "Restore" : "Maximize BTC pane"
-								}
+								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
+								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
 							>
-								{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "btc" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -711,18 +750,20 @@ export const LttdLab: React.FC = () => {
 							<span>State Probability Distribution</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">P(BULL) / P(BEAR) / P(SIDEWAYS)</span>
+							<span className="subplot-meta">
+								P(BULL) / P(BEAR) / P(SIDEWAYS)
+							</span>
 							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
-								onClick={() =>
-									setMaximized(maximized === "hmm" ? null : "hmm")
-								}
-								title={
-									maximized === "hmm" ? "Restore" : "Maximize HMM pane"
-								}
+								onClick={() => setMaximized(maximized === "hmm" ? null : "hmm")}
+								title={maximized === "hmm" ? "Restore" : "Maximize HMM pane"}
 							>
-								{maximized === "hmm" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "hmm" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -746,14 +787,14 @@ export const LttdLab: React.FC = () => {
 							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
-								onClick={() =>
-									setMaximized(maximized === "vol" ? null : "vol")
-								}
-								title={
-									maximized === "vol" ? "Restore" : "Maximize Vol pane"
-								}
+								onClick={() => setMaximized(maximized === "vol" ? null : "vol")}
+								title={maximized === "vol" ? "Restore" : "Maximize Vol pane"}
 							>
-								{maximized === "vol" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "vol" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -780,206 +821,217 @@ export const LttdLab: React.FC = () => {
 					</span>
 				</div>
 
-					{isMobile ? (
-						/* Mobile: Compact Two-Line List */
-						<div className="mobile-metric-list">
-							{displayComponents.map((ind) => (
-								<div key={ind.name} className="mobile-metric-row hover-physics-card">
-									<div className="mobile-metric-row-top">
-										<span
+				{isMobile ? (
+					/* Mobile: Compact Two-Line List */
+					<div className="mobile-metric-list">
+						{displayComponents.map((ind) => (
+							<div
+								key={ind.name}
+								className="mobile-metric-row hover-physics-card"
+							>
+								<div className="mobile-metric-row-top">
+									<span
+										style={{
+											fontSize: "13px",
+											fontWeight: 600,
+											color: "var(--text-main)",
+											flex: 1,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}
+									>
+										{ind.name}
+									</span>
+									<span
+										style={{
+											fontFamily: "Geist Mono, monospace",
+											fontSize: "13px",
+											fontWeight: 700,
+											flexShrink: 0,
+											color:
+												ind.score >= 0.3
+													? "var(--signal-bull)"
+													: ind.score <= -0.3
+														? "var(--signal-bear)"
+														: "var(--text-main)",
+										}}
+									>
+										{ind.score > 0
+											? `+${ind.score.toFixed(3)}`
+											: ind.score.toFixed(3)}
+									</span>
+								</div>
+								<div className="mobile-metric-row-bottom">
+									<span
+										style={{
+											fontSize: "10px",
+											padding: "2px 6px",
+											borderRadius: "4px",
+											fontFamily: "Geist Mono, monospace",
+											flexShrink: 0,
+											backgroundColor: "rgba(245,158,11,0.1)",
+											color: "var(--accent)",
+										}}
+									>
+										{ind.category}
+									</span>
+									<span
+										style={{
+											display: "inline-block",
+											padding: "2px 8px",
+											borderRadius: "4px",
+											fontSize: "10px",
+											fontWeight: 700,
+											fontFamily: "Geist Mono, monospace",
+											marginLeft: "auto",
+											flexShrink: 0,
+											backgroundColor:
+												ind.direction === 1
+													? "rgba(34,197,94,0.15)"
+													: ind.direction === -1
+														? "rgba(239,68,68,0.15)"
+														: "rgba(255,255,255,0.05)",
+											color:
+												ind.direction === 1
+													? "var(--signal-bull)"
+													: ind.direction === -1
+														? "var(--signal-bear)"
+														: "var(--text-dim)",
+										}}
+									>
+										{ind.direction === 1
+											? "BULL"
+											: ind.direction === -1
+												? "BEAR"
+												: "NEUTRAL"}
+									</span>
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					<div style={{ overflowX: "auto" }}>
+						<table
+							style={{
+								width: "100%",
+								borderCollapse: "collapse",
+								textAlign: "left",
+							}}
+						>
+							<thead>
+								<tr
+									style={{
+										borderBottom: "1px solid var(--border-panel)",
+										color: "var(--text-dim)",
+										fontSize: "11px",
+										textTransform: "uppercase",
+										fontFamily: "Geist Mono, monospace",
+									}}
+								>
+									<th style={{ padding: "8px 6px" }}>Feature / Component</th>
+									<th style={{ padding: "8px 6px" }}>Category</th>
+									<th style={{ padding: "8px 6px" }}>Description</th>
+									<th style={{ padding: "8px 6px", textAlign: "right" }}>
+										Normalized Value
+									</th>
+									<th style={{ padding: "8px 6px", textAlign: "center" }}>
+										Regime Contribution
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{displayComponents.map((ind) => (
+									<tr
+										key={ind.name}
+										className="hover:bg-slate-800/30 hover-physics-card transition-all"
+										style={{
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+											fontSize: "13px",
+										}}
+									>
+										<td
 											style={{
-												fontSize: "13px",
+												padding: "10px 6px",
 												fontWeight: 600,
-												color: "var(--text-main)",
-												flex: 1,
-												overflow: "hidden",
-												textOverflow: "ellipsis",
-												whiteSpace: "nowrap",
+												color: "var(--text-primary)",
 											}}
 										>
 											{ind.name}
-										</span>
-										<span
+										</td>
+										<td style={{ padding: "10px 6px" }}>
+											<span
+												style={{
+													fontSize: "11px",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontFamily: "Geist Mono, monospace",
+													backgroundColor: "rgba(245,158,11,0.1)",
+													color: "var(--accent)",
+												}}
+											>
+												{ind.category}
+											</span>
+										</td>
+										<td
+											style={{ padding: "10px 6px", color: "var(--text-dim)" }}
+										>
+											{ind.description}
+										</td>
+										<td
 											style={{
+												padding: "10px 6px",
+												textAlign: "right",
 												fontFamily: "Geist Mono, monospace",
-												fontSize: "13px",
 												fontWeight: 700,
-												flexShrink: 0,
 												color:
 													ind.score >= 0.3
 														? "var(--signal-bull)"
 														: ind.score <= -0.3
 															? "var(--signal-bear)"
-															: "var(--text-main)",
+															: "var(--text-primary)",
 											}}
 										>
-											{ind.score > 0 ? `+${ind.score.toFixed(3)}` : ind.score.toFixed(3)}
-										</span>
-									</div>
-									<div className="mobile-metric-row-bottom">
-										<span
-											style={{
-												fontSize: "10px",
-												padding: "2px 6px",
-												borderRadius: "4px",
-												fontFamily: "Geist Mono, monospace",
-												flexShrink: 0,
-												backgroundColor: "rgba(245,158,11,0.1)",
-												color: "var(--accent)",
-											}}
-										>
-											{ind.category}
-										</span>
-										<span
-											style={{
-												display: "inline-block",
-												padding: "2px 8px",
-												borderRadius: "4px",
-												fontSize: "10px",
-												fontWeight: 700,
-												fontFamily: "Geist Mono, monospace",
-												marginLeft: "auto",
-												flexShrink: 0,
-												backgroundColor:
-													ind.direction === 1
-														? "rgba(34,197,94,0.15)"
-														: ind.direction === -1
-															? "rgba(239,68,68,0.15)"
-															: "rgba(255,255,255,0.05)",
-												color:
-													ind.direction === 1
-														? "var(--signal-bull)"
-														: ind.direction === -1
-															? "var(--signal-bear)"
-															: "var(--text-dim)",
-											}}
-										>
-											{ind.direction === 1 ? "BULL" : ind.direction === -1 ? "BEAR" : "NEUTRAL"}
-										</span>
-									</div>
-								</div>
-							))}
-						</div>
-					) : (
-						<div style={{ overflowX: "auto" }}>
-							<table
-								style={{
-									width: "100%",
-									borderCollapse: "collapse",
-									textAlign: "left",
-								}}
-							>
-								<thead>
-									<tr
-										style={{
-											borderBottom: "1px solid var(--border-panel)",
-											color: "var(--text-dim)",
-											fontSize: "11px",
-											textTransform: "uppercase",
-											fontFamily: "Geist Mono, monospace",
-										}}
-									>
-										<th style={{ padding: "8px 6px" }}>Feature / Component</th>
-										<th style={{ padding: "8px 6px" }}>Category</th>
-										<th style={{ padding: "8px 6px" }}>Description</th>
-										<th style={{ padding: "8px 6px", textAlign: "right" }}>
-											Normalized Value
-										</th>
-										<th style={{ padding: "8px 6px", textAlign: "center" }}>
-											Regime Contribution
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{displayComponents.map((ind) => (
-										<tr
-											key={ind.name}
-											className="hover:bg-slate-800/30 hover-physics-card transition-all"
-											style={{
-												borderBottom: "1px solid rgba(255,255,255,0.03)",
-												fontSize: "13px",
-											}}
-										>
-											<td
+											{ind.score > 0
+												? `+${ind.score.toFixed(3)}`
+												: ind.score.toFixed(3)}
+										</td>
+										<td style={{ padding: "10px 6px", textAlign: "center" }}>
+											<span
 												style={{
-													padding: "10px 6px",
-													fontWeight: 600,
-													color: "var(--text-primary)",
-												}}
-											>
-												{ind.name}
-											</td>
-											<td style={{ padding: "10px 6px" }}>
-												<span
-													style={{
-														fontSize: "11px",
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontFamily: "Geist Mono, monospace",
-														backgroundColor: "rgba(245,158,11,0.1)",
-														color: "var(--accent)",
-													}}
-												>
-													{ind.category}
-												</span>
-											</td>
-											<td style={{ padding: "10px 6px", color: "var(--text-dim)" }}>
-												{ind.description}
-											</td>
-											<td
-												style={{
-													padding: "10px 6px",
-													textAlign: "right",
+													display: "inline-block",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontSize: "11px",
 													fontFamily: "Geist Mono, monospace",
-													fontWeight: 700,
+													backgroundColor:
+														ind.direction === 1
+															? "rgba(34,197,94,0.15)"
+															: ind.direction === -1
+																? "rgba(239,68,68,0.15)"
+																: "rgba(255,255,255,0.05)",
 													color:
-														ind.score >= 0.3
+														ind.direction === 1
 															? "var(--signal-bull)"
-															: ind.score <= -0.3
+															: ind.direction === -1
 																? "var(--signal-bear)"
-																: "var(--text-primary)",
+																: "var(--text-dim)",
 												}}
 											>
-												{ind.score > 0
-													? `+${ind.score.toFixed(3)}`
-													: ind.score.toFixed(3)}
-											</td>
-											<td style={{ padding: "10px 6px", textAlign: "center" }}>
-												<span
-													style={{
-														display: "inline-block",
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontSize: "11px",
-														fontFamily: "Geist Mono, monospace",
-														backgroundColor:
-															ind.direction === 1
-																? "rgba(34,197,94,0.15)"
-																: ind.direction === -1
-																	? "rgba(239,68,68,0.15)"
-																	: "rgba(255,255,255,0.05)",
-														color:
-															ind.direction === 1
-																? "var(--signal-bull)"
-																: ind.direction === -1
-																	? "var(--signal-bear)"
-																	: "var(--text-dim)",
-													}}
-												>
-													{ind.direction === 1
-														? "BULL"
-														: ind.direction === -1
-															? "BEAR"
-															: "NEUTRAL"}
-												</span>
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
-					)}
-				</div>
+												{ind.direction === 1
+													? "BULL"
+													: ind.direction === -1
+														? "BEAR"
+														: "NEUTRAL"}
+											</span>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
 			</div>
+		</div>
 	);
 };

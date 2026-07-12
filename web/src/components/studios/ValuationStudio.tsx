@@ -268,6 +268,22 @@ export const ValuationStudio: React.FC = () => {
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
+		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		if (isMobile && maximized !== null) {
+			const containerH = wrapperRef.current?.clientHeight;
+			if (containerH && containerH > 0) {
+				const total = heights.btc + (heights.val || 0);
+				if (total > 0) {
+					const ratioBtc = heights.btc / total;
+					btc.resize(w, Math.round(containerH * ratioBtc));
+					if (val) val.resize(w, Math.round(containerH * (1 - ratioBtc)));
+					btc.timeScale().applyOptions({ visible: heights.val === 0 });
+					if (val) val.timeScale().applyOptions({ visible: heights.val > 0 });
+					return;
+				}
+			}
+		}
+
 		btc.resize(w, heights.btc);
 		if (val) val.resize(w, heights.val);
 

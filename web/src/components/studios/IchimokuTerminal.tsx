@@ -17,7 +17,14 @@ import {
 	AreaSeries,
 	PriceScaleMode,
 } from "lightweight-charts";
-import { TrendingUp, ShieldCheck, RefreshCcw, Layers, Maximize2, Minimize2 } from "lucide-react";
+import {
+	TrendingUp,
+	ShieldCheck,
+	RefreshCcw,
+	Layers,
+	Maximize2,
+	Minimize2,
+} from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
@@ -30,7 +37,7 @@ const GRID_COLOR = "rgba(255,255,255,0.03)";
 
 function getChartYAxisWidth(): number {
 	const raw = getComputedStyle(document.documentElement)
-		.getPropertyValue('--chart-yaxis-width')
+		.getPropertyValue("--chart-yaxis-width")
 		.trim();
 	return Number(raw) || 85;
 }
@@ -205,15 +212,24 @@ export const IchimokuTerminal: React.FC = () => {
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
-	useGSAP(() => {
-		if (studioContainerRef.current) {
-			gsap.fromTo(
-				studioContainerRef.current.children,
-				{ y: 18, opacity: 0 },
-				{ y: 0, opacity: 1, duration: 0.55, stagger: 0.08, ease: "power3.out" }
-			);
-		}
-	}, { scope: studioContainerRef });
+	useGSAP(
+		() => {
+			if (studioContainerRef.current) {
+				gsap.fromTo(
+					studioContainerRef.current.children,
+					{ y: 18, opacity: 0 },
+					{
+						y: 0,
+						opacity: 1,
+						duration: 0.55,
+						stagger: 0.08,
+						ease: "power3.out",
+					},
+				);
+			}
+		},
+		{ scope: studioContainerRef },
+	);
 
 	useEffect(() => {
 		quantClient
@@ -247,6 +263,31 @@ export const IchimokuTerminal: React.FC = () => {
 		if (!btc) return;
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
+
+		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		if (isMobile && maximized !== null) {
+			const containerH = wrapperRef.current?.clientHeight;
+			if (containerH && containerH > 0) {
+				const total = heights.btc + heights.imo + heights.scomp;
+				if (total > 0) {
+					btc.resize(w, Math.round(containerH * (heights.btc / total)));
+					if (imo) imo.resize(w, Math.round(containerH * (heights.imo / total)));
+					if (scomp) scomp.resize(w, Math.round(containerH * (heights.scomp / total)));
+					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+						{ chart: imo, h: heights.imo, id: "imo" },
+						{ chart: scomp, h: heights.scomp, id: "scomp" },
+					];
+					const visiblePanels = panels.filter((p) => p.h > 0);
+					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
+					btc.timeScale().applyOptions({ visible: heights.imo === 0 && heights.scomp === 0 });
+					panels.forEach(({ chart, h, id }) => {
+						if (!chart) return;
+						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+					});
+					return;
+				}
+			}
+		}
 
 		btc.resize(w, heights.btc);
 		if (imo) imo.resize(w, heights.imo);
@@ -636,8 +677,12 @@ export const IchimokuTerminal: React.FC = () => {
 			<div className="studio-telemetry-banner">
 				<div className="studio-banner-left">
 					<div className="studio-banner-tags">
-						<span className="studio-tag-layer">LAYER 04 · SUPERSMOOTHER IIR</span>
-						<span className="studio-tag-fn">dsp.SuperSmootherIIR(cutoff=10)</span>
+						<span className="studio-tag-layer">
+							LAYER 04 · SUPERSMOOTHER IIR
+						</span>
+						<span className="studio-tag-fn">
+							dsp.SuperSmootherIIR(cutoff=10)
+						</span>
 					</div>
 					<h2 className="studio-banner-title">
 						Ichimoku Denoised SuperSmoother Quantitative Terminal
@@ -652,9 +697,7 @@ export const IchimokuTerminal: React.FC = () => {
 							color: latestImo > 0 ? "var(--accent)" : "var(--signal-bear)",
 						}}
 					>
-						{latestImo > 0
-							? `+${latestImo.toFixed(4)}`
-							: latestImo.toFixed(4)}
+						{latestImo > 0 ? `+${latestImo.toFixed(4)}` : latestImo.toFixed(4)}
 					</span>
 				</div>
 
@@ -736,7 +779,11 @@ export const IchimokuTerminal: React.FC = () => {
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
 								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
 							>
-								{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "btc" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -763,7 +810,11 @@ export const IchimokuTerminal: React.FC = () => {
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
 								title={maximized === "imo" ? "Restore" : "Maximize IMO pane"}
 							>
-								{maximized === "imo" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "imo" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -794,7 +845,11 @@ export const IchimokuTerminal: React.FC = () => {
 									maximized === "scomp" ? "Restore" : "Maximize S-Comp pane"
 								}
 							>
-								{maximized === "scomp" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "scomp" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -817,7 +872,9 @@ export const IchimokuTerminal: React.FC = () => {
 				>
 					<div className="card-header-left">
 						<span className="card-header-tag">SUPERSMOOTHER MATRIX</span>
-						<h3 className="card-header-title">SuperSmoother Component Telemetry</h3>
+						<h3 className="card-header-title">
+							SuperSmoother Component Telemetry
+						</h3>
 					</div>
 					<div className="card-header-right">
 						<span className="card-header-meta">ZERO-LAG FILTERING</span>
@@ -828,21 +885,86 @@ export const IchimokuTerminal: React.FC = () => {
 					/* Mobile: Compact Two-Line List */
 					<div className="mobile-metric-list">
 						{displayComponents.map((ind) => (
-							<div key={ind.name} className="mobile-metric-row hover-physics-card">
+							<div
+								key={ind.name}
+								className="mobile-metric-row hover-physics-card"
+							>
 								<div className="mobile-metric-row-top">
-									<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+									<span
+										style={{
+											fontSize: "13px",
+											fontWeight: 600,
+											color: "var(--text-main)",
+											flex: 1,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}
+									>
 										{ind.name}
 									</span>
-									<span style={{ fontFamily: "Geist Mono, monospace", fontSize: "13px", fontWeight: 700, flexShrink: 0, color: ind.score > 0.15 ? "var(--signal-bull)" : ind.score < -0.15 ? "var(--signal-bear)" : "var(--text-main)" }}>
-										{ind.score > 0 ? `+${ind.score.toFixed(3)}` : ind.score.toFixed(3)}
+									<span
+										style={{
+											fontFamily: "Geist Mono, monospace",
+											fontSize: "13px",
+											fontWeight: 700,
+											flexShrink: 0,
+											color:
+												ind.score > 0.15
+													? "var(--signal-bull)"
+													: ind.score < -0.15
+														? "var(--signal-bear)"
+														: "var(--text-main)",
+										}}
+									>
+										{ind.score > 0
+											? `+${ind.score.toFixed(3)}`
+											: ind.score.toFixed(3)}
 									</span>
 								</div>
 								<div className="mobile-metric-row-bottom">
-									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "Geist Mono, monospace", flexShrink: 0, backgroundColor: "rgba(0, 240, 255, 0.1)", color: "var(--accent)" }}>
+									<span
+										style={{
+											fontSize: "10px",
+											padding: "2px 6px",
+											borderRadius: "4px",
+											fontFamily: "Geist Mono, monospace",
+											flexShrink: 0,
+											backgroundColor: "rgba(0, 240, 255, 0.1)",
+											color: "var(--accent)",
+										}}
+									>
 										{ind.category}
 									</span>
-									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, fontFamily: "Geist Mono, monospace", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
-										{ind.direction === 1 ? "BULL" : ind.direction === -1 ? "BEAR" : "NEUTRAL"}
+									<span
+										style={{
+											display: "inline-block",
+											padding: "2px 8px",
+											borderRadius: "4px",
+											fontSize: "10px",
+											fontWeight: 700,
+											fontFamily: "Geist Mono, monospace",
+											marginLeft: "auto",
+											flexShrink: 0,
+											backgroundColor:
+												ind.direction === 1
+													? "rgba(34,197,94,0.15)"
+													: ind.direction === -1
+														? "rgba(239,68,68,0.15)"
+														: "rgba(255,255,255,0.05)",
+											color:
+												ind.direction === 1
+													? "var(--signal-bull)"
+													: ind.direction === -1
+														? "var(--signal-bear)"
+														: "var(--text-dim)",
+										}}
+									>
+										{ind.direction === 1
+											? "BULL"
+											: ind.direction === -1
+												? "BEAR"
+												: "NEUTRAL"}
 									</span>
 								</div>
 							</div>
@@ -912,7 +1034,9 @@ export const IchimokuTerminal: React.FC = () => {
 												{ind.category}
 											</span>
 										</td>
-										<td style={{ padding: "10px 6px", color: "var(--text-dim)" }}>
+										<td
+											style={{ padding: "10px 6px", color: "var(--text-dim)" }}
+										>
 											{ind.description}
 										</td>
 										<td
