@@ -1,20 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-	/* ─── Bloomberg Slate Amber — Institutional Terminal Palette ─── */
-	--bg-root: #020617;
-	--bg-card: #0f172a;
-	--bg-elevated: #1e293b;
-	--bg-chart: #0b1220;
+	/* ─── Titanium Obsidian & Quantitative Ice — Institutional Cold Luxury Palette ─── */
+	--bg-root: #08090a;
+	--bg-card: #101214;
+	--bg-elevated: #16181b;
+	--bg-chart: #0c0d0e;
 
 	/* Font Families */
 	--font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 	--font-mono: "Geist Mono", "JetBrains Mono", monospace;
 
 	/* Borders */
-	--border-card: rgba(255, 255, 255, 0.07);
-	--border-panel: #1e293b;
-	--border-focus: rgba(245, 158, 11, 0.4);
+	--border-card: rgba(255, 255, 255, 0.08);
+	--border-panel: rgba(255, 255, 255, 0.12);
+	--border-focus: rgba(0, 240, 255, 0.45);
 
 	/* Spatial density scale */
 	--radius-none: 0px;
@@ -27,42 +27,42 @@
 	--space-xl: 24px;
 
 	/* Legacy aliases (for backward compatibility with remaining inline styles) */
-	--bg-primary: #020617;
-	--bg-secondary: #0f172a;
-	--surface-card: #0f172a;
-	--surface-card-hover: #1e293b;
-	--surface-glass: #0f172a;
-	--border-subtle: rgba(255, 255, 255, 0.07);
+	--bg-primary: #08090a;
+	--bg-secondary: #101214;
+	--surface-card: #101214;
+	--surface-card-hover: #16181b;
+	--surface-glass: #101214;
+	--border-subtle: rgba(255, 255, 255, 0.08);
 
 	/* Text & Typography */
-	--text-main: #f8fafc;
-	--text-secondary: #94a3b8;
-	--text-muted: #94a3b8;
-	--text-dim: #64748b;
-	--text-mono: #cbd5e1;
+	--text-main: #f4f4f5;
+	--text-secondary: #a1a1aa;
+	--text-muted: #a1a1aa;
+	--text-dim: #71717a;
+	--text-mono: #d4d4d8;
 
-	/* Primary Accent — Amber Gold (Bloomberg DNA) */
-	--accent: #f59e0b;
-	--accent-glow: rgba(245, 158, 11, 0.15);
-	/* Legacy accent aliases */
-	--accent-cyan: #f59e0b;
-	--accent-cyan-glow: rgba(245, 158, 11, 0.12);
-	--accent-gold: #f59e0b;
-	--accent-gold-glow: rgba(245, 158, 11, 0.15);
-	--accent-purple: #a78bfa;
+	/* Primary Accent — Quantitative Ice Cyan (High-Precision Institutional DNA) */
+	--accent: #00f0ff;
+	--accent-glow: rgba(0, 240, 255, 0.15);
+	/* Legacy accent aliases mapped cleanly to Ice Cyan / Precision Gold / Sky Blue */
+	--accent-cyan: #00f0ff;
+	--accent-cyan-glow: rgba(0, 240, 255, 0.12);
+	--accent-gold: #eab308;
+	--accent-gold-glow: rgba(234, 179, 8, 0.15);
+	--accent-purple: #38bdf8;
 
 	/* Quantitative Signal Colors */
-	--signal-bull: #22c55e;
-	--signal-bear: #ef4444;
-	--signal-neutral: #f59e0b;
-	--signal-quant: #60a5fa;
-	--signal-pca: #a78bfa;
+	--signal-bull: #10b981;
+	--signal-bear: #f43f5e;
+	--signal-neutral: #eab308;
+	--signal-quant: #00f0ff;
+	--signal-pca: #38bdf8;
 
 	/* Status */
-	--status-success: #22c55e;
-	--status-danger: #ef4444;
-	--status-danger-glow: rgba(239, 68, 68, 0.2);
-	--status-warning: #f59e0b;
+	--status-success: #10b981;
+	--status-danger: #f43f5e;
+	--status-danger-glow: rgba(244, 63, 94, 0.2);
+	--status-warning: #eab308;
 
 	/* ─── Responsive Chart Y-Axis Width ─── */
 	/* Desktop: 85px (architecture mandate). Overridden to 65px on mobile below. */
@@ -190,31 +190,188 @@ pre,
 	border-top: 1px solid var(--border-panel);
 }
 
-/* Subplot inline header row */
+/* ─── Dashboard Top Tooltip & Control Toolbar ─── */
+.chart-top-toolbar {
+	padding: 10px 16px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	flex-wrap: wrap;
+	gap: 12px;
+	background: var(--bg-panel);
+	border: 1px solid var(--border-panel);
+	border-radius: var(--radius-md);
+}
+
+.toolbar-metrics-group {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	flex-wrap: wrap;
+}
+
+.toolbar-controls-group {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-left: auto;
+	flex-wrap: wrap;
+}
+
+/* Studio-level Top Controls Toolbar */
+.studio-top-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-bottom: 8px;
+}
+
+/* Modal / Drill-Down Header Bar */
+.modal-header-bar {
+	padding: 12px 16px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+	background: var(--bg-panel);
+	border-bottom: 1px solid var(--border-panel);
+}
+
+.modal-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-left: auto;
+}
+
+@media (max-width: 767px) {
+	.chart-top-toolbar {
+		padding: 8px 10px !important;
+		gap: 6px !important;
+		flex-direction: column !important;
+		align-items: stretch !important;
+	}
+
+	.studio-top-toolbar {
+		justify-content: space-between !important;
+		width: 100% !important;
+		gap: 6px !important;
+	}
+
+	.studio-top-toolbar > * {
+		flex-shrink: 0;
+	}
+
+	.modal-header-bar {
+		padding: 10px 12px !important;
+		flex-direction: column !important;
+		align-items: stretch !important;
+		gap: 8px !important;
+	}
+
+	.modal-header-actions {
+		width: 100% !important;
+		justify-content: flex-end !important;
+		padding-top: 6px !important;
+		border-top: 1px dashed rgba(255, 255, 255, 0.08) !important;
+		margin-left: 0 !important;
+	}
+
+	.toolbar-metrics-group {
+		width: 100% !important;
+		display: grid !important;
+		grid-template-columns: repeat(3, 1fr) !important;
+		gap: 4px 6px !important;
+		font-size: 10px !important;
+	}
+
+	.toolbar-metrics-group span {
+		white-space: nowrap !important;
+		overflow: hidden !important;
+		text-overflow: ellipsis !important;
+	}
+
+	.toolbar-controls-group {
+		width: 100% !important;
+		justify-content: flex-end !important;
+		padding-top: 6px !important;
+		border-top: 1px dashed rgba(255, 255, 255, 0.08) !important;
+		margin-left: 0 !important;
+	}
+}
+
+/* Subplot inline header row (Anti-Slop Quant Terminal Cockpit Strip) */
 .chart-subplot-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 6px 10px;
+	height: 30px;
+	padding: 0 12px;
+	font-family: var(--font-mono);
 	font-size: 11px;
 	font-weight: 600;
-	color: var(--text-dim);
-	text-transform: uppercase;
-	letter-spacing: 0.6px;
-	background: rgba(255, 255, 255, 0.02);
-	border-bottom: 1px solid var(--border-panel);
+	color: var(--text-main);
+	letter-spacing: 0.4px;
+	background: rgba(13, 18, 28, 0.65);
+	border-bottom: 1px solid var(--border-subtle);
+	user-select: none;
 }
 
 .chart-subplot-header .subplot-title {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	font-weight: 700;
+	color: #ffffff;
+	text-transform: none;
+	letter-spacing: -0.1px;
+}
+
+.chart-subplot-header .subplot-badge {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	padding: 1px 6px;
+	border-radius: 2px;
+	background: rgba(0, 240, 255, 0.1);
+	color: var(--accent);
+	border: 1px solid rgba(0, 240, 255, 0.25);
+	letter-spacing: 0.6px;
 }
 
 .chart-subplot-header .subplot-controls {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
+}
+
+.chart-subplot-header .subplot-meta {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 500;
+	color: var(--text-dim);
+	text-transform: uppercase;
+}
+
+.chart-subplot-header .subplot-axis-lock,
+.chart-subplot-header .px-width {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 600;
+	color: rgba(0, 240, 255, 0.4);
+	background: rgba(0, 240, 255, 0.05);
+	padding: 1px 5px;
+	border-radius: 2px;
+	border: 1px solid rgba(0, 240, 255, 0.15);
 }
 
 /* Toggle segment button group */
@@ -465,7 +622,7 @@ pre,
 
 .mobile-tab-btn span {
 	font-size: 9px;
-	font-family: 'Inter', sans-serif;
+	font-family: 'Geist', sans-serif;
 	font-weight: 600;
 	letter-spacing: 0.3px;
 	text-transform: uppercase;
@@ -492,7 +649,7 @@ pre,
 	flex: 1;
 	font-size: 13px;
 	font-weight: 700;
-	font-family: 'Inter', sans-serif;
+	font-family: 'Geist', sans-serif;
 	color: var(--text-main);
 	white-space: nowrap;
 	overflow: hidden;
@@ -653,26 +810,30 @@ pre,
 	/* Hide desktop-only elements */
 	.desktop-only { display: none !important; }
 
-	/* Touch targets (enforce 44px min target per iOS guidelines) */
+	/* Touch targets (enforce crisp institutional touch target on mobile without header collision) */
 	.icon-btn {
-		width: 44px;
-		height: 44px;
-		min-width: 44px;
-		min-height: 44px;
+		width: 36px;
+		height: 36px;
+		min-width: 36px;
+		min-height: 36px;
+		border-radius: 6px;
 	}
 
 	.sync-btn {
-		min-height: 44px;
-		padding: 8px 14px;
+		min-height: 36px;
+		padding: 6px 14px;
+		font-size: 11px;
 	}
 
 	.toggle-btn {
-		padding: 8px 14px;
-		min-height: 44px;
+		padding: 6px 14px;
+		min-height: 36px;
+		font-size: 11px;
 	}
 
 	.pill-btn {
-		min-height: 44px;
+		min-height: 36px;
+		padding: 6px 12px;
 	}
 
 	div[style*="overflow-x: auto"],
@@ -691,10 +852,11 @@ pre,
 		gap: 12px !important;
 	}
 
-	/* Chart fullscreen on mobile: account for bottom tab */
+	/* Chart fullscreen on mobile: account for bottom tab, zero out padding */
 	.chart-panel.fullscreen {
 		bottom: 56px;
 		height: calc(100dvh - 56px) !important;
+		padding: 0 !important;
 	}
 
 	/* ── Mobile Padding & Margin Tightening (Maximizes Usable Screen Real Estate) ── */
@@ -709,9 +871,120 @@ pre,
 		gap: 8px !important;
 	}
 
+	/* ─── Institutional Mobile Subplot Header & Button Revamp (Anti-Slop Cockpit) ─── */
+	/* 1. Subplot Header Adaptivity: 2-row touch cockpit strip prevents horizontal text stacking (numpuk2) */
 	.chart-subplot-header {
-		padding-bottom: 4px !important;
-		margin-bottom: 4px !important;
+		height: auto !important;
+		min-height: 48px !important;
+		padding: 7px 8px !important;
+		display: flex !important;
+		flex-direction: column !important;
+		align-items: stretch !important;
+		justify-content: space-between !important;
+		gap: 5px !important;
+		position: relative !important;
+		background: rgba(13, 18, 28, 0.85) !important;
+	}
+
+	.chart-subplot-header .subplot-title {
+		display: flex !important;
+		align-items: center !important;
+		justify-content: flex-start !important;
+		width: 100% !important;
+		gap: 6px !important;
+		flex-wrap: nowrap !important;
+	}
+
+	.chart-subplot-header .subplot-title span:not(.subplot-badge) {
+		font-size: 11px !important;
+		font-weight: 700 !important;
+		white-space: nowrap !important;
+		overflow: hidden !important;
+		text-overflow: ellipsis !important;
+		max-width: calc(100% - 65px) !important;
+	}
+
+	.chart-subplot-header .subplot-badge {
+		font-size: 9px !important;
+		padding: 2px 6px !important;
+		flex-shrink: 0 !important;
+		letter-spacing: 0.5px !important;
+	}
+
+	/* Row 2: Metadata + Controls separated cleanly */
+	.chart-subplot-header .subplot-controls {
+		width: 100% !important;
+		display: flex !important;
+		align-items: center !important;
+		justify-content: space-between !important;
+		gap: 6px !important;
+		padding-top: 5px !important;
+		border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
+	}
+
+	.chart-subplot-header .subplot-meta {
+		font-size: 9px !important;
+		color: var(--text-muted) !important;
+		white-space: nowrap !important;
+		overflow: hidden !important;
+		text-overflow: ellipsis !important;
+		max-width: calc(100% - 85px) !important;
+	}
+
+	.chart-subplot-header .subplot-axis-lock,
+	.chart-subplot-header .px-width {
+		font-size: 9px !important;
+		padding: 1px 5px !important;
+		flex-shrink: 0 !important;
+	}
+
+	/* Revamped Touch Action Button inside Subplot Header */
+	.chart-subplot-header .icon-btn,
+	.chart-subplot-header button.icon-btn,
+	.chart-subplot-header .subplot-controls .icon-btn {
+		width: 28px !important;
+		height: 28px !important;
+		min-width: 28px !important;
+		min-height: 28px !important;
+		padding: 0 !important;
+		border-radius: 5px !important;
+		background: rgba(0, 240, 255, 0.12) !important;
+		border: 1px solid rgba(0, 240, 255, 0.3) !important;
+		color: var(--accent) !important;
+		display: flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		flex-shrink: 0 !important;
+		box-shadow: 0 0 10px rgba(0, 240, 255, 0.15) !important;
+	}
+
+	.chart-subplot-header .icon-btn:active,
+	.chart-subplot-header button.icon-btn:active {
+		transform: scale(0.92) !important;
+		background: rgba(0, 240, 255, 0.25) !important;
+	}
+
+	/* 2. Studio Top Header Button & Toolbar Revamp for Mobile (`button di header juga bisa di revamp`) */
+	.toggle-group {
+		display: inline-flex !important;
+		border-radius: 6px !important;
+		overflow: hidden !important;
+		border: 1px solid rgba(0, 240, 255, 0.2) !important;
+		background: rgba(13, 18, 28, 0.9) !important;
+	}
+
+	.toggle-group .toggle-btn {
+		padding: 5px 12px !important;
+		min-height: 32px !important;
+		font-size: 10px !important;
+		font-weight: 700 !important;
+		letter-spacing: 0.5px !important;
+	}
+
+	.toggle-group .toggle-btn.active {
+		background: rgba(0, 240, 255, 0.2) !important;
+		color: var(--accent) !important;
+		box-shadow: inset 0 0 8px rgba(0, 240, 255, 0.25) !important;
 	}
 
 	/* Reduce heavy inline vertical gaps between stacked sections */
@@ -733,4 +1006,454 @@ pre,
 		min-height: 50px !important;
 	}
 }
+
+/* ─── Awwwards-Level Design Engineering & Gapless Bento Utilities ─── */
+.bento-dense-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-auto-flow: dense;
+	gap: 14px;
+	width: 100%;
+	max-width: 1152px;
+	margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+	.bento-dense-grid {
+		grid-template-columns: repeat(4, 1fr);
+	}
+	.bento-span-2-2 {
+		grid-column: span 2;
+		grid-row: span 2;
+	}
+	.bento-span-1-2 {
+		grid-column: span 1;
+		grid-row: span 2;
+	}
+	.bento-span-1-1 {
+		grid-column: span 1;
+		grid-row: span 1;
+	}
+}
+
+/* ─── Infinite Marquee ─── */
+.marquee-container {
+	width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	background: #0f0f0f;
+	border-top: 1px solid var(--border-subtle);
+	border-bottom: 1px solid var(--border-subtle);
+	padding: 10px 0;
+	position: relative;
+}
+
+.marquee-container::before,
+.marquee-container::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 60px;
+	z-index: 2;
+	pointer-events: none;
+}
+
+.marquee-container::before {
+	left: 0;
+	background: linear-gradient(to right, #09090b, transparent);
+}
+
+.marquee-container::after {
+	right: 0;
+	background: linear-gradient(to left, #09090b, transparent);
+}
+
+.marquee-track {
+	display: inline-flex;
+	align-items: center;
+	gap: 32px;
+	animation: marquee-scroll 28s linear infinite;
+	will-change: transform;
+}
+
+.marquee-track:hover {
+	animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+	from {
+		transform: translateX(0%);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+
+/* ─── Horizontal Accordion System (Institutional Terminal Slices) ─── */
+.accordion-slice-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 100%;
+	max-width: 1152px;
+	margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+	.accordion-slice-panel {
+		flex-direction: row;
+		height: 340px;
+	}
+}
+
+.accordion-slice {
+	flex: 1;
+	background: var(--bg-card);
+	border: 1px solid var(--border-card);
+	border-radius: var(--radius-md);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	cursor: pointer;
+	overflow: hidden;
+	transition: flex 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+	position: relative;
+}
+
+.accordion-slice::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 2px;
+	background: transparent;
+	transition: background 0.3s ease;
+}
+
+.accordion-slice.active {
+	flex: 2.9;
+	background: #14171d;
+	border-color: rgba(0, 240, 255, 0.45);
+	box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+}
+
+.accordion-slice.active::before {
+	background: var(--accent);
+}
+
+.accordion-slice:hover:not(.active) {
+	background: #181b22;
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+.accordion-slice:active {
+	transform: scale(0.992);
+}
+
+/* ─── Tactile Button & Card Physics (Anti-Slop Micro-interactions) ─── */
+.hover-physics-card {
+	transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.hover-physics-card:hover {
+	transform: translateY(-2px) scale(1.008);
+	border-color: rgba(0, 240, 255, 0.35);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+.hover-physics-card:active {
+	transform: translateY(1px) scale(0.99);
+}
+
+/* Institutional Terminal Scanline Loader Animation */
+@keyframes scanline {
+	0% {
+		transform: translateY(-100%);
+	}
+	100% {
+		transform: translateY(1000%);
+	}
+}
+
+.terminal-scanline {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+	opacity: 0.12;
+}
+
+.terminal-scanline::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 40px;
+	background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+	animation: scanline 2.8s linear infinite;
+}
+
+/* Tactile Push Buttons */
+.tactile-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 11px 22px;
+	border-radius: var(--radius-md);
+	font-size: 13px;
+	font-weight: 600;
+	font-family: var(--font-sans);
+	cursor: pointer;
+	transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+	white-space: nowrap;
+	text-decoration: none;
+}
+
+.tactile-btn:active {
+	transform: translateY(1px) scale(0.98);
+}
+
+.tactile-btn-primary {
+	background-color: var(--accent);
+	color: #000000;
+	border: 1px solid var(--accent);
+	box-shadow: 0 2px 10px rgba(0, 240, 255, 0.25);
+}
+
+.tactile-btn-primary:hover {
+	background-color: #38bdf8;
+	border-color: #38bdf8;
+	box-shadow: 0 4px 16px rgba(0, 240, 255, 0.45);
+}
+
+.tactile-btn-secondary {
+	background-color: var(--bg-card);
+	color: var(--text-main);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tactile-btn-secondary:hover {
+	background-color: var(--bg-elevated);
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Institutional Studio Card & Subplot Structural Headers ─── */
+.card-header-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	background: #111317;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 4px 4px 0 0;
+	width: 100%;
+}
+
+.card-header-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.card-header-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.card-header-tag {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.8px;
+	padding: 2px 7px;
+	border-radius: 2px;
+	background: rgba(0, 240, 255, 0.1);
+	color: var(--accent);
+	text-transform: uppercase;
+}
+
+.card-header-tag.bull {
+	background: rgba(16, 185, 129, 0.12);
+	color: var(--signal-bull);
+}
+
+.card-header-tag.bear {
+	background: rgba(244, 63, 94, 0.12);
+	color: var(--signal-bear);
+}
+
+.card-header-tag.gold {
+	background: rgba(234, 179, 8, 0.12);
+	color: var(--accent-gold);
+}
+
+.card-header-title {
+	font-family: var(--font-sans);
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--text-main);
+	letter-spacing: -0.2px;
+	margin: 0;
+}
+
+.card-header-meta {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--text-muted);
+}
+
+/* ─── Institutional Cockpit Studio Banner (Anti-Slop Telemetry Header) ─── */
+.studio-telemetry-banner {
+	display: grid;
+	grid-template-columns: 1fr auto auto;
+	align-items: stretch;
+	background: var(--bg-panel);
+	border: 1px solid var(--border-panel);
+	border-radius: var(--radius-md);
+	overflow: hidden;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+	margin-bottom: 16px;
+}
+
+@media (max-width: 1024px) {
+	.studio-telemetry-banner {
+		grid-template-columns: 1fr;
+	}
+}
+
+.studio-banner-left {
+	padding: 16px 20px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.studio-banner-tags {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.studio-tag-layer {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.8px;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: 3px;
+	background: rgba(0, 240, 255, 0.08);
+	color: var(--accent);
+	border: 1px solid rgba(0, 240, 255, 0.25);
+}
+
+.studio-tag-fn {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	font-weight: 500;
+	padding: 3px 8px;
+	border-radius: 3px;
+	background: var(--bg-root);
+	color: var(--text-dim);
+	border: 1px solid var(--border-subtle);
+	word-break: break-all;
+}
+
+.studio-banner-title {
+	font-family: var(--font-sans);
+	font-size: 18px;
+	font-weight: 700;
+	color: #ffffff;
+	letter-spacing: -0.4px;
+	line-height: 1.25;
+	margin: 0;
+}
+
+.studio-banner-metric {
+	padding: 16px 24px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-end;
+	background: rgba(10, 15, 24, 0.6);
+	border-left: 1px solid var(--border-panel);
+	min-width: 170px;
+}
+
+@media (max-width: 1024px) {
+	.studio-banner-metric {
+		align-items: flex-start;
+		border-left: none;
+		border-top: 1px solid var(--border-subtle);
+		padding: 12px 20px;
+	}
+}
+
+.studio-metric-label {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 1.2px;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	margin-bottom: 4px;
+}
+
+.studio-metric-value {
+	font-family: var(--font-mono);
+	font-size: 24px;
+	font-weight: 800;
+	letter-spacing: -1px;
+	line-height: 1;
+}
+
+.studio-banner-status {
+	padding: 16px 24px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	border-left: 1px solid var(--border-panel);
+	font-family: var(--font-mono);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.3px;
+	min-width: 260px;
+}
+
+@media (max-width: 1024px) {
+	.studio-banner-status {
+		border-left: none;
+		border-top: 1px solid var(--border-subtle);
+		padding: 12px 20px;
+	}
+}
+
+.studio-banner-status.status-bubble {
+	background: rgba(244, 63, 94, 0.08);
+	color: var(--signal-bear);
+}
+.studio-banner-status.status-discount {
+	background: rgba(0, 240, 255, 0.08);
+	color: var(--accent);
+}
+.studio-banner-status.status-fair {
+	background: rgba(16, 185, 129, 0.08);
+	color: var(--signal-bull);
+}
+.studio-banner-status.status-warn {
+	background: rgba(234, 179, 8, 0.08);
+	color: #eab308;
+}
+
+
 
