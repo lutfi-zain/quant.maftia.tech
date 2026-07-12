@@ -18,6 +18,8 @@ import {
 	PriceScaleMode,
 } from "lightweight-charts";
 import { TrendingUp, ShieldCheck, RefreshCcw, Layers, Maximize2, Minimize2 } from "lucide-react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 type MaximizedPanel = null | "btc" | "imo" | "scomp";
 
@@ -38,7 +40,7 @@ function makeCommonOptions(yAxisWidth: number) {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
 			textColor: TEXT_COLOR,
-			fontFamily: "JetBrains Mono",
+			fontFamily: "Geist Mono, monospace",
 			fontSize: 11,
 		},
 		grid: {
@@ -60,22 +62,26 @@ function makeCommonOptions(yAxisWidth: number) {
 	};
 }
 
+// Matches CSS: @media (max-width: 768px) { .chart-panel.fullscreen { bottom: 56px; height: calc(100dvh - 56px); } }
+const MOBILE_BOTTOM_TAB_HEIGHT = 56;
+
 function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
+	const available = isMobile ? full - MOBILE_BOTTOM_TAB_HEIGHT : full;
 	switch (maximized) {
 		case "btc":
-			return { btc: full, imo: 0, scomp: 0 };
+			return { btc: available, imo: 0, scomp: 0 };
 		case "imo":
 			return {
-				btc: Math.floor(full * 0.65),
-				imo: Math.floor(full * 0.35),
+				btc: Math.floor(available * 0.65),
+				imo: Math.floor(available * 0.35),
 				scomp: 0,
 			};
 		case "scomp":
 			return {
-				btc: Math.floor(full * 0.65),
+				btc: Math.floor(available * 0.65),
 				imo: 0,
-				scomp: Math.floor(full * 0.35),
+				scomp: Math.floor(available * 0.35),
 			};
 		default:
 			return isMobile
@@ -187,6 +193,7 @@ export const IchimokuTerminal: React.FC = () => {
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
+	const studioContainerRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const imoContainerRef = useRef<HTMLDivElement>(null);
 	const scompContainerRef = useRef<HTMLDivElement>(null);
@@ -197,6 +204,16 @@ export const IchimokuTerminal: React.FC = () => {
 	}>({ btc: null, imo: null, scomp: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+
+	useGSAP(() => {
+		if (studioContainerRef.current) {
+			gsap.fromTo(
+				studioContainerRef.current.children,
+				{ y: 18, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.55, stagger: 0.08, ease: "power3.out" }
+			);
+		}
+	}, { scope: studioContainerRef });
 
 	useEffect(() => {
 		quantClient
@@ -611,137 +628,72 @@ export const IchimokuTerminal: React.FC = () => {
 
 	return (
 		<div
+			ref={studioContainerRef}
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
 			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
-			{/* Pillar Header Info Bar */}
-			<div
-				className="glass-card"
-				style={{
-					padding: "12px 16px",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
-							marginBottom: "4px",
-						}}
-					>
-						<span
-							style={{
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "var(--accent)",
-								textTransform: "uppercase",
-							}}
-						>
-							PILLAR 4 TELEMETRY
-						</span>
-						<span
-							style={{
-								fontSize: "12px",
-								color: "var(--text-dim)",
-								fontFamily: "JetBrains Mono",
-							}}
-						>
-							dsp.SuperSmootherIIR(cutoff=10)
-						</span>
+			{/* Institutional Cockpit Studio Banner */}
+			<div className="studio-telemetry-banner">
+				<div className="studio-banner-left">
+					<div className="studio-banner-tags">
+						<span className="studio-tag-layer">LAYER 04 · SUPERSMOOTHER IIR</span>
+						<span className="studio-tag-fn">dsp.SuperSmootherIIR(cutoff=10)</span>
 					</div>
-					<h2 style={{ fontSize: "20px", fontWeight: 700 }}>
+					<h2 className="studio-banner-title">
 						Ichimoku Denoised SuperSmoother Quantitative Terminal
 					</h2>
 				</div>
-				<div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-					<div style={{ textAlign: "right", fontFamily: "JetBrains Mono" }}>
-						<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-							STATIONARY BOUNDED TANH
-						</div>
-						<div
-							style={{
-								fontSize: "24px",
-								fontWeight: 700,
-								color: latestImo > 0 ? "var(--accent)" : "var(--signal-bear)",
-							}}
-						>
-							{latestImo > 0
-								? `+${latestImo.toFixed(4)}`
-								: latestImo.toFixed(4)}
-						</div>
-					</div>
-					<div
-						className="glass-card"
+
+				<div className="studio-banner-metric">
+					<span className="studio-metric-label">STATIONARY BOUNDED TANH</span>
+					<span
+						className="studio-metric-value"
 						style={{
-							padding: "8px 12px",
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
+							color: latestImo > 0 ? "var(--accent)" : "var(--signal-bear)",
 						}}
 					>
-						{cloudState === "BULL CLOUD" ? (
-							<>
-								<TrendingUp size={18} style={{ color: "var(--signal-bull)" }} />{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--signal-bull)",
-									}}
-								>
-									BULL KUMO CLOUD (Structural Support)
-								</span>
-							</>
-						) : cloudState === "BEAR CLOUD" ? (
-							<>
-								<TrendingUp size={18} style={{ color: "var(--signal-bear)" }} />{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--signal-bear)",
-									}}
-								>
-									BEAR KUMO CLOUD (Overhead Resistance)
-								</span>
-							</>
-						) : (
-							<>
-								<RefreshCcw size={18} style={{ color: "var(--accent)" }} />{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--accent)",
-									}}
-								>
-									NEUTRAL KUMO TWIST
-								</span>
-							</>
-						)}
-					</div>
+						{latestImo > 0
+							? `+${latestImo.toFixed(4)}`
+							: latestImo.toFixed(4)}
+					</span>
+				</div>
+
+				<div
+					className={`studio-banner-status ${
+						cloudState === "BULL CLOUD"
+							? "status-fair"
+							: cloudState === "BEAR CLOUD"
+								? "status-bubble"
+								: "status-warn"
+					}`}
+				>
+					{cloudState === "BULL CLOUD" ? (
+						<>
+							<TrendingUp size={18} style={{ flexShrink: 0 }} />
+							<span>BULL KUMO CLOUD (Structural Support)</span>
+						</>
+					) : cloudState === "BEAR CLOUD" ? (
+						<>
+							<TrendingUp size={18} style={{ flexShrink: 0 }} />
+							<span>BEAR KUMO CLOUD (Overhead Resistance)</span>
+						</>
+					) : (
+						<>
+							<RefreshCcw size={18} style={{ flexShrink: 0 }} />
+							<span>NEUTRAL KUMO TWIST</span>
+						</>
+					)}
 				</div>
 			</div>
 
 			{/* LOG/LIN + Maximize controls */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "8px",
-					justifyContent: "flex-end",
-				}}
-			>
+			<div className="studio-top-toolbar">
 				{maximized !== null && (
 					<button
 						className="icon-btn"
 						onClick={() => setMaximized(null)}
 						title="Restore all panels"
-						style={{ fontSize: "15px", width: "auto", padding: "0 8px" }}
+						style={{ fontSize: "13px", width: "auto", padding: "0 10px" }}
 					>
 						✕ Restore
 					</button>
@@ -772,27 +724,13 @@ export const IchimokuTerminal: React.FC = () => {
 					className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							BTC/USD + Ichimoku Cloud · Tenkan{" "}
-							<span style={{ color: "#F87171" }}>━</span> Kijun{" "}
-							<span style={{ color: "#60A5FA" }}>━</span> Span A{" "}
-							<span style={{ color: "rgba(34,197,94,0.6)" }}>━</span> Span B{" "}
-							<span style={{ color: "rgba(239,68,68,0.6)" }}>━</span> Chikou{" "}
-							<span style={{ color: "rgba(168,85,247,0.6)" }}>┄</span>
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">SYS 04</span>
+							<span>MasterOHLCV Price Feed</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">SUPERSMOOTHER FILTERED CLOUD</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
@@ -813,23 +751,13 @@ export const IchimokuTerminal: React.FC = () => {
 					className={`chart-subplot ${heights.imo === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							Ichimoku Stationary Bounded tanh Oscillator [-1.00 → +1.00] · Bull
-							+0.50 / Bear -0.50
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">EHLERS IIR</span>
+							<span>Denoised Cloud Oscillator</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">BOUNDED TANH [-1.00, +1.00]</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
@@ -850,25 +778,13 @@ export const IchimokuTerminal: React.FC = () => {
 					className={`chart-subplot ${heights.scomp === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							S-Components · S_TK <span style={{ color: "#22D3EE" }}>━</span>{" "}
-							S_Cloud <span style={{ color: "#F59E0B" }}>━</span> S_Future{" "}
-							<span style={{ color: "#A78BFA" }}>━</span> S_Chikou{" "}
-							<span style={{ color: "#22C55E" }}>━</span>
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">VECTORS</span>
+							<span>Lagging & Leading Momentum Vectors</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">ZERO-LAG IIR</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>
@@ -890,39 +806,42 @@ export const IchimokuTerminal: React.FC = () => {
 			</div>
 
 			{/* Interactive Breakdown Table */}
-			<div className="glass-card" style={{ padding: "12px" }}>
+			<div className="glass-card" style={{ padding: "14px" }}>
 				<div
+					className="card-header-bar"
 					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "8px",
-						marginBottom: "16px",
+						margin: "-14px -14px 14px -14px",
+						width: "calc(100% + 28px)",
+						borderRadius: "4px 4px 0 0",
 					}}
 				>
-					<Layers size={18} style={{ color: "var(--accent)" }} />
-					<span style={{ fontWeight: 600, fontSize: "15px" }}>
-						SuperSmoother Component Telemetry & Transformation Matrix
-					</span>
+					<div className="card-header-left">
+						<span className="card-header-tag">SUPERSMOOTHER MATRIX</span>
+						<h3 className="card-header-title">SuperSmoother Component Telemetry</h3>
+					</div>
+					<div className="card-header-right">
+						<span className="card-header-meta">ZERO-LAG FILTERING</span>
+					</div>
 				</div>
 
 				{isMobile ? (
 					/* Mobile: Compact Two-Line List */
 					<div className="mobile-metric-list">
 						{displayComponents.map((ind) => (
-							<div key={ind.name} className="mobile-metric-row">
+							<div key={ind.name} className="mobile-metric-row hover-physics-card">
 								<div className="mobile-metric-row-top">
 									<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
 										{ind.name}
 									</span>
-									<span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 700, flexShrink: 0, color: ind.score > 0.15 ? "var(--signal-bull)" : ind.score < -0.15 ? "var(--signal-bear)" : "var(--text-main)" }}>
+									<span style={{ fontFamily: "Geist Mono, monospace", fontSize: "13px", fontWeight: 700, flexShrink: 0, color: ind.score > 0.15 ? "var(--signal-bull)" : ind.score < -0.15 ? "var(--signal-bear)" : "var(--text-main)" }}>
 										{ind.score > 0 ? `+${ind.score.toFixed(3)}` : ind.score.toFixed(3)}
 									</span>
 								</div>
 								<div className="mobile-metric-row-bottom">
-									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "JetBrains Mono", flexShrink: 0, backgroundColor: "rgba(245,158,11,0.1)", color: "var(--accent)" }}>
+									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "Geist Mono, monospace", flexShrink: 0, backgroundColor: "rgba(0, 240, 255, 0.1)", color: "var(--accent)" }}>
 										{ind.category}
 									</span>
-									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
+									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, fontFamily: "Geist Mono, monospace", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
 										{ind.direction === 1 ? "BULL" : ind.direction === -1 ? "BEAR" : "NEUTRAL"}
 									</span>
 								</div>
@@ -945,7 +864,7 @@ export const IchimokuTerminal: React.FC = () => {
 										color: "var(--text-dim)",
 										fontSize: "11px",
 										textTransform: "uppercase",
-										fontFamily: "JetBrains Mono",
+										fontFamily: "Geist Mono, monospace",
 									}}
 								>
 									<th style={{ padding: "8px 6px" }}>Component Name</th>
@@ -964,6 +883,7 @@ export const IchimokuTerminal: React.FC = () => {
 								{displayComponents.map((ind) => (
 									<tr
 										key={ind.name}
+										className="hover:bg-slate-800/30 hover-physics-card transition-all"
 										style={{
 											borderBottom: "1px solid rgba(255,255,255,0.03)",
 											fontSize: "13px",
@@ -984,7 +904,7 @@ export const IchimokuTerminal: React.FC = () => {
 													fontSize: "11px",
 													padding: "2px 8px",
 													borderRadius: "4px",
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													backgroundColor: "rgba(245,158,11,0.1)",
 													color: "var(--accent)",
 												}}
@@ -998,7 +918,7 @@ export const IchimokuTerminal: React.FC = () => {
 										<td
 											style={{
 												padding: "10px 6px",
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												fontSize: "11px",
 												color: "var(--signal-quant)",
 											}}
@@ -1009,7 +929,7 @@ export const IchimokuTerminal: React.FC = () => {
 											style={{
 												padding: "10px 6px",
 												textAlign: "right",
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												fontWeight: 700,
 												color:
 													ind.score > 0.15
@@ -1030,7 +950,7 @@ export const IchimokuTerminal: React.FC = () => {
 													padding: "2px 8px",
 													borderRadius: "4px",
 													fontSize: "11px",
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													backgroundColor:
 														ind.direction === 1
 															? "rgba(34,197,94,0.15)"

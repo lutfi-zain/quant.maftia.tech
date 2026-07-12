@@ -26,6 +26,8 @@ import {
 	Maximize2,
 	Minimize2,
 } from "lucide-react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 type MaximizedPanel = null | "btc" | "hmm" | "vol";
 
@@ -46,7 +48,7 @@ function makeCommonOptions(yAxisWidth: number) {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
 			textColor: TEXT_COLOR,
-			fontFamily: "JetBrains Mono",
+			fontFamily: "Geist Mono, monospace",
 			fontSize: 11,
 		},
 		grid: {
@@ -68,22 +70,26 @@ function makeCommonOptions(yAxisWidth: number) {
 	};
 }
 
+// Matches CSS: @media (max-width: 768px) { .chart-panel.fullscreen { bottom: 56px; height: calc(100dvh - 56px); } }
+const MOBILE_BOTTOM_TAB_HEIGHT = 56;
+
 function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
+	const available = isMobile ? full - MOBILE_BOTTOM_TAB_HEIGHT : full;
 	switch (maximized) {
 		case "btc":
-			return { btc: full, hmm: 0, vol: 0 };
+			return { btc: available, hmm: 0, vol: 0 };
 		case "hmm":
 			return {
-				btc: Math.floor(full * 0.65),
-				hmm: Math.floor(full * 0.35),
+				btc: Math.floor(available * 0.65),
+				hmm: Math.floor(available * 0.35),
 				vol: 0,
 			};
 		case "vol":
 			return {
-				btc: Math.floor(full * 0.65),
+				btc: Math.floor(available * 0.65),
 				hmm: 0,
-				vol: Math.floor(full * 0.35),
+				vol: Math.floor(available * 0.35),
 			};
 		default:
 			return isMobile
@@ -135,6 +141,7 @@ export const LttdLab: React.FC = () => {
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
+	const studioContainerRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const hmmContainerRef = useRef<HTMLDivElement>(null);
 	const volContainerRef = useRef<HTMLDivElement>(null);
@@ -145,6 +152,16 @@ export const LttdLab: React.FC = () => {
 	}>({ btc: null, hmm: null, vol: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+
+	useGSAP(() => {
+		if (studioContainerRef.current) {
+			gsap.fromTo(
+				studioContainerRef.current.children,
+				{ y: 18, opacity: 0 },
+				{ y: 0, opacity: 1, duration: 0.55, stagger: 0.08, ease: "power3.out" }
+			);
+		}
+	}, { scope: studioContainerRef });
 
 	useEffect(() => {
 		quantClient
@@ -447,128 +464,64 @@ export const LttdLab: React.FC = () => {
 
 	return (
 		<div
+			ref={studioContainerRef}
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
 			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
-			{/* Pillar Header Info Bar */}
-			<div
-				className="glass-card"
-				style={{
-					padding: "12px 16px",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
-							marginBottom: "4px",
-						}}
-					>
-						<span
-							style={{
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "var(--accent)",
-								textTransform: "uppercase",
-							}}
-						>
-							PILLAR 2 TELEMETRY
-						</span>
-						<span
-							style={{
-								fontSize: "12px",
-								color: "var(--text-dim)",
-								fontFamily: "JetBrains Mono",
-							}}
-						>
-							hmm.GaussianHMM(n_components=3)
-						</span>
+			{/* Institutional Cockpit Studio Banner */}
+			<div className="studio-telemetry-banner">
+				<div className="studio-banner-left">
+					<div className="studio-banner-tags">
+						<span className="studio-tag-layer">LAYER 02 · REGIME CLASSIFICATION</span>
+						<span className="studio-tag-fn">hmm.GaussianHMM(n_components=3)</span>
 					</div>
-					<h2 style={{ fontSize: "20px", fontWeight: 700 }}>
+					<h2 className="studio-banner-title">
 						LTTD 3-State Gaussian HMM Macro Trend Engine
 					</h2>
 				</div>
-				<div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-					<div style={{ textAlign: "right", fontFamily: "JetBrains Mono" }}>
-						<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-							ACTIVE REGIME
-						</div>
-						<div
-							style={{
-								fontSize: "24px",
-								fontWeight: 700,
-								color:
-									currentRegime === "BULL"
-										? "var(--signal-bull)"
-										: currentRegime === "BEAR"
-											? "var(--signal-bear)"
-											: "var(--accent)",
-							}}
-						>
-							{currentRegime}
-						</div>
-					</div>
-					<div
-						className="glass-card"
+
+				<div className="studio-banner-metric">
+					<span className="studio-metric-label">ACTIVE REGIME</span>
+					<span
+						className="studio-metric-value"
 						style={{
-							padding: "8px 12px",
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
+							color:
+								currentRegime === "BULL"
+									? "var(--signal-bull)"
+									: currentRegime === "BEAR"
+										? "var(--signal-bear)"
+										: "var(--accent)",
 						}}
 					>
-						{isSidewaysOverride ? (
-							<>
-								<ShieldAlert size={18} style={{ color: "var(--accent)" }} />{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--accent)",
-									}}
-								>
-									SIDEWAYS OVERRIDE: 0.0% EXPOSURE
-								</span>
-							</>
-						) : currentRegime === "BULL" ? (
-							<>
-								<CheckCircle2
-									size={18}
-									style={{ color: "var(--signal-bull)" }}
-								/>{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--signal-bull)",
-									}}
-								>
-									BULL REGIME (Exposure 1.0x)
-								</span>
-							</>
-						) : (
-							<>
-								<AlertTriangle
-									size={18}
-									style={{ color: "var(--signal-bear)" }}
-								/>{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--signal-bear)",
-									}}
-								>
-									BEAR REGIME (Capital Protection)
-								</span>
-							</>
-						)}
-					</div>
+						{currentRegime}
+					</span>
+				</div>
+
+				<div
+					className={`studio-banner-status ${
+						isSidewaysOverride
+							? "status-warn"
+							: currentRegime === "BULL"
+								? "status-fair"
+								: "status-bubble"
+					}`}
+				>
+					{isSidewaysOverride ? (
+						<>
+							<ShieldAlert size={18} style={{ flexShrink: 0 }} />
+							<span>SIDEWAYS OVERRIDE: 0.0% EXPOSURE</span>
+						</>
+					) : currentRegime === "BULL" ? (
+						<>
+							<CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+							<span>BULL REGIME (Exposure 1.0x)</span>
+						</>
+					) : (
+						<>
+							<AlertTriangle size={18} style={{ flexShrink: 0 }} />
+							<span>BEAR REGIME (Capital Protection)</span>
+						</>
+					)}
 				</div>
 			</div>
 
@@ -586,7 +539,7 @@ export const LttdLab: React.FC = () => {
 						style={{
 							fontSize: "11px",
 							color: "var(--text-dim)",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						PCA FACTOR RETENTION
@@ -597,7 +550,7 @@ export const LttdLab: React.FC = () => {
 							fontWeight: 700,
 							color: "var(--signal-quant)",
 							marginTop: "6px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						PC1 + PC2 (94.2% Var)
@@ -617,7 +570,7 @@ export const LttdLab: React.FC = () => {
 						style={{
 							fontSize: "11px",
 							color: "var(--text-dim)",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						VIF PRUNING THRESHOLD
@@ -628,7 +581,7 @@ export const LttdLab: React.FC = () => {
 							fontWeight: 700,
 							color: "var(--signal-bull)",
 							marginTop: "6px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						Max VIF = 4.82 ≤ 10.0
@@ -648,7 +601,7 @@ export const LttdLab: React.FC = () => {
 						style={{
 							fontSize: "11px",
 							color: "var(--text-dim)",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						P(SIDEWAYS) THRESHOLD
@@ -661,7 +614,7 @@ export const LttdLab: React.FC = () => {
 								? "var(--accent)"
 								: "var(--text-primary)",
 							marginTop: "6px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						{(
@@ -685,20 +638,13 @@ export const LttdLab: React.FC = () => {
 			</div>
 
 			{/* LOG/LIN + Maximize controls */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "10px",
-					justifyContent: "flex-end",
-				}}
-			>
+			<div className="studio-top-toolbar">
 				{maximized !== null && (
 					<button
 						className="icon-btn"
 						onClick={() => setMaximized(null)}
 						title="Restore all panels"
-						style={{ fontSize: "15px", width: "auto", padding: "0 8px" }}
+						style={{ fontSize: "13px", width: "auto", padding: "0 10px" }}
 					>
 						✕ Restore
 					</button>
@@ -729,22 +675,13 @@ export const LttdLab: React.FC = () => {
 					className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							MasterOHLCV Price · BTC/USD Candlestick · Regime-Colored Wicks
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">SYS 02</span>
+							<span>MasterOHLCV Price Feed</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">REGIME-COLORED CANDLES</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>
@@ -769,22 +706,13 @@ export const LttdLab: React.FC = () => {
 					className={`chart-subplot ${heights.hmm === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							Gaussian HMM State Probabilities · P(Bull) / P(Bear) / P(Sideways)
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">GAUSSIAN HMM</span>
+							<span>State Probability Distribution</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">P(BULL) / P(BEAR) / P(SIDEWAYS)</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>
@@ -809,22 +737,13 @@ export const LttdLab: React.FC = () => {
 					className={`chart-subplot ${heights.vol === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							20-Day Annualized Realized Volatility (Feature Input)
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">FEATURE VECTOR</span>
+							<span>20-Day Realized Volatility</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">LOG RETURN BASIS</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>
@@ -865,7 +784,7 @@ export const LttdLab: React.FC = () => {
 						/* Mobile: Compact Two-Line List */
 						<div className="mobile-metric-list">
 							{displayComponents.map((ind) => (
-								<div key={ind.name} className="mobile-metric-row">
+								<div key={ind.name} className="mobile-metric-row hover-physics-card">
 									<div className="mobile-metric-row-top">
 										<span
 											style={{
@@ -882,7 +801,7 @@ export const LttdLab: React.FC = () => {
 										</span>
 										<span
 											style={{
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												fontSize: "13px",
 												fontWeight: 700,
 												flexShrink: 0,
@@ -903,7 +822,7 @@ export const LttdLab: React.FC = () => {
 												fontSize: "10px",
 												padding: "2px 6px",
 												borderRadius: "4px",
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												flexShrink: 0,
 												backgroundColor: "rgba(245,158,11,0.1)",
 												color: "var(--accent)",
@@ -918,7 +837,7 @@ export const LttdLab: React.FC = () => {
 												borderRadius: "4px",
 												fontSize: "10px",
 												fontWeight: 700,
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												marginLeft: "auto",
 												flexShrink: 0,
 												backgroundColor:
@@ -957,7 +876,7 @@ export const LttdLab: React.FC = () => {
 											color: "var(--text-dim)",
 											fontSize: "11px",
 											textTransform: "uppercase",
-											fontFamily: "JetBrains Mono",
+											fontFamily: "Geist Mono, monospace",
 										}}
 									>
 										<th style={{ padding: "8px 6px" }}>Feature / Component</th>
@@ -975,6 +894,7 @@ export const LttdLab: React.FC = () => {
 									{displayComponents.map((ind) => (
 										<tr
 											key={ind.name}
+											className="hover:bg-slate-800/30 hover-physics-card transition-all"
 											style={{
 												borderBottom: "1px solid rgba(255,255,255,0.03)",
 												fontSize: "13px",
@@ -995,7 +915,7 @@ export const LttdLab: React.FC = () => {
 														fontSize: "11px",
 														padding: "2px 8px",
 														borderRadius: "4px",
-														fontFamily: "JetBrains Mono",
+														fontFamily: "Geist Mono, monospace",
 														backgroundColor: "rgba(245,158,11,0.1)",
 														color: "var(--accent)",
 													}}
@@ -1010,7 +930,7 @@ export const LttdLab: React.FC = () => {
 												style={{
 													padding: "10px 6px",
 													textAlign: "right",
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													fontWeight: 700,
 													color:
 														ind.score >= 0.3
@@ -1031,7 +951,7 @@ export const LttdLab: React.FC = () => {
 														padding: "2px 8px",
 														borderRadius: "4px",
 														fontSize: "11px",
-														fontFamily: "JetBrains Mono",
+														fontFamily: "Geist Mono, monospace",
 														backgroundColor:
 															ind.direction === 1
 																? "rgba(34,197,94,0.15)"

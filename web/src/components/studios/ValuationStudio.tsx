@@ -71,15 +71,19 @@ function makeCommonOptions(yAxisWidth: number) {
 	};
 }
 
+// Matches CSS: @media (max-width: 768px) { .chart-panel.fullscreen { bottom: 56px; height: calc(100dvh - 56px); } }
+const MOBILE_BOTTOM_TAB_HEIGHT = 56;
+
 function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const full = window.visualViewport?.height || window.innerHeight;
+	const available = isMobile ? full - MOBILE_BOTTOM_TAB_HEIGHT : full;
 	switch (maximized) {
 		case "btc":
-			return { btc: full, val: 0 };
+			return { btc: available, val: 0 };
 		case "val":
 			return {
-				btc: Math.floor(full * 0.65),
-				val: Math.floor(full * 0.35),
+				btc: Math.floor(available * 0.65),
+				val: Math.floor(available * 0.35),
 			};
 		default:
 			return isMobile ? { btc: 160, val: 120 } : { btc: 300, val: 240 };
