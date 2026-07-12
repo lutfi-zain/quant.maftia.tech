@@ -67,7 +67,7 @@ function makeCommonOptions(yAxisWidth: number) {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
-		handleScroll: { vertTouchDrag: false },
+		handleScroll: { vertTouchDrag: true },
 	};
 }
 
@@ -230,28 +230,57 @@ export const MttdConsole: React.FC = () => {
 			if (containerH && containerH > 0) {
 				const total = heights.btc + heights.imo + heights.gates;
 				if (total > 0) {
+					const yWidth = getChartYAxisWidth();
 					btc.resize(w, Math.round(containerH * (heights.btc / total)));
-					if (imo) imo.resize(w, Math.round(containerH * (heights.imo / total)));
-					if (gates) gates.resize(w, Math.round(containerH * (heights.gates / total)));
-					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+					btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					if (imo) {
+						imo.resize(w, Math.round(containerH * (heights.imo / total)));
+						imo.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
+					if (gates) {
+						gates.resize(w, Math.round(containerH * (heights.gates / total)));
+						gates.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
+					const panels: Array<{
+						chart: IChartApi | null;
+						h: number;
+						id: string;
+					}> = [
 						{ chart: imo, h: heights.imo, id: "imo" },
 						{ chart: gates, h: heights.gates, id: "gates" },
 					];
 					const visiblePanels = panels.filter((p) => p.h > 0);
-					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
-					btc.timeScale().applyOptions({ visible: heights.imo === 0 && heights.gates === 0 });
+					const bottomId =
+						visiblePanels.length > 0
+							? visiblePanels[visiblePanels.length - 1].id
+							: null;
+					btc
+						.timeScale()
+						.applyOptions({
+							visible: heights.imo === 0 && heights.gates === 0,
+						});
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
-						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+						chart
+							.timeScale()
+							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
 					return;
 				}
 			}
 		}
 
+		const yWidth = getChartYAxisWidth();
 		btc.resize(w, heights.btc);
-		if (imo) imo.resize(w, heights.imo);
-		if (gates) gates.resize(w, heights.gates);
+		btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		if (imo) {
+			imo.resize(w, heights.imo);
+			imo.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
+		if (gates) {
+			gates.resize(w, heights.gates);
+			gates.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
 
 		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
 			{ chart: imo, h: heights.imo, id: "imo" },

@@ -66,7 +66,7 @@ function makeCommonOptions(yAxisWidth: number) {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
-		handleScroll: { vertTouchDrag: false },
+		handleScroll: { vertTouchDrag: true },
 	};
 }
 
@@ -205,29 +205,56 @@ export const LttdLab: React.FC = () => {
 			if (containerH && containerH > 0) {
 				const total = heights.btc + heights.hmm + heights.vol;
 				if (total > 0) {
+					const yWidth = getChartYAxisWidth();
 					btc.resize(w, Math.round(containerH * (heights.btc / total)));
-					if (hmm) hmm.resize(w, Math.round(containerH * (heights.hmm / total)));
-					if (vol) vol.resize(w, Math.round(containerH * (heights.vol / total)));
+					btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					if (hmm) {
+						hmm.resize(w, Math.round(containerH * (heights.hmm / total)));
+						hmm.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
+					if (vol) {
+						vol.resize(w, Math.round(containerH * (heights.vol / total)));
+						vol.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
 					// Determine which pane is bottom-most visible
-					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+					const panels: Array<{
+						chart: IChartApi | null;
+						h: number;
+						id: string;
+					}> = [
 						{ chart: hmm, h: heights.hmm, id: "hmm" },
 						{ chart: vol, h: heights.vol, id: "vol" },
 					];
 					const visiblePanels = panels.filter((p) => p.h > 0);
-					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
-					btc.timeScale().applyOptions({ visible: heights.hmm === 0 && heights.vol === 0 });
+					const bottomId =
+						visiblePanels.length > 0
+							? visiblePanels[visiblePanels.length - 1].id
+							: null;
+					btc
+						.timeScale()
+						.applyOptions({ visible: heights.hmm === 0 && heights.vol === 0 });
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
-						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+						chart
+							.timeScale()
+							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
 					return;
 				}
 			}
 		}
 
+		const yWidth = getChartYAxisWidth();
 		btc.resize(w, heights.btc);
-		if (hmm) hmm.resize(w, heights.hmm);
-		if (vol) vol.resize(w, heights.vol);
+		btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		if (hmm) {
+			hmm.resize(w, heights.hmm);
+			hmm.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
+		if (vol) {
+			vol.resize(w, heights.vol);
+			vol.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
 
 		// Determine which pane is bottom-most visible
 		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [

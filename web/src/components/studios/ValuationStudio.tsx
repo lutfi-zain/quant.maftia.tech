@@ -67,7 +67,7 @@ function makeCommonOptions(yAxisWidth: number) {
 			secondsVisible: false,
 		},
 		crosshair: { mode: CrosshairMode.Normal },
-		handleScroll: { vertTouchDrag: false },
+		handleScroll: { vertTouchDrag: true },
 	};
 }
 
@@ -284,8 +284,13 @@ export const ValuationStudio: React.FC = () => {
 			}
 		}
 
+		const yWidth = getChartYAxisWidth();
 		btc.resize(w, heights.btc);
-		if (val) val.resize(w, heights.val);
+		btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		if (val) {
+			val.resize(w, heights.val);
+			val.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
 
 		// BTC time axis visible only when it's the only visible pane
 		btc.timeScale().applyOptions({ visible: heights.val === 0 });
