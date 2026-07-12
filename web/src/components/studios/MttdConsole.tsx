@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 
 type MaximizedPanel = null | "btc" | "imo" | "gates";
 
@@ -263,6 +264,9 @@ export const MttdConsole: React.FC = () => {
 							.timeScale()
 							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
+					requestAnimationFrame(() => {
+						syncYAxisWidth(btcContainerRef.current, [btc, imo, gates].filter(Boolean), getChartYAxisWidth());
+					});
 					return;
 				}
 			}
@@ -296,6 +300,9 @@ export const MttdConsole: React.FC = () => {
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+		});
+		requestAnimationFrame(() => {
+			syncYAxisWidth(btcContainerRef.current, [btc, imo, gates].filter(Boolean), yWidth);
 		});
 	}, [maximized, isMobile]);
 
@@ -481,6 +488,17 @@ export const MttdConsole: React.FC = () => {
 
 		btcChart.timeScale().fitContent();
 
+		// Sync Y-axis widths after initial render
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btcChart, imoChart, gatesChart],
+					getChartYAxisWidth(),
+				);
+			});
+		});
+
 		// Resize observer
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
@@ -493,6 +511,7 @@ export const MttdConsole: React.FC = () => {
 			imoChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			gatesChart.applyOptions({ width: nw });
 			gatesChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(btcContainerRef.current, [btcChart, imoChart, gatesChart], yWidth);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 

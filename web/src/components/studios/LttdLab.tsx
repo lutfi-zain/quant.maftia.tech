@@ -4,6 +4,7 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
 import { useTerminal } from "../../context/TerminalContext";
+import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import {
 	createChart,
 	type IChartApi,
@@ -239,6 +240,9 @@ export const LttdLab: React.FC = () => {
 							.timeScale()
 							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
+					requestAnimationFrame(() => {
+						syncYAxisWidth(btcContainerRef.current, [btc, hmm, vol].filter(Boolean), getChartYAxisWidth());
+					});
 					return;
 				}
 			}
@@ -273,6 +277,9 @@ export const LttdLab: React.FC = () => {
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+		});
+		requestAnimationFrame(() => {
+			syncYAxisWidth(btcContainerRef.current, [btc, hmm, vol].filter(Boolean), yWidth);
 		});
 	}, [maximized, isMobile]);
 
@@ -463,6 +470,17 @@ export const LttdLab: React.FC = () => {
 
 		btcChart.timeScale().fitContent();
 
+		// Sync Y-axis widths after initial render
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btcChart, hmmChart, volChart],
+					getChartYAxisWidth(),
+				);
+			});
+		});
+
 		// Resize observer
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
@@ -475,6 +493,7 @@ export const LttdLab: React.FC = () => {
 			hmmChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			volChart.applyOptions({ width: nw });
 			volChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(btcContainerRef.current, [btcChart, hmmChart, volChart], yWidth);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 

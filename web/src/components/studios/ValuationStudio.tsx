@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Sparkline } from "../Sparkline";
 import { MetricDetailChart } from "./MetricDetailChart";
+import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import { exportChartsToPng } from "../../lib/exportPng";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -279,6 +280,9 @@ export const ValuationStudio: React.FC = () => {
 					if (val) val.resize(w, Math.round(containerH * (1 - ratioBtc)));
 					btc.timeScale().applyOptions({ visible: heights.val === 0 });
 					if (val) val.timeScale().applyOptions({ visible: heights.val > 0 });
+					requestAnimationFrame(() => {
+						syncYAxisWidth(btcContainerRef.current, [btc, val!].filter(Boolean), getChartYAxisWidth());
+					});
 					return;
 				}
 			}
@@ -295,6 +299,9 @@ export const ValuationStudio: React.FC = () => {
 		// BTC time axis visible only when it's the only visible pane
 		btc.timeScale().applyOptions({ visible: heights.val === 0 });
 		if (val) val.timeScale().applyOptions({ visible: heights.val > 0 });
+		requestAnimationFrame(() => {
+			syncYAxisWidth(btcContainerRef.current, [btc, val].filter(Boolean), yWidth);
+		});
 	}, [maximized, isMobile]);
 
 	// Initialize 2-pane charts
@@ -459,6 +466,17 @@ export const ValuationStudio: React.FC = () => {
 		btcChart.timeScale().fitContent();
 
 		// Resize observer
+		// Sync Y-axis widths after initial render
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					syncYAxisWidth(
+						btcContainerRef.current,
+						[btcChart, valChart],
+						getChartYAxisWidth(),
+					);
+				});
+			});
+
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
 			const nw = wrapperRef.current.clientWidth;
@@ -468,6 +486,7 @@ export const ValuationStudio: React.FC = () => {
 			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			valChart.applyOptions({ width: nw });
 			valChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(btcContainerRef.current, [btcChart, valChart], yWidth);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 

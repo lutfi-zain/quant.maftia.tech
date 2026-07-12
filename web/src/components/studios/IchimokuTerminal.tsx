@@ -4,6 +4,7 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal, DailyAnalyticsPoint } from "../../api/types";
 import { useTerminal } from "../../context/TerminalContext";
+import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import {
 	createChart,
 	type IChartApi,
@@ -303,6 +304,9 @@ export const IchimokuTerminal: React.FC = () => {
 							.timeScale()
 							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
+					requestAnimationFrame(() => {
+						syncYAxisWidth(btcContainerRef.current, [btc, imo, scomp].filter(Boolean), getChartYAxisWidth());
+					});
 					return;
 				}
 			}
@@ -336,6 +340,9 @@ export const IchimokuTerminal: React.FC = () => {
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+		});
+		requestAnimationFrame(() => {
+			syncYAxisWidth(btcContainerRef.current, [btc, imo, scomp].filter(Boolean), yWidth);
 		});
 	}, [maximized, isMobile]);
 
@@ -633,6 +640,17 @@ export const IchimokuTerminal: React.FC = () => {
 
 		btcChart.timeScale().fitContent();
 
+		// Sync Y-axis widths after initial render
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btcChart, imoChart, scompChart],
+					getChartYAxisWidth(),
+				);
+			});
+		});
+
 		// ── Resize Observer ──
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
@@ -645,6 +663,7 @@ export const IchimokuTerminal: React.FC = () => {
 			imoChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			scompChart.applyOptions({ width: nw });
 			scompChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(btcContainerRef.current, [btcChart, imoChart, scompChart], yWidth);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 
