@@ -911,16 +911,15 @@ pre,
 	}
 
 	/* ─── Institutional Mobile Subplot Header & Button Revamp (Anti-Slop Cockpit) ─── */
-	/* 1. Subplot Header Adaptivity: 2-row touch cockpit strip prevents horizontal text stacking (numpuk2) */
+	/* Clean 1-row layout: title left, controls right */
 	.chart-subplot-header {
-		height: auto !important;
-		min-height: 48px !important;
-		padding: 7px 8px !important;
+		height: 30px !important;
+		min-height: unset !important;
+		padding: 0 8px !important;
 		display: flex !important;
-		flex-direction: column !important;
-		align-items: stretch !important;
+		flex-direction: row !important;
+		align-items: center !important;
 		justify-content: space-between !important;
-		gap: 5px !important;
 		position: relative !important;
 		background: rgba(13, 18, 28, 0.85) !important;
 	}
@@ -950,15 +949,11 @@ pre,
 		letter-spacing: 0.5px !important;
 	}
 
-	/* Row 2: Metadata + Controls separated cleanly */
+	/* Controls inline with title (no separator needed) */
 	.chart-subplot-header .subplot-controls {
-		width: 100% !important;
 		display: flex !important;
 		align-items: center !important;
-		justify-content: space-between !important;
 		gap: 6px !important;
-		padding-top: 5px !important;
-		border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
 	}
 
 	.chart-subplot-header .subplot-meta {

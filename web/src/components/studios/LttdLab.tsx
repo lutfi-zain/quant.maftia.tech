@@ -746,8 +746,6 @@ export const LttdLab: React.FC = () => {
 							<span>MasterOHLCV Price Feed</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">REGIME-COLORED CANDLES</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
@@ -777,10 +775,6 @@ export const LttdLab: React.FC = () => {
 							<span>State Probability Distribution</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">
-								P(BULL) / P(BEAR) / P(SIDEWAYS)
-							</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "hmm" ? null : "hmm")}
@@ -810,8 +804,6 @@ export const LttdLab: React.FC = () => {
 							<span>20-Day Realized Volatility</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">LOG RETURN BASIS</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "vol" ? null : "vol")}

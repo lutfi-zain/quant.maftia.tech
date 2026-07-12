@@ -294,11 +294,9 @@ export const IchimokuTerminal: React.FC = () => {
 						visiblePanels.length > 0
 							? visiblePanels[visiblePanels.length - 1].id
 							: null;
-					btc
-						.timeScale()
-						.applyOptions({
-							visible: heights.imo === 0 && heights.scomp === 0,
-						});
+					btc.timeScale().applyOptions({
+						visible: heights.imo === 0 && heights.scomp === 0,
+					});
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
 						chart
@@ -801,8 +799,6 @@ export const IchimokuTerminal: React.FC = () => {
 							<span>MasterOHLCV Price Feed</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">SUPERSMOOTHER FILTERED CLOUD</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
@@ -832,8 +828,6 @@ export const IchimokuTerminal: React.FC = () => {
 							<span>Denoised Cloud Oscillator</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">BOUNDED TANH [-1.00, +1.00]</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
@@ -863,8 +857,6 @@ export const IchimokuTerminal: React.FC = () => {
 							<span>Lagging & Leading Momentum Vectors</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">ZERO-LAG IIR</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>

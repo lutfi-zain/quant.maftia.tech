@@ -777,8 +777,6 @@ export const ValuationStudio: React.FC = () => {
 									<span>MasterOHLCV Price Feed</span>
 								</div>
 								<div className="subplot-controls">
-									<span className="subplot-meta">BTC / USD · DAILY</span>
-									<span className="subplot-axis-lock">85px</span>
 									<button
 										className="icon-btn"
 										onClick={() =>
@@ -812,8 +810,6 @@ export const ValuationStudio: React.FC = () => {
 									<span>Valuation Composite Score</span>
 								</div>
 								<div className="subplot-controls">
-									<span className="subplot-meta">RANGE [-2.00, +2.00]</span>
-									<span className="subplot-axis-lock">85px</span>
 									<button
 										className="icon-btn"
 										onClick={() =>

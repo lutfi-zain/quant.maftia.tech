@@ -254,11 +254,9 @@ export const MttdConsole: React.FC = () => {
 						visiblePanels.length > 0
 							? visiblePanels[visiblePanels.length - 1].id
 							: null;
-					btc
-						.timeScale()
-						.applyOptions({
-							visible: heights.imo === 0 && heights.gates === 0,
-						});
+					btc.timeScale().applyOptions({
+						visible: heights.imo === 0 && heights.gates === 0,
+					});
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
 						chart
@@ -840,8 +838,6 @@ export const MttdConsole: React.FC = () => {
 							<span>MasterOHLCV Price Feed</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">MULTI-PRINCIPLE TRACKING</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
@@ -871,8 +867,6 @@ export const MttdConsole: React.FC = () => {
 							<span>Consensus Momentum Index</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">RANGE [-1.00, +1.00]</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
@@ -902,8 +896,6 @@ export const MttdConsole: React.FC = () => {
 							<span>Efficiency Ratio & Shannon Entropy</span>
 						</div>
 						<div className="subplot-controls">
-							<span className="subplot-meta">ER ≥ 0.20 · H ≤ 2.30</span>
-							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>
