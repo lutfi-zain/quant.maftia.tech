@@ -15,10 +15,20 @@ import {
 	AreaSeries,
 	PriceScaleMode,
 } from "lightweight-charts";
-import { AlertTriangle, CheckCircle2, Layers, Download, Maximize2, Minimize2 } from "lucide-react";
+import {
+	AlertTriangle,
+	CheckCircle2,
+	Layers,
+	Download,
+	Maximize2,
+	Minimize2,
+	ChevronDown,
+} from "lucide-react";
 import { Sparkline } from "../Sparkline";
 import { MetricDetailChart } from "./MetricDetailChart";
 import { exportChartsToPng } from "../../lib/exportPng";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 type MaximizedPanel = null | "btc" | "val";
 
@@ -39,7 +49,7 @@ function makeCommonOptions(yAxisWidth: number) {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
 			textColor: TEXT_COLOR,
-			fontFamily: "JetBrains Mono",
+			fontFamily: "Geist Mono, monospace",
 			fontSize: 11,
 		},
 		grid: {
@@ -170,7 +180,12 @@ const INDICATOR_METADATA: Record<
 };
 
 export const ValuationStudio: React.FC = () => {
-	const { dailyData, isLoading: terminalLoading, error: terminalError, refreshData } = useTerminal();
+	const {
+		dailyData,
+		isLoading: terminalLoading,
+		error: terminalError,
+		refreshData,
+	} = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
 	const [localLoading, setLocalLoading] = useState(true);
 	const [localError, setLocalError] = useState<string | null>(null);
@@ -184,9 +199,11 @@ export const ValuationStudio: React.FC = () => {
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
+	const [dropdownOpenValuation, setDropdownOpenValuation] = useState(false);
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
+	const studioContainerRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const valContainerRef = useRef<HTMLDivElement>(null);
 	const chartsRef = useRef<{ btc: IChartApi | null; val: IChartApi | null }>({
@@ -195,6 +212,25 @@ export const ValuationStudio: React.FC = () => {
 	});
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+
+	useGSAP(
+		() => {
+			if (studioContainerRef.current) {
+				gsap.fromTo(
+					studioContainerRef.current.children,
+					{ y: 18, opacity: 0 },
+					{
+						y: 0,
+						opacity: 1,
+						duration: 0.55,
+						stagger: 0.08,
+						ease: "power3.out",
+					},
+				);
+			}
+		},
+		{ scope: studioContainerRef },
+	);
 
 	useEffect(() => {
 		setLocalLoading(true);
@@ -366,9 +402,10 @@ export const ValuationStudio: React.FC = () => {
 					setHoveredPoint(hovered || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
 						if (i === idx) return;
-						const val = i === 0
-							? (btcDataMap.get(timeStr) ?? 0)
-							: (valDataMap.get(timeStr) ?? 0);
+						const val =
+							i === 0
+								? (btcDataMap.get(timeStr) ?? 0)
+								: (valDataMap.get(timeStr) ?? 0);
 						c.setCrosshairPosition(val, param.time as Time, s);
 					});
 				} else {
@@ -478,6 +515,7 @@ export const ValuationStudio: React.FC = () => {
 
 	return (
 		<div
+			ref={studioContainerRef}
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
 			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
@@ -491,147 +529,76 @@ export const ValuationStudio: React.FC = () => {
 				/>
 			) : (
 				<>
-					{/* Pillar Header Info Bar */}
-					<div
-						className="glass-card"
-						style={{
-							padding: "12px 16px",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
-						}}
-					>
-						<div>
-							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: "8px",
-									marginBottom: "4px",
-								}}
-							>
-								<span
-									style={{
-										fontSize: "12px",
-										fontWeight: 600,
-										color: "var(--signal-quant)",
-										textTransform: "uppercase",
-									}}
-								>
-									PILLAR 1 TELEMETRY
+					{/* Institutional Cockpit Studio Banner */}
+					<div className="studio-telemetry-banner">
+						<div className="studio-banner-left">
+							<div className="studio-banner-tags">
+								<span className="studio-tag-layer">
+									LAYER 01 · PILLAR TELEMETRY
 								</span>
-								<span
-									style={{
-										fontSize: "12px",
-										color: "var(--text-dim)",
-										fontFamily: "JetBrains Mono",
-									}}
-								>
+								<span className="studio-tag-fn">
 									piecewise_linear_interpolate()
 								</span>
 							</div>
-							<h2 style={{ fontSize: "20px", fontWeight: 700 }}>
+							<h2 className="studio-banner-title">
 								17-Indicator Piecewise Linear Valuation Model
 							</h2>
 						</div>
-						<div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-							<div style={{ textAlign: "right", fontFamily: "JetBrains Mono" }}>
-								<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-									COMPOSITE SCORE
-								</div>
-								<div
-									style={{
-										fontSize: "24px",
-										fontWeight: 700,
-										color: isBubble
-											? "var(--signal-bear)"
-											: isDiscount
-												? "var(--signal-quant)"
-												: "var(--text-primary)",
-									}}
-								>
-									{latestValScore > 0
-										? `+${latestValScore.toFixed(4)}`
-										: latestValScore.toFixed(4)}
-								</div>
-							</div>
-							<div
-								className="glass-card"
+
+						<div className="studio-banner-metric">
+							<span className="studio-metric-label">COMPOSITE SCORE</span>
+							<span
+								className="studio-metric-value"
 								style={{
-									padding: "8px 12px",
-									display: "flex",
-									alignItems: "center",
-									gap: "8px",
+									color: isBubble
+										? "var(--signal-bear)"
+										: isDiscount
+											? "var(--accent)"
+											: "var(--signal-bull)",
 								}}
 							>
-								{isBubble ? (
-									<>
-										<AlertTriangle
-											size={18}
-											style={{ color: "var(--signal-bear)" }}
-										/>{" "}
-										<span
-											style={{
-												fontSize: "13px",
-												fontWeight: 700,
-												color: "var(--signal-bear)",
-											}}
-										>
-											BUBBLE FILTER ACTIVE
-										</span>
-									</>
-								) : isDiscount ? (
-									<>
-										<CheckCircle2
-											size={18}
-											style={{ color: "var(--signal-quant)" }}
-										/>{" "}
-										<span
-											style={{
-												fontSize: "13px",
-												fontWeight: 700,
-												color: "var(--signal-quant)",
-											}}
-										>
-											ACCUMULATION ZONE (Discount ≤ -1.00)
-										</span>
-									</>
-								) : (
-									<>
-										<CheckCircle2
-											size={18}
-											style={{ color: "var(--signal-bull)" }}
-										/>{" "}
-										<span
-											style={{
-												fontSize: "13px",
-												fontWeight: 600,
-												color: "var(--signal-bull)",
-											}}
-										>
-											FAIR MARKET CYCLE ZONE
-										</span>
-									</>
-								)}
-							</div>
+								{latestValScore > 0
+									? `+${latestValScore.toFixed(4)}`
+									: latestValScore.toFixed(4)}
+							</span>
+						</div>
+
+						<div
+							className={`studio-banner-status ${
+								isBubble
+									? "status-bubble"
+									: isDiscount
+										? "status-discount"
+										: "status-fair"
+							}`}
+						>
+							{isBubble ? (
+								<>
+									<AlertTriangle size={18} style={{ flexShrink: 0 }} />
+									<span>BUBBLE FILTER ACTIVE</span>
+								</>
+							) : isDiscount ? (
+								<>
+									<CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+									<span>ACCUMULATION ZONE (Discount ≤ -1.00)</span>
+								</>
+							) : (
+								<>
+									<CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+									<span>FAIR MARKET CYCLE ZONE</span>
+								</>
+							)}
 						</div>
 					</div>
 
 					{/* LOG/LIN + Maximize controls */}
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "10px",
-							justifyContent: "flex-end",
-						}}
-					>
+					<div className="studio-top-toolbar">
 						{maximized !== null && (
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(null)}
 								title="Restore all panels"
-								style={{ fontSize: "15px", width: "auto", padding: "0 8px" }}
+								style={{ fontSize: "13px", width: "auto", padding: "0 10px" }}
 							>
 								✕ Restore
 							</button>
@@ -645,11 +612,9 @@ export const ValuationStudio: React.FC = () => {
 								gap: "6px",
 								backgroundColor: "rgba(30, 41, 59, 0.5)",
 								border: "1px solid var(--border-panel)",
-								padding: "6px 12px",
-								borderRadius: "4px",
 								cursor: "pointer",
 								color: "var(--text-primary)",
-								fontSize: "12px",
+								fontSize: "11px",
 								fontWeight: 600,
 							}}
 						>
@@ -675,27 +640,53 @@ export const ValuationStudio: React.FC = () => {
 					<div
 						className={`chart-panel ${maximized !== null ? "fullscreen" : ""}`}
 						ref={wrapperRef}
-						style={{ position: "relative", pointerEvents: isLoading ? "none" : "auto" }}
+						style={{
+							position: "relative",
+							pointerEvents: isLoading ? "none" : "auto",
+						}}
 					>
 						{/* Loading overlay */}
 						{isLoading && (
-							<div style={{
-								position: "absolute",
-								top: 0,
-								left: 0,
-								right: 0,
-								bottom: 0,
-								backgroundColor: "rgba(11, 18, 32, 0.8)",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								zIndex: 10,
-								pointerEvents: "all"
-							}}>
+							<div
+								style={{
+									position: "absolute",
+									top: 0,
+									left: 0,
+									right: 0,
+									bottom: 0,
+									backgroundColor: "rgba(11, 18, 32, 0.8)",
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									zIndex: 10,
+									pointerEvents: "all",
+								}}
+							>
 								<div className="text-slate-400 font-mono text-sm animate-pulse flex items-center gap-2">
-									<svg className="animate-spin" style={{ width: "18px", height: "18px", color: "var(--signal-quant)" }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-										<circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-										<path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									<svg
+										className="animate-spin"
+										style={{
+											width: "18px",
+											height: "18px",
+											color: "var(--signal-quant)",
+										}}
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+									>
+										<circle
+											style={{ opacity: 0.25 }}
+											cx="12"
+											cy="12"
+											r="10"
+											stroke="currentColor"
+											strokeWidth="4"
+										></circle>
+										<path
+											style={{ opacity: 0.75 }}
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+										></path>
 									</svg>
 									LOADING VALUATION TELEMETRY...
 								</div>
@@ -704,29 +695,37 @@ export const ValuationStudio: React.FC = () => {
 
 						{/* Error overlay */}
 						{currentError && (
-							<div style={{
-								position: "absolute",
-								top: 0,
-								left: 0,
-								right: 0,
-								bottom: 0,
-								backgroundColor: "rgba(11, 18, 32, 0.95)",
-								display: "flex",
-								flexDirection: "column",
-								alignItems: "center",
-								justifyContent: "center",
-								zIndex: 11,
-								gap: "16px",
-								padding: "20px",
-								pointerEvents: "all"
-							}}>
-								<div style={{ color: "#FFAAAA", fontSize: "14px", fontFamily: "JetBrains Mono" }}>
+							<div
+								style={{
+									position: "absolute",
+									top: 0,
+									left: 0,
+									right: 0,
+									bottom: 0,
+									backgroundColor: "rgba(11, 18, 32, 0.95)",
+									display: "flex",
+									flexDirection: "column",
+									alignItems: "center",
+									justifyContent: "center",
+									zIndex: 11,
+									gap: "16px",
+									padding: "20px",
+									pointerEvents: "all",
+								}}
+							>
+								<div
+									style={{
+										color: "#FFAAAA",
+										fontSize: "14px",
+										fontFamily: "Geist Mono, monospace",
+									}}
+								>
 									ERROR: {currentError}
 								</div>
 								<button
 									onClick={() => {
 										refreshData();
-										setRetryTrigger(prev => prev + 1);
+										setRetryTrigger((prev) => prev + 1);
 									}}
 									style={{
 										padding: "8px 16px",
@@ -735,7 +734,7 @@ export const ValuationStudio: React.FC = () => {
 										border: "none",
 										borderRadius: "4px",
 										fontWeight: 600,
-										cursor: "pointer"
+										cursor: "pointer",
 									}}
 								>
 									RETRY CONNECTION
@@ -748,22 +747,13 @@ export const ValuationStudio: React.FC = () => {
 							className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
 						>
 							<div className="chart-subplot-header">
-								<span
-									className="subplot-title"
-									style={{ color: "var(--text-dim)" }}
-								>
-									MasterOHLCV Price · BTC/USD Candlestick
-								</span>
+								<div className="subplot-title">
+									<span className="subplot-badge">SYS 01</span>
+									<span>MasterOHLCV Price Feed</span>
+								</div>
 								<div className="subplot-controls">
-									<span
-										style={{
-											fontFamily: "JetBrains Mono",
-											fontSize: "10px",
-											color: "rgba(255,255,255,0.2)",
-										}}
-									>
-										85px
-									</span>
+									<span className="subplot-meta">BTC / USD · DAILY</span>
+									<span className="subplot-axis-lock">85px</span>
 									<button
 										className="icon-btn"
 										onClick={() =>
@@ -773,7 +763,11 @@ export const ValuationStudio: React.FC = () => {
 											maximized === "btc" ? "Restore" : "Maximize BTC pane"
 										}
 									>
-										{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+										{maximized === "btc" ? (
+											<Minimize2 size={14} />
+										) : (
+											<Maximize2 size={14} />
+										)}
 									</button>
 								</div>
 							</div>
@@ -788,23 +782,13 @@ export const ValuationStudio: React.FC = () => {
 							className={`chart-subplot ${heights.val === 0 ? "chart-subplot-hidden" : ""}`}
 						>
 							<div className="chart-subplot-header">
-								<span
-									className="subplot-title"
-									style={{ color: "var(--text-dim)" }}
-								>
-									Valuation Composite [-2.00 → +2.00] · Bubble +1.50 / Discount
-									-1.00
-								</span>
+								<div className="subplot-title">
+									<span className="subplot-badge">PIECEWISE</span>
+									<span>Valuation Composite Score</span>
+								</div>
 								<div className="subplot-controls">
-									<span
-										style={{
-											fontFamily: "JetBrains Mono",
-											fontSize: "10px",
-											color: "rgba(255,255,255,0.2)",
-										}}
-									>
-										85px
-									</span>
+									<span className="subplot-meta">RANGE [-2.00, +2.00]</span>
+									<span className="subplot-axis-lock">85px</span>
 									<button
 										className="icon-btn"
 										onClick={() =>
@@ -816,7 +800,11 @@ export const ValuationStudio: React.FC = () => {
 												: "Maximize Valuation pane"
 										}
 									>
-										{maximized === "val" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+										{maximized === "val" ? (
+											<Minimize2 size={14} />
+										) : (
+											<Maximize2 size={14} />
+										)}
 									</button>
 								</div>
 							</div>
@@ -828,46 +816,134 @@ export const ValuationStudio: React.FC = () => {
 					</div>
 
 					{/* Interactive Breakdown Table */}
-					<div className="glass-card" style={{ padding: "12px" }}>
+					<div className="glass-card" style={{ padding: "14px" }}>
 						<div
+							className="card-header-bar"
 							style={{
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "space-between",
-								marginBottom: "12px",
+								margin: "-14px -14px 14px -14px",
+								width: "calc(100% + 28px)",
+								borderRadius: "4px 4px 0 0",
 							}}
 						>
-							<div
-								style={{ display: "flex", alignItems: "center", gap: "8px" }}
-							>
-								<Layers size={18} style={{ color: "var(--signal-quant)" }} />
-								<span style={{ fontWeight: 600, fontSize: "15px" }}>
-									Piecewise Linear Component Matrix
-								</span>
+							<div className="card-header-left">
+								<span className="card-header-tag">COMPONENT BREAKDOWN</span>
+								<h3 className="card-header-title">
+									17-Indicator Quantitative Matrix
+								</h3>
 							</div>
-							<div style={{ display: "flex", gap: "6px" }}>
-								{["All", "Fundamental", "Technical", "Sentiment"].map((cat) => (
-									<button
-										key={cat}
-										onClick={() => setSelectedCategory(cat)}
-										style={{
-											padding: "6px 14px",
-											borderRadius: "4px",
-											border: "1px solid var(--border-panel)",
-											backgroundColor:
-												selectedCategory === cat
-													? "var(--accent)"
-													: "transparent",
-											color:
-												selectedCategory === cat ? "#000" : "var(--text-dim)",
-											fontWeight: selectedCategory === cat ? 600 : 400,
-											fontSize: "12px",
-											cursor: "pointer",
-										}}
-									>
-										{cat}
-									</button>
-								))}
+							<div className="card-header-right">
+								{isMobile ? (
+									<div style={{ position: "relative" }}>
+										<button
+											onClick={() =>
+												setDropdownOpenValuation(!dropdownOpenValuation)
+											}
+											style={{
+												padding: "6px 14px",
+												borderRadius: "4px",
+												border: "1px solid var(--border-panel)",
+												backgroundColor: "var(--bg-surface)",
+												color: "var(--text-main)",
+												fontSize: "12px",
+												fontWeight: 500,
+												cursor: "pointer",
+												display: "flex",
+												alignItems: "center",
+												gap: "6px",
+												whiteSpace: "nowrap",
+											}}
+										>
+											{selectedCategory}
+											<ChevronDown
+												size={14}
+												style={{
+													transition: "transform 0.2s",
+													transform: dropdownOpenValuation
+														? "rotate(180deg)"
+														: "rotate(0deg)",
+												}}
+											/>
+										</button>
+										{dropdownOpenValuation && (
+											<div
+												style={{
+													position: "absolute",
+													top: "100%",
+													right: 0,
+													marginTop: "4px",
+													minWidth: "160px",
+													backgroundColor: "var(--bg-surface)",
+													border: "1px solid var(--border-panel)",
+													borderRadius: "4px",
+													padding: "4px 0",
+													zIndex: 100,
+													boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+												}}
+											>
+												{["All", "Fundamental", "Technical", "Sentiment"].map(
+													(cat) => (
+														<button
+															key={cat}
+															onClick={() => {
+																setSelectedCategory(cat);
+																setDropdownOpenValuation(false);
+															}}
+															style={{
+																padding: "8px 14px",
+																width: "100%",
+																textAlign: "left",
+																border: "none",
+																backgroundColor:
+																	selectedCategory === cat
+																		? "var(--accent)"
+																		: "transparent",
+																color:
+																	selectedCategory === cat
+																		? "#000"
+																		: "var(--text-dim)",
+																fontSize: "12px",
+																fontWeight:
+																	selectedCategory === cat ? 600 : 400,
+																cursor: "pointer",
+															}}
+														>
+															{cat}
+														</button>
+													),
+												)}
+											</div>
+										)}
+									</div>
+								) : (
+									<>
+										{["All", "Fundamental", "Technical", "Sentiment"].map(
+											(cat) => (
+												<button
+													key={cat}
+													onClick={() => setSelectedCategory(cat)}
+													style={{
+														padding: "6px 14px",
+														borderRadius: "4px",
+														border: "1px solid var(--border-panel)",
+														backgroundColor:
+															selectedCategory === cat
+																? "var(--accent)"
+																: "transparent",
+														color:
+															selectedCategory === cat
+																? "#000"
+																: "var(--text-dim)",
+														fontWeight: selectedCategory === cat ? 600 : 400,
+														fontSize: "12px",
+														cursor: "pointer",
+													}}
+												>
+													{cat}
+												</button>
+											),
+										)}
+									</>
+								)}
 							</div>
 						</div>
 
@@ -877,7 +953,7 @@ export const ValuationStudio: React.FC = () => {
 								{displayIndicators.map((ind) => (
 									<div
 										key={ind.key}
-										className="mobile-metric-row"
+										className="mobile-metric-row hover-physics-card"
 										onClick={() => setSelectedMetric(ind.key)}
 										role="button"
 										tabIndex={0}
@@ -901,7 +977,7 @@ export const ValuationStudio: React.FC = () => {
 											</span>
 											<span
 												style={{
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													fontSize: "13px",
 													fontWeight: 700,
 													flexShrink: 0,
@@ -924,7 +1000,7 @@ export const ValuationStudio: React.FC = () => {
 													fontSize: "10px",
 													padding: "2px 6px",
 													borderRadius: "4px",
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													flexShrink: 0,
 													backgroundColor:
 														ind.category === "Fundamental"
@@ -958,7 +1034,7 @@ export const ValuationStudio: React.FC = () => {
 													fontWeight: 700,
 													padding: "2px 8px",
 													borderRadius: "4px",
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													marginLeft: "auto",
 													flexShrink: 0,
 													backgroundColor:
@@ -1002,7 +1078,7 @@ export const ValuationStudio: React.FC = () => {
 												color: "var(--text-dim)",
 												fontSize: "11px",
 												textTransform: "uppercase",
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 											}}
 										>
 											<th style={{ padding: "8px 6px" }}>Indicator Name</th>
@@ -1029,7 +1105,7 @@ export const ValuationStudio: React.FC = () => {
 													fontSize: "13px",
 													cursor: "pointer",
 												}}
-												className="hover:bg-slate-800/30 transition-colors"
+												className="hover:bg-slate-800/30 hover-physics-card transition-all"
 											>
 												<td
 													style={{
@@ -1046,7 +1122,7 @@ export const ValuationStudio: React.FC = () => {
 															fontSize: "11px",
 															padding: "2px 8px",
 															borderRadius: "4px",
-															fontFamily: "JetBrains Mono",
+															fontFamily: "Geist Mono, monospace",
 															backgroundColor:
 																ind.category === "Fundamental"
 																	? "rgba(96,165,250,0.1)"
@@ -1090,7 +1166,7 @@ export const ValuationStudio: React.FC = () => {
 													style={{
 														padding: "10px 6px",
 														textAlign: "right",
-														fontFamily: "JetBrains Mono",
+														fontFamily: "Geist Mono, monospace",
 														fontWeight: 700,
 														color:
 															ind.score >= 1.0
@@ -1113,7 +1189,7 @@ export const ValuationStudio: React.FC = () => {
 															fontWeight: 700,
 															padding: "4px 10px",
 															borderRadius: "4px",
-															fontFamily: "JetBrains Mono",
+															fontFamily: "Geist Mono, monospace",
 															backgroundColor:
 																ind.direction === 1
 																	? "rgba(239,68,68,0.15)"
@@ -1125,7 +1201,7 @@ export const ValuationStudio: React.FC = () => {
 																	? "var(--signal-bear)"
 																	: ind.direction === -1
 																		? "var(--signal-quant)"
-																	: "var(--text-dim)",
+																		: "var(--text-dim)",
 														}}
 													>
 														{ind.direction === 1

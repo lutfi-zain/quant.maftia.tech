@@ -17,7 +17,18 @@ import {
 	AreaSeries,
 	PriceScaleMode,
 } from "lightweight-charts";
-import { Activity, ShieldCheck, ShieldAlert, Layers, Lock, Maximize2, Minimize2 } from "lucide-react";
+import {
+	Activity,
+	ShieldCheck,
+	ShieldAlert,
+	Layers,
+	Lock,
+	Maximize2,
+	Minimize2,
+	ChevronDown,
+} from "lucide-react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 type MaximizedPanel = null | "btc" | "imo" | "gates";
 
@@ -28,7 +39,7 @@ const GRID_COLOR = "rgba(255,255,255,0.03)";
 
 function getChartYAxisWidth(): number {
 	const raw = getComputedStyle(document.documentElement)
-		.getPropertyValue('--chart-yaxis-width')
+		.getPropertyValue("--chart-yaxis-width")
 		.trim();
 	return Number(raw) || 85;
 }
@@ -38,7 +49,7 @@ function makeCommonOptions(yAxisWidth: number) {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
 			textColor: TEXT_COLOR,
-			fontFamily: "JetBrains Mono",
+			fontFamily: "Geist Mono, monospace",
 			fontSize: 11,
 		},
 		grid: {
@@ -144,12 +155,14 @@ export const MttdConsole: React.FC = () => {
 	const { dailyData, circuitBreakers } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
 	const [selectedFamily, setSelectedFamily] = useState<string>("All");
+	const [dropdownOpenFamily, setDropdownOpenFamily] = useState(false);
 	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
+	const studioContainerRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const imoContainerRef = useRef<HTMLDivElement>(null);
 	const gatesContainerRef = useRef<HTMLDivElement>(null);
@@ -160,6 +173,25 @@ export const MttdConsole: React.FC = () => {
 	}>({ btc: null, imo: null, gates: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+
+	useGSAP(
+		() => {
+			if (studioContainerRef.current) {
+				gsap.fromTo(
+					studioContainerRef.current.children,
+					{ y: 18, opacity: 0 },
+					{
+						y: 0,
+						opacity: 1,
+						duration: 0.55,
+						stagger: 0.08,
+						ease: "power3.out",
+					},
+				);
+			}
+		},
+		{ scope: studioContainerRef },
+	);
 
 	useEffect(() => {
 		quantClient
@@ -466,117 +498,59 @@ export const MttdConsole: React.FC = () => {
 
 	return (
 		<div
+			ref={studioContainerRef}
 			className={maximized !== null ? "chart-fullscreen-active" : ""}
 			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
 		>
-			{/* Pillar Header Info Bar */}
-			<div
-				className="glass-card"
-				style={{
-					padding: "12px 16px",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
-							marginBottom: "4px",
-						}}
-					>
-						<span
-							style={{
-								fontSize: "12px",
-								fontWeight: 600,
-								color: "var(--signal-pca)",
-								textTransform: "uppercase",
-							}}
-						>
-							PILLAR 3 TELEMETRY
+			{/* Institutional Cockpit Studio Banner */}
+			<div className="studio-telemetry-banner">
+				<div className="studio-banner-left">
+					<div className="studio-banner-tags">
+						<span className="studio-tag-layer">
+							LAYER 03 · STATISTICAL CONSENSUS
 						</span>
-						<span
-							style={{
-								fontSize: "12px",
-								color: "var(--text-dim)",
-								fontFamily: "JetBrains Mono",
-							}}
-						>
+						<span className="studio-tag-fn">
 							consensus.MultiFamilyOscillator()
 						</span>
 					</div>
-					<h2 style={{ fontSize: "20px", fontWeight: 700 }}>
+					<h2 className="studio-banner-title">
 						MTTD v2 Integrated Oscillator (10 Statistical Families)
 					</h2>
 				</div>
-				<div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-					<div style={{ textAlign: "right", fontFamily: "JetBrains Mono" }}>
-						<div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-							CONSENSUS IMO v2
-						</div>
-						<div
-							style={{
-								fontSize: "24px",
-								fontWeight: 700,
-								color:
-									latestImo > 0.2
-										? "var(--signal-bull)"
-										: latestImo < -0.2
-											? "var(--signal-bear)"
-											: "var(--text-primary)",
-							}}
-						>
-							{latestImo > 0
-								? `+${latestImo.toFixed(4)}`
-								: latestImo.toFixed(4)}
-						</div>
-					</div>
-					<div
-						className="glass-card"
+
+				<div className="studio-banner-metric">
+					<span className="studio-metric-label">CONSENSUS IMO v2</span>
+					<span
+						className="studio-metric-value"
 						style={{
-							padding: "8px 12px",
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
+							color:
+								latestImo > 0.2
+									? "var(--signal-bull)"
+									: latestImo < -0.2
+										? "var(--signal-bear)"
+										: "var(--text-primary)",
 						}}
 					>
-						{allGatesPassed ? (
-							<>
-								<ShieldCheck
-									size={18}
-									style={{ color: "var(--signal-bull)" }}
-								/>{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--signal-bull)",
-									}}
-								>
-									ALL GATES PASSED (Signal Active)
-								</span>
-							</>
-						) : (
-							<>
-								<ShieldAlert
-									size={18}
-									style={{ color: "var(--signal-bear)" }}
-								/>{" "}
-								<span
-									style={{
-										fontSize: "13px",
-										fontWeight: 700,
-										color: "var(--signal-bear)",
-									}}
-								>
-									GATES LOCKED (Signal Suppressed)
-								</span>
-							</>
-						)}
-					</div>
+						{latestImo > 0 ? `+${latestImo.toFixed(4)}` : latestImo.toFixed(4)}
+					</span>
+				</div>
+
+				<div
+					className={`studio-banner-status ${
+						allGatesPassed ? "status-fair" : "status-bubble"
+					}`}
+				>
+					{allGatesPassed ? (
+						<>
+							<ShieldCheck size={18} style={{ flexShrink: 0 }} />
+							<span>ALL GATES PASSED (Signal Active)</span>
+						</>
+					) : (
+						<>
+							<ShieldAlert size={18} style={{ flexShrink: 0 }} />
+							<span>GATES LOCKED (Signal Suppressed)</span>
+						</>
+					)}
 				</div>
 			</div>
 
@@ -607,7 +581,7 @@ export const MttdConsole: React.FC = () => {
 							style={{
 								fontSize: "11px",
 								color: "var(--text-dim)",
-								fontFamily: "JetBrains Mono",
+								fontFamily: "Geist Mono, monospace",
 							}}
 						>
 							GATE 1: EFFICIENCY RATIO
@@ -623,7 +597,7 @@ export const MttdConsole: React.FC = () => {
 							marginTop: "8px",
 							padding: "6px 12px",
 							borderRadius: "4px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "14px",
 							fontWeight: 700,
 							backgroundColor: gates.er_gate_open
@@ -639,7 +613,7 @@ export const MttdConsole: React.FC = () => {
 							fontSize: "12px",
 							color: "var(--text-dim)",
 							marginTop: "4px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						ER = {gates.efficiency_ratio.toFixed(3)}
@@ -664,7 +638,7 @@ export const MttdConsole: React.FC = () => {
 							style={{
 								fontSize: "11px",
 								color: "var(--text-dim)",
-								fontFamily: "JetBrains Mono",
+								fontFamily: "Geist Mono, monospace",
 							}}
 						>
 							GATE 2: SHANNON ENTROPY
@@ -682,7 +656,7 @@ export const MttdConsole: React.FC = () => {
 							marginTop: "8px",
 							padding: "6px 12px",
 							borderRadius: "4px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "14px",
 							fontWeight: 700,
 							backgroundColor: gates.shannon_entropy_gate_open
@@ -698,7 +672,7 @@ export const MttdConsole: React.FC = () => {
 							fontSize: "12px",
 							color: "var(--text-dim)",
 							marginTop: "4px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						H = {gates.shannon_entropy.toFixed(3)}
@@ -723,7 +697,7 @@ export const MttdConsole: React.FC = () => {
 							style={{
 								fontSize: "11px",
 								color: "var(--text-dim)",
-								fontFamily: "JetBrains Mono",
+								fontFamily: "Geist Mono, monospace",
 							}}
 						>
 							GATE 3: CHIKOU MOMENTUM EXIT
@@ -741,7 +715,7 @@ export const MttdConsole: React.FC = () => {
 							marginTop: "8px",
 							padding: "6px 12px",
 							borderRadius: "4px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "14px",
 							fontWeight: 700,
 							backgroundColor: !gates.chikou_momentum_exit
@@ -757,7 +731,7 @@ export const MttdConsole: React.FC = () => {
 							fontSize: "12px",
 							color: "var(--text-dim)",
 							marginTop: "4px",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 						}}
 					>
 						IMO = {latestImo.toFixed(3)}
@@ -766,20 +740,13 @@ export const MttdConsole: React.FC = () => {
 			</div>
 
 			{/* LOG/LIN + Maximize controls */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "10px",
-					justifyContent: "flex-end",
-				}}
-			>
+			<div className="studio-top-toolbar">
 				{maximized !== null && (
 					<button
 						className="icon-btn"
 						onClick={() => setMaximized(null)}
 						title="Restore all panels"
-						style={{ fontSize: "15px", width: "auto", padding: "0 8px" }}
+						style={{ fontSize: "13px", width: "auto", padding: "0 10px" }}
 					>
 						✕ Restore
 					</button>
@@ -810,28 +777,23 @@ export const MttdConsole: React.FC = () => {
 					className={`chart-subplot ${heights.btc === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							MasterOHLCV Price · BTC/USD Candlestick
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">SYS 03</span>
+							<span>MasterOHLCV Price Feed</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">MULTI-PRINCIPLE TRACKING</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "btc" ? null : "btc")}
 								title={maximized === "btc" ? "Restore" : "Maximize BTC pane"}
 							>
-								{maximized === "btc" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "btc" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -846,28 +808,23 @@ export const MttdConsole: React.FC = () => {
 					className={`chart-subplot ${heights.imo === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							MTTD v2 Integrated Consensus Oscillator [-1.00 → +1.00]
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">IMO v2</span>
+							<span>Consensus Momentum Index</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">RANGE [-1.00, +1.00]</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() => setMaximized(maximized === "imo" ? null : "imo")}
 								title={maximized === "imo" ? "Restore" : "Maximize IMO pane"}
 							>
-								{maximized === "imo" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "imo" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -882,22 +839,13 @@ export const MttdConsole: React.FC = () => {
 					className={`chart-subplot ${heights.gates === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
-						<span
-							className="subplot-title"
-							style={{ color: "var(--text-dim)" }}
-						>
-							Kaufman ER (Cyan ≥0.20) & Shannon Entropy (Amber ≤2.30)
-						</span>
+						<div className="subplot-title">
+							<span className="subplot-badge">LOGIC GATES</span>
+							<span>Efficiency Ratio & Shannon Entropy</span>
+						</div>
 						<div className="subplot-controls">
-							<span
-								style={{
-									fontFamily: "JetBrains Mono",
-									fontSize: "10px",
-									color: "rgba(255,255,255,0.2)",
-								}}
-							>
-								85px
-							</span>
+							<span className="subplot-meta">ER ≥ 0.20 · H ≤ 2.30</span>
+							<span className="subplot-axis-lock">85px</span>
 							<button
 								className="icon-btn"
 								onClick={() =>
@@ -907,7 +855,11 @@ export const MttdConsole: React.FC = () => {
 									maximized === "gates" ? "Restore" : "Maximize Gates pane"
 								}
 							>
-								{maximized === "gates" ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+								{maximized === "gates" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
 							</button>
 						</div>
 					</div>
@@ -934,40 +886,141 @@ export const MttdConsole: React.FC = () => {
 							10 Statistical Families Consensus Matrix
 						</span>
 					</div>
-					<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-						{[
-							"All",
-							"Smoothing",
-							"Filtering",
-							"Regression",
-							"Spectral",
-							"Fractal",
-							"GARCH",
-							"Entropy",
-							"Chaos",
-							"Bayesian",
-							"ML-Hybrid",
-						].map((cat) => (
-							<button
-								key={cat}
-								onClick={() => setSelectedFamily(cat)}
-								style={{
-									padding: "4px 10px",
-									borderRadius: "4px",
-									border: "1px solid var(--border-panel)",
-									backgroundColor:
-										selectedFamily === cat
-											? "var(--signal-pca)"
-											: "transparent",
-									color: selectedFamily === cat ? "#fff" : "var(--text-dim)",
-									fontWeight: selectedFamily === cat ? 600 : 400,
-									fontSize: "11px",
-									cursor: "pointer",
-								}}
-							>
-								{cat}
-							</button>
-						))}
+					<div
+						style={{
+							display: "flex",
+							gap: "6px",
+							flexWrap: "wrap",
+							alignItems: "center",
+						}}
+					>
+						{isMobile ? (
+							<div style={{ position: "relative" }}>
+								<button
+									onClick={() => setDropdownOpenFamily(!dropdownOpenFamily)}
+									style={{
+										padding: "4px 10px",
+										borderRadius: "4px",
+										border: "1px solid var(--border-panel)",
+										backgroundColor: "var(--bg-surface)",
+										color: "var(--text-main)",
+										fontSize: "11px",
+										fontWeight: 500,
+										cursor: "pointer",
+										display: "flex",
+										alignItems: "center",
+										gap: "4px",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{selectedFamily}
+									<ChevronDown
+										size={12}
+										style={{
+											transition: "transform 0.2s",
+											transform: dropdownOpenFamily
+												? "rotate(180deg)"
+												: "rotate(0deg)",
+										}}
+									/>
+								</button>
+								{dropdownOpenFamily && (
+									<div
+										style={{
+											position: "absolute",
+											top: "100%",
+											right: 0,
+											marginTop: "4px",
+											minWidth: "180px",
+											maxHeight: "300px",
+											overflowY: "auto",
+											backgroundColor: "var(--bg-surface)",
+											border: "1px solid var(--border-panel)",
+											borderRadius: "4px",
+											padding: "4px 0",
+											zIndex: 100,
+											boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+										}}
+									>
+										{[
+											"All",
+											"Smoothing",
+											"Filtering",
+											"Regression",
+											"Spectral",
+											"Fractal",
+											"GARCH",
+											"Entropy",
+											"Chaos",
+											"Bayesian",
+											"ML-Hybrid",
+										].map((cat) => (
+											<button
+												key={cat}
+												onClick={() => {
+													setSelectedFamily(cat);
+													setDropdownOpenFamily(false);
+												}}
+												style={{
+													padding: "8px 14px",
+													width: "100%",
+													textAlign: "left",
+													border: "none",
+													backgroundColor:
+														selectedFamily === cat
+															? "var(--signal-pca)"
+															: "transparent",
+													color:
+														selectedFamily === cat ? "#fff" : "var(--text-dim)",
+													fontSize: "11px",
+													fontWeight: selectedFamily === cat ? 600 : 400,
+													cursor: "pointer",
+												}}
+											>
+												{cat}
+											</button>
+										))}
+									</div>
+								)}
+							</div>
+						) : (
+							<>
+								{[
+									"All",
+									"Smoothing",
+									"Filtering",
+									"Regression",
+									"Spectral",
+									"Fractal",
+									"GARCH",
+									"Entropy",
+									"Chaos",
+									"Bayesian",
+									"ML-Hybrid",
+								].map((cat) => (
+									<button
+										key={cat}
+										onClick={() => setSelectedFamily(cat)}
+										style={{
+											padding: "4px 10px",
+											borderRadius: "4px",
+											border: "1px solid var(--border-panel)",
+											backgroundColor:
+												selectedFamily === cat
+													? "var(--signal-pca)"
+													: "transparent",
+											color:
+												selectedFamily === cat ? "#fff" : "var(--text-dim)",
+											fontWeight: selectedFamily === cat ? 600 : 400,
+											fontSize: "11px",
+											cursor: "pointer",
+										}}
+									>
+										{cat}
+									</button>
+								))}
+							</>
+						)}
 					</div>
 				</div>
 
@@ -975,21 +1028,86 @@ export const MttdConsole: React.FC = () => {
 					/* Mobile: Compact Two-Line List */
 					<div className="mobile-metric-list">
 						{displayFamilies.map((ind) => (
-							<div key={ind.name} className="mobile-metric-row">
+							<div
+								key={ind.name}
+								className="mobile-metric-row hover-physics-card"
+							>
 								<div className="mobile-metric-row-top">
-									<span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-main)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+									<span
+										style={{
+											fontSize: "13px",
+											fontWeight: 600,
+											color: "var(--text-main)",
+											flex: 1,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}
+									>
 										{ind.name}
 									</span>
-									<span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", fontWeight: 700, flexShrink: 0, color: ind.score >= 0.2 ? "var(--signal-bull)" : ind.score <= -0.2 ? "var(--signal-bear)" : "var(--text-main)" }}>
-										{ind.score > 0 ? `+${ind.score.toFixed(3)}` : ind.score.toFixed(3)}
+									<span
+										style={{
+											fontFamily: "Geist Mono, monospace",
+											fontSize: "13px",
+											fontWeight: 700,
+											flexShrink: 0,
+											color:
+												ind.score >= 0.2
+													? "var(--signal-bull)"
+													: ind.score <= -0.2
+														? "var(--signal-bear)"
+														: "var(--text-main)",
+										}}
+									>
+										{ind.score > 0
+											? `+${ind.score.toFixed(3)}`
+											: ind.score.toFixed(3)}
 									</span>
 								</div>
 								<div className="mobile-metric-row-bottom">
-									<span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", fontFamily: "JetBrains Mono", flexShrink: 0, backgroundColor: "rgba(168,85,247,0.1)", color: "var(--signal-pca)" }}>
+									<span
+										style={{
+											fontSize: "10px",
+											padding: "2px 6px",
+											borderRadius: "4px",
+											fontFamily: "Geist Mono, monospace",
+											flexShrink: 0,
+											backgroundColor: "rgba(168,85,247,0.1)",
+											color: "var(--signal-pca)",
+										}}
+									>
 										{ind.category}
 									</span>
-									<span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, fontFamily: "JetBrains Mono", marginLeft: "auto", flexShrink: 0, backgroundColor: ind.direction === 1 ? "rgba(34,197,94,0.15)" : ind.direction === -1 ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)", color: ind.direction === 1 ? "var(--signal-bull)" : ind.direction === -1 ? "var(--signal-bear)" : "var(--text-dim)" }}>
-										{ind.direction === 1 ? "+1 (BULL)" : ind.direction === -1 ? "-1 (BEAR)" : "0 (NEUT)"}
+									<span
+										style={{
+											display: "inline-block",
+											padding: "2px 8px",
+											borderRadius: "4px",
+											fontSize: "10px",
+											fontWeight: 700,
+											fontFamily: "Geist Mono, monospace",
+											marginLeft: "auto",
+											flexShrink: 0,
+											backgroundColor:
+												ind.direction === 1
+													? "rgba(34,197,94,0.15)"
+													: ind.direction === -1
+														? "rgba(239,68,68,0.15)"
+														: "rgba(255,255,255,0.05)",
+											color:
+												ind.direction === 1
+													? "var(--signal-bull)"
+													: ind.direction === -1
+														? "var(--signal-bear)"
+														: "var(--text-dim)",
+										}}
+									>
+										{ind.direction === 1
+											? "+1 (BULL)"
+											: ind.direction === -1
+												? "-1 (BEAR)"
+												: "0 (NEUT)"}
 									</span>
 								</div>
 							</div>
@@ -1011,7 +1129,7 @@ export const MttdConsole: React.FC = () => {
 										color: "var(--text-dim)",
 										fontSize: "11px",
 										textTransform: "uppercase",
-										fontFamily: "JetBrains Mono",
+										fontFamily: "Geist Mono, monospace",
 									}}
 								>
 									<th style={{ padding: "8px 6px" }}>Statistical Family</th>
@@ -1030,6 +1148,7 @@ export const MttdConsole: React.FC = () => {
 								{displayFamilies.map((ind) => (
 									<tr
 										key={ind.name}
+										className="hover:bg-slate-800/30 hover-physics-card transition-all"
 										style={{
 											borderBottom: "1px solid rgba(255,255,255,0.03)",
 											fontSize: "13px",
@@ -1050,7 +1169,7 @@ export const MttdConsole: React.FC = () => {
 													fontSize: "11px",
 													padding: "2px 8px",
 													borderRadius: "4px",
-													fontFamily: "JetBrains Mono",
+													fontFamily: "Geist Mono, monospace",
 													backgroundColor: "rgba(168,85,247,0.1)",
 													color: "var(--signal-pca)",
 												}}
@@ -1058,13 +1177,15 @@ export const MttdConsole: React.FC = () => {
 												{ind.category}
 											</span>
 										</td>
-										<td style={{ padding: "10px 6px", color: "var(--text-dim)" }}>
+										<td
+											style={{ padding: "10px 6px", color: "var(--text-dim)" }}
+										>
 											{ind.description}
 										</td>
 										<td
 											style={{
 												padding: "10px 6px",
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												fontSize: "11px",
 												color:
 													ind.gate === "None"
@@ -1078,7 +1199,7 @@ export const MttdConsole: React.FC = () => {
 											style={{
 												padding: "10px 6px",
 												textAlign: "right",
-												fontFamily: "JetBrains Mono",
+												fontFamily: "Geist Mono, monospace",
 												fontWeight: 700,
 												color:
 													ind.score >= 0.2
