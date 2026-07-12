@@ -21,7 +21,10 @@ import {
 import { TrendingUp, RefreshCcw, Maximize2, Minimize2 } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { useStudioBacktest, type StudioDailyRecord } from "../../lib/studioBacktest";
+import {
+	useStudioBacktest,
+	type StudioDailyRecord,
+} from "../../lib/studioBacktest";
 
 type MaximizedPanel = null | "btc" | "imo" | "scomp" | "eq";
 
@@ -37,7 +40,7 @@ function getChartYAxisWidth(): number {
 	return Number(raw) || 85;
 }
 
-function makeCommonOptions(yAxisWidth: number) {
+function makeCommonOptions(_yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -143,6 +146,7 @@ export const IchimokuTerminal: React.FC = () => {
 	const [startDate, setStartDate] = useState("2020-01-01");
 	const [endDate, setEndDate] = useState("2026-12-31");
 	const [feeBps, setFeeBps] = useState(10);
+	const [showInteractive, setShowInteractive] = useState(false);
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -159,9 +163,17 @@ export const IchimokuTerminal: React.FC = () => {
 	}>({ btc: null, imo: null, scomp: null, eq: null });
 	const seriesRef = useRef<{
 		candle: any;
-		cumStrat: any;
-		cumMarket: any;
-	}>({ candle: null, cumStrat: null, cumMarket: null });
+		refStrat: any;
+		refMarket: any;
+		interactiveStrat: any;
+		interactiveMarket: any;
+	}>({
+		candle: null,
+		refStrat: null,
+		refMarket: null,
+		interactiveStrat: null,
+		interactiveMarket: null,
+	});
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
@@ -179,21 +191,48 @@ export const IchimokuTerminal: React.FC = () => {
 		ichimoku_er: d.ichimoku_er ?? null,
 	}));
 
-	const backtestResult = useStudioBacktest(backtestData, startDate, endDate, feeBps);
+	const backtestResult = useStudioBacktest(
+		backtestData,
+		startDate,
+		endDate,
+		feeBps,
+	);
 
 	useEffect(() => {
-		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
-			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+		if (seriesRef.current.interactiveStrat && backtestResult.cumStrat.length) {
+			seriesRef.current.interactiveStrat.setData(
+				backtestResult.cumStrat as any,
+			);
 		}
-		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
-			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+		if (
+			seriesRef.current.interactiveMarket &&
+			backtestResult.cumMarket.length
+		) {
+			seriesRef.current.interactiveMarket.setData(
+				backtestResult.cumMarket as any,
+			);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
-			createSeriesMarkers(seriesRef.current.candle, backtestResult.markers as any);
+			createSeriesMarkers(
+				seriesRef.current.candle,
+				backtestResult.markers as any,
+			);
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
 	}, [backtestResult]);
+
+	// Toggle interactive overlay visibility
+	useEffect(() => {
+		const { interactiveStrat, interactiveMarket } = seriesRef.current;
+		if (!interactiveStrat || !interactiveMarket) return;
+		if (showInteractive) {
+			// Data already populated by backtestResult effect
+		} else {
+			interactiveStrat.setData([]);
+			interactiveMarket.setData([]);
+		}
+	}, [showInteractive]);
 
 	useGSAP(
 		() => {
@@ -279,7 +318,8 @@ export const IchimokuTerminal: React.FC = () => {
 							? visiblePanels[visiblePanels.length - 1].id
 							: null;
 					btc.timeScale().applyOptions({
-						visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0,
+						visible:
+							heights.imo === 0 && heights.scomp === 0 && heights.eq === 0,
 					});
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
@@ -328,7 +368,9 @@ export const IchimokuTerminal: React.FC = () => {
 
 		btc
 			.timeScale()
-			.applyOptions({ visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0 });
+			.applyOptions({
+				visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0,
+			});
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
@@ -493,7 +535,7 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "S_Chikou",
 		});
 
-		// ── Pane 4: Equity Curve (Cum_Strat vs Cum_Market) ──
+		// ── Pane 4: Equity Curve (Reference from API vs Interactive What-If) ──
 		const eqChart = createChart(eqContainerRef.current, {
 			...common,
 			width: w,
@@ -501,15 +543,38 @@ export const IchimokuTerminal: React.FC = () => {
 			timeScale: { ...common.timeScale, visible: true },
 		});
 
-		const cumStratSeries = eqChart.addSeries(LineSeries, {
+		// Reference curves (API-sourced from prior system's backtest — the truth)
+		const refStratSeries = eqChart.addSeries(LineSeries, {
 			color: "#22C55E",
 			lineWidth: 2,
-			title: "Cum_Strat",
+			title: "Cum_Strat (Reference)",
+			lastValueVisible: true,
+			priceLineVisible: false,
 		});
-		const cumMarketSeries = eqChart.addSeries(LineSeries, {
+		const refMarketSeries = eqChart.addSeries(LineSeries, {
 			color: "#3B82F6",
 			lineWidth: 2,
-			title: "Cum_Market (BTC)",
+			title: "Cum_Market (BTC Reference)",
+			lastValueVisible: true,
+			priceLineVisible: false,
+		});
+
+		// Interactive curves (What-If exploration, hidden by default)
+		const interactiveStratSeries = eqChart.addSeries(LineSeries, {
+			color: "#F59E0B",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			title: "Interactive (What-If)",
+			lastValueVisible: false,
+			priceLineVisible: false,
+		});
+		const interactiveMarketSeries = eqChart.addSeries(LineSeries, {
+			color: "#94A3B8",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dotted,
+			title: "Interactive Market (What-If)",
+			lastValueVisible: false,
+			priceLineVisible: false,
 		});
 
 		// ── Invisible anchor series for crosshair sync (covers ALL dates) ──
@@ -524,8 +589,19 @@ export const IchimokuTerminal: React.FC = () => {
 			dailyData.map((p) => ({ time: p.date as Time, value: 0 })),
 		);
 
-		chartsRef.current = { btc: btcChart, imo: imoChart, scomp: scompChart, eq: eqChart };
-		seriesRef.current = { candle: candleSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
+		chartsRef.current = {
+			btc: btcChart,
+			imo: imoChart,
+			scomp: scompChart,
+			eq: eqChart,
+		};
+		seriesRef.current = {
+			candle: candleSeries,
+			refStrat: refStratSeries,
+			refMarket: refMarketSeries,
+			interactiveStrat: interactiveStratSeries,
+			interactiveMarket: interactiveMarketSeries,
+		};
 
 		// ── Populate BTC + Ichimoku data ──
 		candleSeries.setData(
@@ -590,7 +666,13 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// ── Populate IMO data + Entropy/ER/imo_std ──
 		imoSeries.setData(
-			dailyData.map((p) => ({ time: p.date as Time, value: typeof p.ichimoku_imo === 'number' ? p.ichimoku_imo : (p.ichimoku_imo as any)?.oscillator ?? 0 })),
+			dailyData.map((p) => ({
+				time: p.date as Time,
+				value:
+					typeof p.ichimoku_imo === "number"
+						? p.ichimoku_imo
+						: ((p.ichimoku_imo as any)?.oscillator ?? 0),
+			})),
 		);
 
 		const entropySeries = imoChart.addSeries(LineSeries, {
@@ -645,7 +727,7 @@ export const IchimokuTerminal: React.FC = () => {
 					const val = p.ichimoku_imo_std;
 					return {
 						time: p.date as Time,
-						value: val != null ? 0.40 * val : null,
+						value: val != null ? 0.4 * val : null,
 					};
 				})
 				.filter((d) => d.value != null) as any,
@@ -685,12 +767,30 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// ── Crosshair sync — 4 charts (use syncAnchorSeries for scompChart) ──
+		// ── Populate reference equity from API data ──
+		refStratSeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_cum_strat,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+		refMarketSeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_cum_market,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
+		// ── Crosshair sync — 4 charts (use refStratSeries for eqChart) ──
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
 			{ chart: imoChart, series: imoSeries },
 			{ chart: scompChart, series: syncAnchorSeries },
-			{ chart: eqChart, series: cumStratSeries },
+			{ chart: eqChart, series: refStratSeries },
 		];
 
 		allCharts.forEach(({ chart }, idx) => {
@@ -768,7 +868,13 @@ export const IchimokuTerminal: React.FC = () => {
 			scompChart.remove();
 			eqChart.remove();
 			chartsRef.current = { btc: null, imo: null, scomp: null, eq: null };
-			seriesRef.current = { candle: null, cumStrat: null, cumMarket: null };
+			seriesRef.current = {
+				candle: null,
+				refStrat: null,
+				refMarket: null,
+				interactiveStrat: null,
+				interactiveMarket: null,
+			};
 		};
 	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -902,6 +1008,13 @@ export const IchimokuTerminal: React.FC = () => {
 					>
 						LOG
 					</button>
+					<button
+						className={`toggle-btn ${showInteractive ? "active" : ""}`}
+						onClick={() => setShowInteractive(!showInteractive)}
+						style={{ fontSize: "11px", padding: "4px 8px" }}
+					>
+						{showInteractive ? "Hide" : "Show"} What-If
+					</button>
 				</div>
 			</div>
 
@@ -1032,30 +1145,86 @@ export const IchimokuTerminal: React.FC = () => {
 			</div>
 
 			{/* Interactive Backtest Controls & Metrics Bar */}
-			<div className="glass-card" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
-				<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
-					<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-						<span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.05em" }}>BACKTEST CONFIG</span>
+			<div
+				className="glass-card"
+				style={{
+					padding: "14px",
+					display: "flex",
+					flexDirection: "column",
+					gap: "12px",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: "12px",
+						borderBottom: "1px solid var(--border)",
+						paddingBottom: "12px",
+					}}
+				>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "12px",
+							flexWrap: "wrap",
+						}}
+					>
+						<span
+							style={{
+								fontSize: "12px",
+								fontWeight: 700,
+								color: "var(--text-main)",
+								letterSpacing: "0.05em",
+							}}
+						>
+							BACKTEST CONFIG
+						</span>
 						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Start Date:</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								Start Date:
+							</label>
 							<input
 								type="date"
 								value={startDate}
 								onChange={(e) => setStartDate(e.target.value)}
-								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+								style={{
+									background: "#0B1220",
+									border: "1px solid var(--border)",
+									color: "var(--text-main)",
+									padding: "4px 8px",
+									borderRadius: "4px",
+									fontSize: "11px",
+									fontFamily: "Geist Mono, monospace",
+								}}
 							/>
 						</div>
 						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>End Date:</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								End Date:
+							</label>
 							<input
 								type="date"
 								value={endDate}
 								onChange={(e) => setEndDate(e.target.value)}
-								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+								style={{
+									background: "#0B1220",
+									border: "1px solid var(--border)",
+									color: "var(--text-main)",
+									padding: "4px 8px",
+									borderRadius: "4px",
+									fontSize: "11px",
+									fontFamily: "Geist Mono, monospace",
+								}}
 							/>
 						</div>
 						<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Fee Friction ({feeBps} bps):</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								Fee Friction ({feeBps} bps):
+							</label>
 							<input
 								type="range"
 								min="0"
@@ -1070,7 +1239,11 @@ export const IchimokuTerminal: React.FC = () => {
 					<div style={{ display: "flex", gap: "8px" }}>
 						<button
 							className="toggle-btn"
-							onClick={() => { setStartDate("2020-01-01"); setEndDate("2026-12-31"); setFeeBps(10); }}
+							onClick={() => {
+								setStartDate("2020-01-01");
+								setEndDate("2026-12-31");
+								setFeeBps(10);
+							}}
 							style={{ fontSize: "11px", padding: "4px 8px" }}
 						>
 							Reset Defaults
@@ -1078,43 +1251,209 @@ export const IchimokuTerminal: React.FC = () => {
 					</div>
 				</div>
 
-				<div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)", gap: "10px" }}>
-					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>WIN RATE</div>
-						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.winRate >= 50 ? "var(--signal-bull)" : "var(--text-main)" }}>
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)",
+						gap: "10px",
+					}}
+				>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							WIN RATE
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color:
+									backtestResult.metrics.winRate >= 50
+										? "var(--signal-bull)"
+										: "var(--text-main)",
+							}}
+						>
 							{backtestResult.metrics.winRate.toFixed(1)}%
 						</div>
 					</div>
-					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>PROFIT FACTOR</div>
-						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.profitFactor >= 1.5 ? "var(--signal-bull)" : backtestResult.metrics.profitFactor >= 1.0 ? "var(--text-main)" : "var(--signal-bear)" }}>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							PROFIT FACTOR
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color:
+									backtestResult.metrics.profitFactor >= 1.5
+										? "var(--signal-bull)"
+										: backtestResult.metrics.profitFactor >= 1.0
+											? "var(--text-main)"
+											: "var(--signal-bear)",
+							}}
+						>
 							{backtestResult.metrics.profitFactor.toFixed(2)}
 						</div>
 					</div>
-					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>TOTAL TRADES</div>
-						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--text-main)" }}>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							TOTAL TRADES
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color: "var(--text-main)",
+							}}
+						>
 							{backtestResult.metrics.totalTrades}
 						</div>
 					</div>
-					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>SHARPE RATIO</div>
-						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.sharpeRatio >= 1.0 ? "var(--signal-bull)" : "var(--text-main)" }}>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							SHARPE RATIO
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color:
+									backtestResult.metrics.sharpeRatio >= 1.0
+										? "var(--signal-bull)"
+										: "var(--text-main)",
+							}}
+						>
 							{backtestResult.metrics.sharpeRatio.toFixed(2)}
 						</div>
 					</div>
-					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>MAX DRAWDOWN</div>
-						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--signal-bear)" }}>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							MAX DRAWDOWN
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color: "var(--signal-bear)",
+							}}
+						>
 							-{backtestResult.metrics.maxDrawdown.toFixed(1)}%
 						</div>
 					</div>
-					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>STRATEGY vs BTC HOLD</div>
-						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.totalReturnStrat >= backtestResult.metrics.totalReturnMarket ? "var(--signal-bull)" : "var(--signal-bear)" }}>
-							{backtestResult.metrics.totalReturnStrat >= 0 ? `+${backtestResult.metrics.totalReturnStrat.toFixed(1)}%` : `${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`}
-							<span style={{ fontSize: "11px", fontWeight: 400, color: "var(--text-muted)", marginLeft: "4px" }}>
-								(vs {backtestResult.metrics.totalReturnMarket >= 0 ? `+${backtestResult.metrics.totalReturnMarket.toFixed(1)}%` : `${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`})
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							STRATEGY vs BTC HOLD
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color:
+									backtestResult.metrics.totalReturnStrat >=
+									backtestResult.metrics.totalReturnMarket
+										? "var(--signal-bull)"
+										: "var(--signal-bear)",
+							}}
+						>
+							{backtestResult.metrics.totalReturnStrat >= 0
+								? `+${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`
+								: `${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`}
+							<span
+								style={{
+									fontSize: "11px",
+									fontWeight: 400,
+									color: "var(--text-muted)",
+									marginLeft: "4px",
+								}}
+							>
+								(vs{" "}
+								{backtestResult.metrics.totalReturnMarket >= 0
+									? `+${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`
+									: `${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`}
+								)
 							</span>
 						</div>
 					</div>
@@ -1123,20 +1462,44 @@ export const IchimokuTerminal: React.FC = () => {
 
 			{/* Execution Log Table */}
 			<div className="glass-card" style={{ padding: "14px" }}>
-				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+				<div
+					className="card-header-bar"
+					style={{
+						margin: "-14px -14px 14px -14px",
+						width: "calc(100% + 28px)",
+						borderRadius: "4px 4px 0 0",
+					}}
+				>
 					<div className="card-header-left">
 						<span className="card-header-tag">CAUSAL EXECUTION LOG</span>
-						<h3 className="card-header-title">Completed Trade Attribution Table</h3>
+						<h3 className="card-header-title">
+							Completed Trade Attribution Table
+						</h3>
 					</div>
 					<div className="card-header-right">
-						<span className="card-header-meta">{backtestResult.trades.length} TRADES IN WINDOW</span>
+						<span className="card-header-meta">
+							{backtestResult.trades.length} TRADES IN WINDOW
+						</span>
 					</div>
 				</div>
 
 				<div style={{ overflowX: "auto", maxHeight: "360px" }}>
-					<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+					<table
+						style={{
+							width: "100%",
+							borderCollapse: "collapse",
+							fontSize: "12px",
+							fontFamily: "Geist Mono, monospace",
+						}}
+					>
 						<thead>
-							<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+							<tr
+								style={{
+									borderBottom: "1px solid var(--border)",
+									textAlign: "left",
+									color: "var(--text-muted)",
+								}}
+							>
 								<th style={{ padding: "8px" }}>ID</th>
 								<th style={{ padding: "8px" }}>ENTRY DATE</th>
 								<th style={{ padding: "8px" }}>ENTRY PRICE</th>
@@ -1144,32 +1507,91 @@ export const IchimokuTerminal: React.FC = () => {
 								<th style={{ padding: "8px" }}>EXIT PRICE</th>
 								<th style={{ padding: "8px" }}>HOLD DAYS</th>
 								<th style={{ padding: "8px" }}>EXIT REASON</th>
-								<th style={{ padding: "8px", textAlign: "right" }}>NET RETURN</th>
+								<th style={{ padding: "8px", textAlign: "right" }}>
+									NET RETURN
+								</th>
 							</tr>
 						</thead>
 						<tbody>
 							{backtestResult.trades.length === 0 ? (
 								<tr>
-									<td colSpan={8} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+									<td
+										colSpan={8}
+										style={{
+											padding: "20px",
+											textAlign: "center",
+											color: "var(--text-muted)",
+										}}
+									>
 										No completed trades found in the selected date window.
 									</td>
 								</tr>
 							) : (
 								backtestResult.trades.map((t) => (
-									<tr key={t.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "background 0.15s" }}>
-										<td style={{ padding: "8px", color: "var(--text-muted)" }}>{t.id}</td>
+									<tr
+										key={t.id}
+										style={{
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+											transition: "background 0.15s",
+										}}
+									>
+										<td style={{ padding: "8px", color: "var(--text-muted)" }}>
+											{t.id}
+										</td>
 										<td style={{ padding: "8px" }}>{t.entryDate}</td>
-										<td style={{ padding: "8px" }}>${t.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>
+											$
+											{t.entryPrice.toLocaleString(undefined, {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}
+										</td>
 										<td style={{ padding: "8px" }}>{t.exitDate}</td>
-										<td style={{ padding: "8px" }}>${t.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>
+											$
+											{t.exitPrice.toLocaleString(undefined, {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}
+										</td>
 										<td style={{ padding: "8px" }}>{t.holdDays}d</td>
 										<td style={{ padding: "8px" }}>
-											<span style={{ padding: "2px 6px", borderRadius: "4px", fontSize: "10px", background: t.exitReason.includes("Bull") ? "rgba(34,197,94,0.1)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", color: t.exitReason.includes("Bull") ? "var(--signal-bull)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "var(--signal-bear)" : "var(--text-main)" }}>
+											<span
+												style={{
+													padding: "2px 6px",
+													borderRadius: "4px",
+													fontSize: "10px",
+													background: t.exitReason.includes("Bull")
+														? "rgba(34,197,94,0.1)"
+														: t.exitReason.includes("Bear") ||
+																t.exitReason.includes("Stop")
+															? "rgba(239,68,68,0.1)"
+															: "rgba(255,255,255,0.05)",
+													color: t.exitReason.includes("Bull")
+														? "var(--signal-bull)"
+														: t.exitReason.includes("Bear") ||
+																t.exitReason.includes("Stop")
+															? "var(--signal-bear)"
+															: "var(--text-main)",
+												}}
+											>
 												{t.exitReason}
 											</span>
 										</td>
-										<td style={{ padding: "8px", textAlign: "right", fontWeight: 700, color: t.returnPct >= 0 ? "var(--signal-bull)" : "var(--signal-bear)" }}>
-											{t.returnPct >= 0 ? `+${t.returnPct.toFixed(2)}%` : `${t.returnPct.toFixed(2)}%`}
+										<td
+											style={{
+												padding: "8px",
+												textAlign: "right",
+												fontWeight: 700,
+												color:
+													t.returnPct >= 0
+														? "var(--signal-bull)"
+														: "var(--signal-bear)",
+											}}
+										>
+											{t.returnPct >= 0
+												? `+${t.returnPct.toFixed(2)}%`
+												: `${t.returnPct.toFixed(2)}%`}
 										</td>
 									</tr>
 								))

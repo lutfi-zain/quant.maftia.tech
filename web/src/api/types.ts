@@ -28,6 +28,9 @@ export interface DailyAnalyticsPoint {
 	ichimoku_er?: number | null;
 	ichimoku_imo_std?: number | null;
 	ichimoku_position?: number | null;
+	ichimoku_ref_pos?: number;
+	ichimoku_cum_strat?: number;
+	ichimoku_cum_market?: number;
 }
 
 export interface CircuitBreakersResponse {

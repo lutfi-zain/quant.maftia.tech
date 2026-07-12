@@ -214,8 +214,9 @@ export function useStudioBacktest(
 		let stratRet = activePos * marketRet;
 
 		// Apply transaction fee friction if position changed on this bar
+		// Matches Python: TC = Active_Pos.diff().abs() * transaction_cost
 		if (activePos !== (prevRow ? prevRow.position || 0 : 0)) {
-			stratRet -= feeRate / 2.0;
+			stratRet -= feeRate;
 		}
 
 		stratEquity *= 1 + stratRet;
@@ -264,7 +265,7 @@ export function useStudioBacktest(
 		const meanRet =
 			dailyReturns.reduce((acc, val) => acc + val, 0) / dailyReturns.length;
 		const variance =
-			dailyReturns.reduce((acc, val) => acc + Math.pow(val - meanRet, 2), 0) /
+			dailyReturns.reduce((acc, val) => acc + (val - meanRet) ** 2, 0) /
 			(dailyReturns.length - 1);
 		const stdDev = Math.sqrt(variance);
 		if (stdDev > 0) {

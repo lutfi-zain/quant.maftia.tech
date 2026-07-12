@@ -29,7 +29,8 @@ dailyRouter.get("/", (c) => {
       u.ichimoku_imo, u.ichimoku_regime, u.ichimoku_position,
       u.ichi_s_tk, u.ichi_s_cloud, u.ichi_s_future, u.ichi_s_chikou,
       u.ichi_tenkan, u.ichi_kijun, u.ichi_senkou_a, u.ichi_senkou_b, u.ichi_chikou,
-      u.ichi_entropy, u.ichi_er, u.ichi_imo_std
+      u.ichi_entropy, u.ichi_er, u.ichi_imo_std,
+      u.ichi_ref_pos, u.ichi_cum_strat, u.ichi_cum_market
     FROM unified_daily_analytics u
     LEFT JOIN master_ohlcv m ON u.date = m.date
     WHERE u.date >= ? AND u.date <= ?
@@ -85,6 +86,9 @@ dailyRouter.get("/", (c) => {
 			entropy: row.ichi_entropy ?? null,
 			er: row.ichi_er ?? null,
 			imo_std: row.ichi_imo_std ?? null,
+			ref_pos: row.ichi_ref_pos ?? null,
+			cum_strat: row.ichi_cum_strat ?? null,
+			cum_market: row.ichi_cum_market ?? null,
 		},
 	}));
 

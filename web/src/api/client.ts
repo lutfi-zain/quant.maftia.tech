@@ -117,6 +117,9 @@ export const quantClient = {
 			ichimoku_er: item.ichimoku_imo?.er ?? undefined,
 			ichimoku_imo_std: item.ichimoku_imo?.imo_std ?? undefined,
 			ichimoku_position: item.ichimoku_imo?.position ?? undefined,
+			ichimoku_ref_pos: item.ichimoku_imo?.ref_pos ?? undefined,
+			ichimoku_cum_strat: item.ichimoku_imo?.cum_strat ?? undefined,
+			ichimoku_cum_market: item.ichimoku_imo?.cum_market ?? undefined,
 		}));
 
 		return verifyCausalData(mapped);

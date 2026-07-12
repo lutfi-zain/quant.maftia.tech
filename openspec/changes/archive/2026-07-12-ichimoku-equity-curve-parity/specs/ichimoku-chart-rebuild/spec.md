@@ -1,13 +1,13 @@
-# ichimoku-chart-rebuild Specification
+# ichimoku-chart-rebuild Specification (Delta)
 
-## Purpose
+## MODIFIED Requirements
 
-TBD - created by archiving change frontend-dashboard-revamp. Update Purpose after archive.
+### Requirement: Ichimoku Terminal reconstructs Tenkan/Kijun from OHLCV client-side
 
-## Requirements
+**FROM (original):**
+Because `unified_daily_analytics` does not return raw Tenkan-sen and Kijun-sen values, the `IchimokuTerminal` component SHALL compute these client-side from the `master_ohlcv` `high`/`low` arrays in `dailyData` using standard Ichimoku periods: Tenkan=9, Kijun=26, Senkou B=52, Chikou displacement=26.
 
-### Requirement: Ichimoku Terminal reads Tenkan/Kijun from API
-
+**TO (updated):**
 The IchimokuTerminal SHALL read Tenkan-sen, Kijun-sen, Senkou Span A, Senkou Span B, and Chikou Span values from the API-provided `DailyAnalyticsPoint` fields (`ichimoku_tenkan`, `ichimoku_kijun`, `ichimoku_senkou_a`, `ichimoku_senkou_b`, `ichimoku_chikou`) instead of computing them client-side.
 
 Client-side Ichimoku line computation (`computeIchimokuLines()`) SHALL be removed. The FE SHALL NOT recompute Ichimoku cloud components from OHLCV data.
@@ -30,6 +30,7 @@ Client-side Ichimoku line computation (`computeIchimokuLines()`) SHALL be remove
 
 ### Requirement: Equity Curve Subplot Uses API Reference Data
 
+[REQUIREMENT ADDED]
 The equity curve subplot (Pane 4) SHALL render two line series sourced from API-provided reference equity fields:
 
 - `ichimoku_cum_strat` — green (`#22C55E`), labeled "Cum_Strat (Reference)"

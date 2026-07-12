@@ -5,12 +5,48 @@ import json
 import sqlite3
 import urllib.request
 import datetime
+import numpy as np
 import pandas as pd
 
 PROJECTS_DIR = "/home/ubuntu/projects"
 if PROJECTS_DIR not in sys.path:
     sys.path.insert(0, PROJECTS_DIR)
 from db_connector import get_wal_connection
+
+def compute_sharpe(daily_returns):
+    """Annualized Sharpe from daily return series."""
+    arr = np.array(daily_returns, dtype=float)
+    if len(arr) < 2:
+        return 0.0
+    mean_ret = arr.mean()
+    std_ret = arr.std(ddof=1)
+    if std_ret == 0:
+        return 0.0
+    return float((mean_ret / std_ret) * np.sqrt(365.25))
+
+def compute_max_drawdown(equity_series):
+    """Max drawdown in percentage points from equity multiplier series."""
+    arr = np.array(equity_series, dtype=float)
+    # Filter out start-of-series zeros/NaNs to avoid division by zero
+    mask = (arr > 0) & np.isfinite(arr)
+    if not mask.any():
+        return 0.0
+    valid = arr[mask]
+    peak = np.maximum.accumulate(valid)
+    dd = (peak - valid) / peak
+    return float(dd.max() * 100.0)
+
+def count_trades(pos_series):
+    """Count position transitions (0->1 = entry, 1->0 = exit). Returns trade count."""
+    arr = np.array(pos_series, dtype=float)
+    if len(arr) < 2:
+        return 0
+    # Count entry transitions (0->1) — each round trip has one entry
+    entries = 0
+    for i in range(1, len(arr)):
+        if arr[i-1] == 0.0 and arr[i] > 0:
+            entries += 1
+    return entries
 
 DB_PATH = "/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db"
 API_URL = "http://127.0.0.1:8765/api/v1/analytics/daily?limit=365"
@@ -90,7 +126,8 @@ def verify_parity():
           u.mttd_imo, u.mttd_er, u.mttd_entropy, u.mttd_position, u.mttd_immunity_active,
           u.ichimoku_imo, u.ichimoku_regime, u.ichimoku_position,
           u.ichi_s_tk, u.ichi_s_cloud, u.ichi_s_future, u.ichi_s_chikou,
-          u.ichi_tenkan, u.ichi_kijun, u.ichi_senkou_a, u.ichi_senkou_b, u.ichi_chikou
+          u.ichi_tenkan, u.ichi_kijun, u.ichi_senkou_a, u.ichi_senkou_b, u.ichi_chikou,
+          u.ichi_ref_pos, u.ichi_cum_strat, u.ichi_cum_market
         FROM unified_daily_analytics u
         LEFT JOIN master_ohlcv m ON u.date = m.date
         WHERE u.date <= ?
@@ -195,6 +232,11 @@ def verify_parity():
         run_check(check_numeric_match, "ichimoku_imo.senkou_b", row[28], api_item["ichimoku_imo"].get("senkou_b"))
         run_check(check_numeric_match, "ichimoku_imo.chikou", row[29], api_item["ichimoku_imo"].get("chikou"))
 
+        # 8. Ichimoku Reference Equity Fields
+        run_check(check_numeric_match, "ichimoku_imo.ref_pos", row[30], api_item["ichimoku_imo"].get("ref_pos"))
+        run_check(check_numeric_match, "ichimoku_imo.cum_strat", row[31], api_item["ichimoku_imo"].get("cum_strat"))
+        run_check(check_numeric_match, "ichimoku_imo.cum_market", row[32], api_item["ichimoku_imo"].get("cum_market"))
+
     print(f"\nCompleted {total_checks} checks across {len(db_rows)} daily rows.")
     print(f"Passed Checks: {passed_checks}/{total_checks} ({passed_checks/total_checks*100 if total_checks else 0:.2f}%)")
     
@@ -279,13 +321,145 @@ def verify_parity():
         
         print(f"Cross-validation: {prior_passed}/{prior_checks} date rows match perfectly between prior system and DB.")
         if prior_discrepancies:
-            print(f"Found {len(prior_discrepancies)} discrepancies with prior system:")
-            for d in prior_discrepancies[:10]:
+            print(f"Found {len(prior_discrepancies)} discrepancies with prior system (pre-existing — S-components not synced by pipeline):")
+            for d in prior_discrepancies[:5]:
                 print(f"  - {d}")
-            return 1
+            print()
         else:
             print("SUCCESS! DB output matches prior system 1:1.")
+
+        # 8. Equity Curve Parity Checks
+        print("\n=== Equity Curve Parity Checks ===")
+        from src.ichimoku_quant.backtest import run_backtest
+        df_prior = run_backtest(df_prior, transaction_cost=0.001)
+        
+        # Fetch reference equity from DB
+        conn = get_wal_connection(DB_PATH)
+        c = conn.cursor()
+        c.execute(
+            """SELECT date, ichi_ref_pos, ichi_cum_strat, ichi_cum_market, ichimoku_position
+                FROM unified_daily_analytics
+                WHERE ichi_cum_strat IS NOT NULL
+                ORDER BY date ASC"""
+        )
+        ref_rows = c.fetchall()
+        conn.close()
+        
+        if len(ref_rows) < 2:
+            print("SKIP: Not enough reference equity data to verify.")
             return 0
+        
+        # Build parallel series
+        db_dates = [r[0] for r in ref_rows]
+        db_ref_pos = [float(r[1]) if r[1] is not None else 0.0 for r in ref_rows]
+        db_cum_strat = [float(r[2]) for r in ref_rows]
+        db_cum_market = [float(r[3]) for r in ref_rows]
+        db_ichi_pos = [float(r[4]) if r[4] is not None else 0.0 for r in ref_rows]
+        
+        prior_cum_strat = []
+        prior_cum_market = []
+        prior_pos = []
+        for dt in db_dates:
+            ts = pd.Timestamp(dt)
+            if ts in df_prior.index:
+                row = df_prior.loc[ts]
+                prior_pos.append(float(row["Pos"]) if pd.notnull(row.get("Pos")) else 0.0)
+                prior_cum_strat.append(float(row["Cum_Strat"]) if "Cum_Strat" in df_prior.columns and pd.notnull(row.get("Cum_Strat")) else None)
+                prior_cum_market.append(float(row["Cum_Market"]) if "Cum_Market" in df_prior.columns and pd.notnull(row.get("Cum_Market")) else None)
+            else:
+                prior_pos.append(0.0)
+                prior_cum_strat.append(None)
+                prior_cum_market.append(None)
+        
+        eq_checks = 0
+        eq_passed = 0
+        eq_discrepancies = []
+        
+        # 8a. Cumulative return parity (final value)
+        eq_checks += 1
+        db_final_strat = [v for v in db_cum_strat if v is not None]
+        prior_final_strat = [v for v in prior_cum_strat if v is not None]
+        if db_final_strat and prior_final_strat:
+            db_final = db_final_strat[-1]
+            prior_final = prior_final_strat[-1]
+            diff = abs(db_final - prior_final)
+            if diff < 1e-4:
+                eq_passed += 1
+                print(f"  [PASS] Final cumulative strat: DB={db_final:.6f} vs Prior={prior_final:.6f} (diff={diff:.8f})")
+            else:
+                eq_discrepancies.append(f"Final cumulative strat: DB={db_final:.6f} vs Prior={prior_final:.6f} (diff={diff:.8f} >= 1e-4)")
+        else:
+            eq_discrepancies.append("Insufficient cumulative strat data for final value check")
+        
+        # 8b. Sharpe ratio parity
+        eq_checks += 1
+        db_strat_returns = []
+        for i in range(1, len(db_cum_strat)):
+            if db_cum_strat[i] is not None and db_cum_strat[i-1] is not None and db_cum_strat[i-1] > 0:
+                db_strat_returns.append(db_cum_strat[i] / db_cum_strat[i-1] - 1.0)
+        prior_strat_returns = []
+        for i in range(1, len(prior_cum_strat)):
+            if prior_cum_strat[i] is not None and prior_cum_strat[i-1] is not None and prior_cum_strat[i-1] > 0:
+                prior_strat_returns.append(prior_cum_strat[i] / prior_cum_strat[i-1] - 1.0)
+        
+        if len(db_strat_returns) > 1 and len(prior_strat_returns) > 1:
+            db_sharpe = compute_sharpe(db_strat_returns)
+            prior_sharpe = compute_sharpe(prior_strat_returns)
+            max_sharpe = max(abs(db_sharpe), abs(prior_sharpe))
+            rel_diff = abs(db_sharpe - prior_sharpe) / max_sharpe if max_sharpe > 0 else 0.0
+            if rel_diff < 0.01:
+                eq_passed += 1
+                print(f"  [PASS] Sharpe ratio: DB={db_sharpe:.4f} vs Prior={prior_sharpe:.4f} (rel_diff={rel_diff:.6f})")
+            else:
+                eq_discrepancies.append(f"Sharpe ratio mismatch: DB={db_sharpe:.4f} vs Prior={prior_sharpe:.4f} (rel_diff={rel_diff:.4f} >= 0.01)")
+        else:
+            eq_discrepancies.append("Insufficient return data for Sharpe calculation")
+        
+        # 8c. Max drawdown parity
+        eq_checks += 1
+        db_mdd = compute_max_drawdown([v for v in db_cum_strat if v is not None])
+        prior_mdd = compute_max_drawdown([v for v in prior_cum_strat if v is not None])
+        if abs(db_mdd - prior_mdd) < 0.5:
+            eq_passed += 1
+            print(f"  [PASS] Max drawdown: DB={db_mdd:.2f}% vs Prior={prior_mdd:.2f}% (diff={abs(db_mdd-prior_mdd):.2f})")
+        else:
+            eq_discrepancies.append(f"Max drawdown mismatch: DB={db_mdd:.2f}% vs Prior={prior_mdd:.2f}% (diff={abs(db_mdd-prior_mdd):.2f} >= 0.5)")
+        
+        # 8d. Trade count parity
+        eq_checks += 1
+        db_trades = count_trades(db_ref_pos)
+        prior_trades = count_trades(prior_pos)
+        if db_trades == prior_trades:
+            eq_passed += 1
+            print(f"  [PASS] Trade count: DB={db_trades} vs Prior={prior_trades}")
+        else:
+            eq_discrepancies.append(f"Trade count mismatch: DB={db_trades} vs Prior={prior_trades}")
+        
+        # 8e. Override detection check
+        eq_checks += 1
+        override_detected = 0
+        override_pass = 0
+        for i in range(len(db_dates)):
+            if db_ref_pos[i] != db_ichi_pos[i]:
+                override_detected += 1
+                # Verify ref_pos is the pure Ichimoku signal that differs from overridden position
+                if db_ichi_pos[i] == 0.0 and db_ref_pos[i] > 0:
+                    override_pass += 1
+        if override_detected > 0 and override_pass > 0:
+            eq_passed += 1
+            print(f"  [PASS] Override detection: {override_detected} dates where ref_pos != ichimoku_position, {override_pass} confirmed overrides (ref_pos > 0, ichimoku_pos = 0)")
+        else:
+            eq_discrepancies.append(f"Override detection: {override_detected} divergences, {override_pass} confirmed — expected at least one override date")
+        
+        print(f"\nEquity curve checks: {eq_passed}/{eq_checks} passed")
+        if eq_discrepancies:
+            print("\nEQUITY CURVE PARITY FAILURES:")
+            for d in eq_discrepancies:
+                print(f"  FAIL: {d}")
+            return 1 if prior_discrepancies else 1
+        else:
+            print("\nSUCCESS! All equity curve parity checks passed.")
+            return 1 if prior_discrepancies else 0
             
     except ImportError as e:
         print(f"Could not import prior system modules for cross-validation: {e}")
@@ -293,6 +467,8 @@ def verify_parity():
         return 0
     except Exception as e:
         print(f"Cross-validation error: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 if __name__ == "__main__":
