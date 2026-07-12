@@ -887,13 +887,15 @@ pre,
 		gap: 12px !important;
 	}
 
-	/* Chart fullscreen on mobile: account for bottom tab, zero out padding */
-	/* Use bottom instead of height so CSS properly stops 56px above viewport bottom */
+	/* Chart fullscreen on mobile: account for bottom tab, zero padding, overlay subplot headers */
 	.chart-panel.fullscreen {
 		top: 0;
 		bottom: 56px;
 		height: auto !important;
 		padding: 0 !important;
+	}
+	.chart-panel.fullscreen .chart-subplot-header {
+		position: absolute !important;
 	}
 
 	/* ── Mobile Padding & Margin Tightening (Maximizes Usable Screen Real Estate) ── */
