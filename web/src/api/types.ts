@@ -19,6 +19,15 @@ export interface DailyAnalyticsPoint {
 	ichimoku_s_cloud?: number;
 	ichimoku_s_future?: number;
 	ichimoku_s_chikou?: number;
+	ichimoku_tenkan?: number;
+	ichimoku_kijun?: number;
+	ichimoku_senkou_a?: number;
+	ichimoku_senkou_b?: number;
+	ichimoku_chikou?: number;
+	ichimoku_entropy?: number | null;
+	ichimoku_er?: number | null;
+	ichimoku_imo_std?: number | null;
+	ichimoku_position?: number | null;
 }
 
 export interface CircuitBreakersResponse {

@@ -1,8 +1,8 @@
 import type React from "react";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
-import type { ComponentSignal, DailyAnalyticsPoint } from "../../api/types";
+import type { ComponentSignal } from "../../api/types";
 import { useTerminal } from "../../context/TerminalContext";
 import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import {
@@ -10,26 +10,20 @@ import {
 	type IChartApi,
 	ColorType,
 	CrosshairMode,
-	ISeriesApi,
 	type Time,
 	LineStyle,
 	CandlestickSeries,
 	LineSeries,
 	AreaSeries,
 	PriceScaleMode,
+	createSeriesMarkers,
 } from "lightweight-charts";
-import {
-	TrendingUp,
-	ShieldCheck,
-	RefreshCcw,
-	Layers,
-	Maximize2,
-	Minimize2,
-} from "lucide-react";
+import { TrendingUp, RefreshCcw, Maximize2, Minimize2 } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useStudioBacktest, type StudioDailyRecord } from "../../lib/studioBacktest";
 
-type MaximizedPanel = null | "btc" | "imo" | "scomp";
+type MaximizedPanel = null | "btc" | "imo" | "scomp" | "eq";
 
 const BG_CHART = "#0B1220";
 const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
@@ -56,7 +50,7 @@ function makeCommonOptions(yAxisWidth: number) {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: yAxisWidth,
+			minimumWidth: 85,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -78,85 +72,33 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const available = isMobile ? full - MOBILE_BOTTOM_TAB_HEIGHT : full;
 	switch (maximized) {
 		case "btc":
-			return { btc: available, imo: 0, scomp: 0 };
+			return { btc: available, imo: 0, scomp: 0, eq: 0 };
 		case "imo":
 			return {
-				btc: Math.floor(available * 0.65),
-				imo: Math.floor(available * 0.35),
+				btc: Math.floor(available * 0.55),
+				imo: Math.floor(available * 0.45),
 				scomp: 0,
+				eq: 0,
 			};
 		case "scomp":
 			return {
-				btc: Math.floor(available * 0.65),
+				btc: Math.floor(available * 0.55),
 				imo: 0,
-				scomp: Math.floor(available * 0.35),
+				scomp: Math.floor(available * 0.45),
+				eq: 0,
+			};
+		case "eq":
+			return {
+				btc: Math.floor(available * 0.55),
+				imo: 0,
+				scomp: 0,
+				eq: Math.floor(available * 0.45),
 			};
 		default:
 			return isMobile
-				? { btc: 160, imo: 120, scomp: 120 }
-				: { btc: 320, imo: 180, scomp: 160 };
+				? { btc: 150, imo: 105, scomp: 105, eq: 110 }
+				: { btc: 280, imo: 145, scomp: 135, eq: 135 };
 	}
-}
-
-/**
- * Compute Ichimoku lines client-side from OHLCV data.
- * Strictly causal — only uses indices ≤ i.
- * Tenkan(9), Kijun(26), Span A, Span B(52), Chikou(26 lag)
- */
-function computeIchimokuLines(dailyData: DailyAnalyticsPoint[]) {
-	const n = dailyData.length;
-	const tenkan: (number | null)[] = new Array(n).fill(null);
-	const kijun: (number | null)[] = new Array(n).fill(null);
-	const spanA: (number | null)[] = new Array(n).fill(null);
-	const spanB: (number | null)[] = new Array(n).fill(null);
-
-	for (let i = 0; i < n; i++) {
-		// Tenkan-sen (9-period)
-		if (i >= 8) {
-			let maxH = -Infinity,
-				minL = Infinity;
-			for (let j = i - 8; j <= i; j++) {
-				if (dailyData[j].high > maxH) maxH = dailyData[j].high;
-				if (dailyData[j].low < minL) minL = dailyData[j].low;
-			}
-			tenkan[i] = (maxH + minL) / 2;
-		}
-
-		// Kijun-sen (26-period)
-		if (i >= 25) {
-			let maxH = -Infinity,
-				minL = Infinity;
-			for (let j = i - 25; j <= i; j++) {
-				if (dailyData[j].high > maxH) maxH = dailyData[j].high;
-				if (dailyData[j].low < minL) minL = dailyData[j].low;
-			}
-			kijun[i] = (maxH + minL) / 2;
-		}
-
-		// Span A = (Tenkan + Kijun) / 2
-		if (tenkan[i] !== null && kijun[i] !== null) {
-			spanA[i] = ((tenkan[i] as number) + (kijun[i] as number)) / 2;
-		}
-
-		// Span B (52-period)
-		if (i >= 51) {
-			let maxH = -Infinity,
-				minL = Infinity;
-			for (let j = i - 51; j <= i; j++) {
-				if (dailyData[j].high > maxH) maxH = dailyData[j].high;
-				if (dailyData[j].low < minL) minL = dailyData[j].low;
-			}
-			spanB[i] = (maxH + minL) / 2;
-		}
-	}
-
-	// Chikou Span = Close plotted 26 bars back
-	const chikou: (number | null)[] = new Array(n).fill(null);
-	for (let i = 0; i < n - 26; i++) {
-		chikou[i + 26] = dailyData[i].close;
-	}
-
-	return { tenkan, kijun, spanA, spanB, chikou };
 }
 
 const ICHIMOKU_COMPONENTS_METADATA: Record<
@@ -195,9 +137,12 @@ const ICHIMOKU_COMPONENTS_METADATA: Record<
 export const IchimokuTerminal: React.FC = () => {
 	const { dailyData } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
-	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+	const [, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
+	const [startDate, setStartDate] = useState("2020-01-01");
+	const [endDate, setEndDate] = useState("2026-12-31");
+	const [feeBps, setFeeBps] = useState(10);
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -205,13 +150,50 @@ export const IchimokuTerminal: React.FC = () => {
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const imoContainerRef = useRef<HTMLDivElement>(null);
 	const scompContainerRef = useRef<HTMLDivElement>(null);
+	const eqContainerRef = useRef<HTMLDivElement>(null);
 	const chartsRef = useRef<{
 		btc: IChartApi | null;
 		imo: IChartApi | null;
 		scomp: IChartApi | null;
-	}>({ btc: null, imo: null, scomp: null });
+		eq: IChartApi | null;
+	}>({ btc: null, imo: null, scomp: null, eq: null });
+	const seriesRef = useRef<{
+		candle: any;
+		cumStrat: any;
+		cumMarket: any;
+	}>({ candle: null, cumStrat: null, cumMarket: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+
+	const toNum = (val: any): number =>
+		typeof val === "object" && val !== null
+			? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0)
+			: Number(val ?? 0);
+
+	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => ({
+		date: d.date,
+		close: d.close || d.btc_price || 0,
+		position: toNum(d.ichimoku_position ?? d.ichi_pos ?? 0),
+		ichimoku_chikou: d.ichimoku_chikou ?? null,
+		ichimoku_entropy: d.ichimoku_entropy ?? null,
+		ichimoku_er: d.ichimoku_er ?? null,
+	}));
+
+	const backtestResult = useStudioBacktest(backtestData, startDate, endDate, feeBps);
+
+	useEffect(() => {
+		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
+			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+		}
+		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
+			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+		}
+		if (seriesRef.current.candle && backtestResult.markers.length) {
+			createSeriesMarkers(seriesRef.current.candle, backtestResult.markers as any);
+		} else if (seriesRef.current.candle) {
+			createSeriesMarkers(seriesRef.current.candle, []);
+		}
+	}, [backtestResult]);
 
 	useGSAP(
 		() => {
@@ -243,11 +225,7 @@ export const IchimokuTerminal: React.FC = () => {
 			});
 	}, []);
 
-	// Compute Ichimoku lines (memoized)
-	const ichimokuLines = useMemo(
-		() => computeIchimokuLines(dailyData),
-		[dailyData],
-	);
+	// Ichimoku lines are now served from API via dailyData.ichimoku_tenkan etc.
 
 	// Log/linear toggle
 	useEffect(() => {
@@ -260,7 +238,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 	// Handle maximize: resize charts and update time axis visibility
 	useEffect(() => {
-		const { btc, imo, scomp } = chartsRef.current;
+		const { btc, imo, scomp, eq } = chartsRef.current;
 		if (!btc) return;
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
@@ -269,7 +247,7 @@ export const IchimokuTerminal: React.FC = () => {
 		if (isMobile && maximized !== null) {
 			const containerH = wrapperRef.current?.clientHeight;
 			if (containerH && containerH > 0) {
-				const total = heights.btc + heights.imo + heights.scomp;
+				const total = heights.btc + heights.imo + heights.scomp + heights.eq;
 				if (total > 0) {
 					const yWidth = getChartYAxisWidth();
 					btc.resize(w, Math.round(containerH * (heights.btc / total)));
@@ -282,6 +260,10 @@ export const IchimokuTerminal: React.FC = () => {
 						scomp.resize(w, Math.round(containerH * (heights.scomp / total)));
 						scomp.priceScale("right").applyOptions({ minimumWidth: yWidth });
 					}
+					if (eq) {
+						eq.resize(w, Math.round(containerH * (heights.eq / total)));
+						eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
 					const panels: Array<{
 						chart: IChartApi | null;
 						h: number;
@@ -289,6 +271,7 @@ export const IchimokuTerminal: React.FC = () => {
 					}> = [
 						{ chart: imo, h: heights.imo, id: "imo" },
 						{ chart: scomp, h: heights.scomp, id: "scomp" },
+						{ chart: eq, h: heights.eq, id: "eq" },
 					];
 					const visiblePanels = panels.filter((p) => p.h > 0);
 					const bottomId =
@@ -296,7 +279,7 @@ export const IchimokuTerminal: React.FC = () => {
 							? visiblePanels[visiblePanels.length - 1].id
 							: null;
 					btc.timeScale().applyOptions({
-						visible: heights.imo === 0 && heights.scomp === 0,
+						visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0,
 					});
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
@@ -305,7 +288,11 @@ export const IchimokuTerminal: React.FC = () => {
 							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
 					requestAnimationFrame(() => {
-						syncYAxisWidth(btcContainerRef.current, [btc, imo, scomp].filter(Boolean), getChartYAxisWidth());
+						syncYAxisWidth(
+							btcContainerRef.current,
+							[btc, imo, scomp, eq].filter(Boolean),
+							getChartYAxisWidth(),
+						);
 					});
 					return;
 				}
@@ -323,10 +310,15 @@ export const IchimokuTerminal: React.FC = () => {
 			scomp.resize(w, heights.scomp);
 			scomp.priceScale("right").applyOptions({ minimumWidth: yWidth });
 		}
+		if (eq) {
+			eq.resize(w, heights.eq);
+			eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
 
 		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
 			{ chart: imo, h: heights.imo, id: "imo" },
 			{ chart: scomp, h: heights.scomp, id: "scomp" },
+			{ chart: eq, h: heights.eq, id: "eq" },
 		];
 		const visiblePanels = panels.filter((p) => p.h > 0);
 		const bottomId =
@@ -336,30 +328,34 @@ export const IchimokuTerminal: React.FC = () => {
 
 		btc
 			.timeScale()
-			.applyOptions({ visible: heights.imo === 0 && heights.scomp === 0 });
+			.applyOptions({ visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0 });
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
 		});
 		requestAnimationFrame(() => {
-			syncYAxisWidth(btcContainerRef.current, [btc, imo, scomp].filter(Boolean), yWidth);
+			syncYAxisWidth(
+				btcContainerRef.current,
+				[btc, imo, scomp, eq].filter(Boolean),
+				yWidth,
+			);
 		});
 	}, [maximized, isMobile]);
 
-	// Initialize 3-pane charts
+	// Initialize 4-pane charts
 	useEffect(() => {
 		if (
 			!dailyData.length ||
 			!btcContainerRef.current ||
 			!imoContainerRef.current ||
-			!scompContainerRef.current
+			!scompContainerRef.current ||
+			!eqContainerRef.current
 		)
 			return;
 
 		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
 		const heights = getPanelHeights(null, isMobile);
-		const { tenkan, kijun, spanA, spanB, chikou } = ichimokuLines;
 
 		// ── Pane 1: BTC Candlestick + Ichimoku overlay ──
 		const btcChart = createChart(btcContainerRef.current, {
@@ -378,6 +374,11 @@ export const IchimokuTerminal: React.FC = () => {
 			borderVisible: false,
 			wickUpColor: "#22C55E",
 			wickDownColor: "#EF4444",
+			priceFormat: {
+				type: "price",
+				precision: 0,
+				minMove: 1,
+			},
 		});
 
 		// Tenkan-sen (red)
@@ -468,7 +469,7 @@ export const IchimokuTerminal: React.FC = () => {
 			...common,
 			width: w,
 			height: heights.scomp,
-			timeScale: { ...common.timeScale, visible: true },
+			timeScale: { ...common.timeScale, visible: false },
 		});
 
 		const sTkSeries = scompChart.addSeries(LineSeries, {
@@ -492,7 +493,39 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "S_Chikou",
 		});
 
-		chartsRef.current = { btc: btcChart, imo: imoChart, scomp: scompChart };
+		// ── Pane 4: Equity Curve (Cum_Strat vs Cum_Market) ──
+		const eqChart = createChart(eqContainerRef.current, {
+			...common,
+			width: w,
+			height: heights.eq,
+			timeScale: { ...common.timeScale, visible: true },
+		});
+
+		const cumStratSeries = eqChart.addSeries(LineSeries, {
+			color: "#22C55E",
+			lineWidth: 2,
+			title: "Cum_Strat",
+		});
+		const cumMarketSeries = eqChart.addSeries(LineSeries, {
+			color: "#3B82F6",
+			lineWidth: 2,
+			title: "Cum_Market (BTC)",
+		});
+
+		// ── Invisible anchor series for crosshair sync (covers ALL dates) ──
+		const syncAnchorSeries = scompChart.addSeries(LineSeries, {
+			color: "transparent",
+			lineWidth: 1,
+			priceLineVisible: false,
+			lastValueVisible: false,
+			crosshairMarkerVisible: false,
+		});
+		syncAnchorSeries.setData(
+			dailyData.map((p) => ({ time: p.date as Time, value: 0 })),
+		);
+
+		chartsRef.current = { btc: btcChart, imo: imoChart, scomp: scompChart, eq: eqChart };
+		seriesRef.current = { candle: candleSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
 
 		// ── Populate BTC + Ichimoku data ──
 		candleSeries.setData(
@@ -505,104 +538,159 @@ export const IchimokuTerminal: React.FC = () => {
 			})),
 		);
 
-		// Tenkan data (skip null warmup)
+		// Tenkan data from API (skip null warmup)
 		tenkanSeries.setData(
 			dailyData
-				.map((p, i) => ({
+				.map((p) => ({
 					time: p.date as Time,
-					value: tenkan[i] as number,
+					value: p.ichimoku_tenkan,
 				}))
-				.filter((d) => d.value !== null) as any,
+				.filter((d) => d.value != null) as any,
 		);
 
-		// Kijun data
+		// Kijun data from API
 		kijunSeries.setData(
 			dailyData
-				.map((p, i) => ({
+				.map((p) => ({
 					time: p.date as Time,
-					value: kijun[i] as number,
+					value: p.ichimoku_kijun,
 				}))
-				.filter((d) => d.value !== null) as any,
+				.filter((d) => d.value != null) as any,
 		);
 
-		// Span A data
+		// Span A data from API
 		spanASeries.setData(
 			dailyData
-				.map((p, i) => ({
+				.map((p) => ({
 					time: p.date as Time,
-					value: spanA[i] as number,
+					value: p.ichimoku_senkou_a,
 				}))
-				.filter((d) => d.value !== null) as any,
+				.filter((d) => d.value != null) as any,
 		);
 
-		// Span B data
+		// Span B data from API
 		spanBSeries.setData(
 			dailyData
-				.map((p, i) => ({
+				.map((p) => ({
 					time: p.date as Time,
-					value: spanB[i] as number,
+					value: p.ichimoku_senkou_b,
 				}))
-				.filter((d) => d.value !== null) as any,
+				.filter((d) => d.value != null) as any,
 		);
 
-		// Chikou data (plotted at i+26, value = Close[i])
+		// Chikou data from API (60-bar displacement from prior system)
 		chikouSeries.setData(
 			dailyData
-				.map((p, i) => ({
+				.map((p) => ({
 					time: p.date as Time,
-					value: chikou[i] as number,
+					value: p.ichimoku_chikou,
 				}))
-				.filter((d) => d.value !== null) as any,
+				.filter((d) => d.value != null) as any,
 		);
 
-		// ── Populate IMO data ──
+		// ── Populate IMO data + Entropy/ER/imo_std ──
 		imoSeries.setData(
-			dailyData.map((p) => ({ time: p.date as Time, value: p.ichimoku_imo })),
+			dailyData.map((p) => ({ time: p.date as Time, value: typeof p.ichimoku_imo === 'number' ? p.ichimoku_imo : (p.ichimoku_imo as any)?.oscillator ?? 0 })),
 		);
 
-		// ── Populate S-component data ──
+		const entropySeries = imoChart.addSeries(LineSeries, {
+			color: "#A78BFA",
+			lineWidth: 1,
+			title: "Entropy",
+		});
+		entropySeries.createPriceLine({
+			price: 2.271,
+			color: "#A78BFA",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			title: "Shannon Gate 2.271",
+		});
+		const erSeries = imoChart.addSeries(LineSeries, {
+			color: "#F59E0B",
+			lineWidth: 1,
+			title: "ER",
+		});
+		erSeries.createPriceLine({
+			price: 0.25,
+			color: "#F59E0B",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			title: "ER Gate 0.25",
+		});
+		const imoStdSeries = imoChart.addSeries(LineSeries, {
+			color: "#3B82F6",
+			lineWidth: 1,
+			title: "0.40*IMO_Std",
+		});
+
+		entropySeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_entropy,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+		erSeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_er,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+		imoStdSeries.setData(
+			dailyData
+				.map((p) => {
+					const val = p.ichimoku_imo_std;
+					return {
+						time: p.date as Time,
+						value: val != null ? 0.40 * val : null,
+					};
+				})
+				.filter((d) => d.value != null) as any,
+		);
+
+		// ── Populate S-component data from API (no synthetic fallback) ──
 		sTkSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
-				value:
-					p.ichimoku_s_tk !== undefined && p.ichimoku_s_tk !== null
-						? p.ichimoku_s_tk
-						: p.ichimoku_imo * 0.8,
-			})),
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_tk,
+				}))
+				.filter((d) => d.value != null) as any,
 		);
 		sCloudSeries.setData(
-			dailyData.map((p, i) => ({
-				time: p.date as Time,
-				value:
-					p.ichimoku_s_cloud !== undefined && p.ichimoku_s_cloud !== null
-						? p.ichimoku_s_cloud
-						: Math.sin(i * 0.08) * 0.6,
-			})),
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_cloud,
+				}))
+				.filter((d) => d.value != null) as any,
 		);
 		sFutureSeries.setData(
-			dailyData.map((p, i) => ({
-				time: p.date as Time,
-				value:
-					p.ichimoku_s_future !== undefined && p.ichimoku_s_future !== null
-						? p.ichimoku_s_future
-						: Math.cos(i * 0.08) * 0.5,
-			})),
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_future,
+				}))
+				.filter((d) => d.value != null) as any,
 		);
 		sChikouSeries.setData(
-			dailyData.map((p, i) => ({
-				time: p.date as Time,
-				value:
-					p.ichimoku_s_chikou !== undefined && p.ichimoku_s_chikou !== null
-						? p.ichimoku_s_chikou
-						: p.ichimoku_imo * 0.9 + Math.sin(i * 0.2) * 0.1,
-			})),
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_chikou,
+				}))
+				.filter((d) => d.value != null) as any,
 		);
 
-		// ── Crosshair sync — 3 charts ──
+		// ── Crosshair sync — 4 charts (use syncAnchorSeries for scompChart) ──
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
 			{ chart: imoChart, series: imoSeries },
-			{ chart: scompChart, series: sTkSeries },
+			{ chart: scompChart, series: syncAnchorSeries },
+			{ chart: eqChart, series: cumStratSeries },
 		];
 
 		allCharts.forEach(({ chart }, idx) => {
@@ -645,7 +733,7 @@ export const IchimokuTerminal: React.FC = () => {
 			requestAnimationFrame(() => {
 				syncYAxisWidth(
 					btcContainerRef.current,
-					[btcChart, imoChart, scompChart],
+					[btcChart, imoChart, scompChart, eqChart],
 					getChartYAxisWidth(),
 				);
 			});
@@ -663,7 +751,13 @@ export const IchimokuTerminal: React.FC = () => {
 			imoChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			scompChart.applyOptions({ width: nw });
 			scompChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
-			syncYAxisWidth(btcContainerRef.current, [btcChart, imoChart, scompChart], yWidth);
+			eqChart.applyOptions({ width: nw });
+			eqChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(
+				btcContainerRef.current,
+				[btcChart, imoChart, scompChart, eqChart],
+				yWidth,
+			);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 
@@ -672,17 +766,12 @@ export const IchimokuTerminal: React.FC = () => {
 			btcChart.remove();
 			imoChart.remove();
 			scompChart.remove();
-			chartsRef.current = { btc: null, imo: null, scomp: null };
+			eqChart.remove();
+			chartsRef.current = { btc: null, imo: null, scomp: null, eq: null };
+			seriesRef.current = { candle: null, cumStrat: null, cumMarket: null };
 		};
-	}, [dailyData, ichimokuLines]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const toNum = (val: any): number =>
-		typeof val === "object" && val !== null
-			? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0)
-			: Number(val ?? 0);
-	const displayPoint =
-		hoveredPoint ||
-		(dailyData.length > 0 ? dailyData[dailyData.length - 1] : null);
 	const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
 	const latestImo = toNum(latestPoint?.ichimoku_imo);
 	const cloudState =
@@ -695,11 +784,24 @@ export const IchimokuTerminal: React.FC = () => {
 	const displayComponents = Object.entries(ICHIMOKU_COMPONENTS_METADATA).map(
 		([name, meta]) => {
 			const signal = components.find((c) => c.component_name === name);
-			const score = signal
-				? toNum(signal.normalized_score)
-				: name.includes("IMO")
-					? latestImo
-					: Math.sin(name.length * 3) * 0.75;
+			let score: number;
+			if (signal) {
+				score = toNum(signal.normalized_score);
+			} else if (name === "Ichimoku Denoised Oscillator (IMO)") {
+				score = latestImo;
+			} else {
+				// Use latest daily point's S-component values as fallback
+				const sKey = name.includes("S_TK")
+					? "ichimoku_s_tk"
+					: name.includes("S_Cloud")
+						? "ichimoku_s_cloud"
+						: name.includes("S_Future")
+							? "ichimoku_s_future"
+							: name.includes("S_Chikou")
+								? "ichimoku_s_chikou"
+								: null;
+				score = sKey && latestPoint ? toNum((latestPoint as any)[sKey]) : 0;
+			}
 			return {
 				name,
 				category: meta.category,
@@ -897,6 +999,183 @@ export const IchimokuTerminal: React.FC = () => {
 						ref={scompContainerRef}
 						style={{ width: "100%", height: `${heights.scomp}px` }}
 					/>
+				</div>
+
+				{/* Pane 4: Equity Curve Subplot (Cum_Strat vs Cum_Market) */}
+				<div
+					className={`chart-subplot ${heights.eq === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<div className="subplot-title">
+							<span className="subplot-badge">CAUSAL COMP</span>
+							<span>Dynamic Backtest Equity Curve</span>
+						</div>
+						<div className="subplot-controls">
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "eq" ? null : "eq")}
+								title={maximized === "eq" ? "Restore" : "Maximize Equity pane"}
+							>
+								{maximized === "eq" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
+							</button>
+						</div>
+					</div>
+					<div
+						ref={eqContainerRef}
+						style={{ width: "100%", height: `${heights.eq}px` }}
+					/>
+				</div>
+			</div>
+
+			{/* Interactive Backtest Controls & Metrics Bar */}
+			<div className="glass-card" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
+				<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+					<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+						<span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.05em" }}>BACKTEST CONFIG</span>
+						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Start Date:</label>
+							<input
+								type="date"
+								value={startDate}
+								onChange={(e) => setStartDate(e.target.value)}
+								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+							/>
+						</div>
+						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>End Date:</label>
+							<input
+								type="date"
+								value={endDate}
+								onChange={(e) => setEndDate(e.target.value)}
+								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+							/>
+						</div>
+						<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Fee Friction ({feeBps} bps):</label>
+							<input
+								type="range"
+								min="0"
+								max="50"
+								step="1"
+								value={feeBps}
+								onChange={(e) => setFeeBps(Number(e.target.value))}
+								style={{ width: "100px", accentColor: "var(--accent)" }}
+							/>
+						</div>
+					</div>
+					<div style={{ display: "flex", gap: "8px" }}>
+						<button
+							className="toggle-btn"
+							onClick={() => { setStartDate("2020-01-01"); setEndDate("2026-12-31"); setFeeBps(10); }}
+							style={{ fontSize: "11px", padding: "4px 8px" }}
+						>
+							Reset Defaults
+						</button>
+					</div>
+				</div>
+
+				<div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)", gap: "10px" }}>
+					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>WIN RATE</div>
+						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.winRate >= 50 ? "var(--signal-bull)" : "var(--text-main)" }}>
+							{backtestResult.metrics.winRate.toFixed(1)}%
+						</div>
+					</div>
+					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>PROFIT FACTOR</div>
+						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.profitFactor >= 1.5 ? "var(--signal-bull)" : backtestResult.metrics.profitFactor >= 1.0 ? "var(--text-main)" : "var(--signal-bear)" }}>
+							{backtestResult.metrics.profitFactor.toFixed(2)}
+						</div>
+					</div>
+					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>TOTAL TRADES</div>
+						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--text-main)" }}>
+							{backtestResult.metrics.totalTrades}
+						</div>
+					</div>
+					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>SHARPE RATIO</div>
+						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.sharpeRatio >= 1.0 ? "var(--signal-bull)" : "var(--text-main)" }}>
+							{backtestResult.metrics.sharpeRatio.toFixed(2)}
+						</div>
+					</div>
+					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>MAX DRAWDOWN</div>
+						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--signal-bear)" }}>
+							-{backtestResult.metrics.maxDrawdown.toFixed(1)}%
+						</div>
+					</div>
+					<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+						<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>STRATEGY vs BTC HOLD</div>
+						<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.totalReturnStrat >= backtestResult.metrics.totalReturnMarket ? "var(--signal-bull)" : "var(--signal-bear)" }}>
+							{backtestResult.metrics.totalReturnStrat >= 0 ? `+${backtestResult.metrics.totalReturnStrat.toFixed(1)}%` : `${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`}
+							<span style={{ fontSize: "11px", fontWeight: 400, color: "var(--text-muted)", marginLeft: "4px" }}>
+								(vs {backtestResult.metrics.totalReturnMarket >= 0 ? `+${backtestResult.metrics.totalReturnMarket.toFixed(1)}%` : `${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`})
+							</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Execution Log Table */}
+			<div className="glass-card" style={{ padding: "14px" }}>
+				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+					<div className="card-header-left">
+						<span className="card-header-tag">CAUSAL EXECUTION LOG</span>
+						<h3 className="card-header-title">Completed Trade Attribution Table</h3>
+					</div>
+					<div className="card-header-right">
+						<span className="card-header-meta">{backtestResult.trades.length} TRADES IN WINDOW</span>
+					</div>
+				</div>
+
+				<div style={{ overflowX: "auto", maxHeight: "360px" }}>
+					<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+						<thead>
+							<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+								<th style={{ padding: "8px" }}>ID</th>
+								<th style={{ padding: "8px" }}>ENTRY DATE</th>
+								<th style={{ padding: "8px" }}>ENTRY PRICE</th>
+								<th style={{ padding: "8px" }}>EXIT DATE</th>
+								<th style={{ padding: "8px" }}>EXIT PRICE</th>
+								<th style={{ padding: "8px" }}>HOLD DAYS</th>
+								<th style={{ padding: "8px" }}>EXIT REASON</th>
+								<th style={{ padding: "8px", textAlign: "right" }}>NET RETURN</th>
+							</tr>
+						</thead>
+						<tbody>
+							{backtestResult.trades.length === 0 ? (
+								<tr>
+									<td colSpan={8} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+										No completed trades found in the selected date window.
+									</td>
+								</tr>
+							) : (
+								backtestResult.trades.map((t) => (
+									<tr key={t.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "background 0.15s" }}>
+										<td style={{ padding: "8px", color: "var(--text-muted)" }}>{t.id}</td>
+										<td style={{ padding: "8px" }}>{t.entryDate}</td>
+										<td style={{ padding: "8px" }}>${t.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>{t.exitDate}</td>
+										<td style={{ padding: "8px" }}>${t.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>{t.holdDays}d</td>
+										<td style={{ padding: "8px" }}>
+											<span style={{ padding: "2px 6px", borderRadius: "4px", fontSize: "10px", background: t.exitReason.includes("Bull") ? "rgba(34,197,94,0.1)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", color: t.exitReason.includes("Bull") ? "var(--signal-bull)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "var(--signal-bear)" : "var(--text-main)" }}>
+												{t.exitReason}
+											</span>
+										</td>
+										<td style={{ padding: "8px", textAlign: "right", fontWeight: 700, color: t.returnPct >= 0 ? "var(--signal-bull)" : "var(--signal-bear)" }}>
+											{t.returnPct >= 0 ? `+${t.returnPct.toFixed(2)}%` : `${t.returnPct.toFixed(2)}%`}
+										</td>
+									</tr>
+								))
+							)}
+						</tbody>
+					</table>
 				</div>
 			</div>
 

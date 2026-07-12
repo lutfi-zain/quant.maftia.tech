@@ -13,7 +13,9 @@ import {
 	LineStyle,
 	CandlestickSeries,
 	AreaSeries,
+	LineSeries,
 	PriceScaleMode,
+	createSeriesMarkers,
 } from "lightweight-charts";
 import {
 	AlertTriangle,
@@ -30,8 +32,9 @@ import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import { exportChartsToPng } from "../../lib/exportPng";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useStudioBacktest, type StudioDailyRecord } from "../../lib/studioBacktest";
 
-type MaximizedPanel = null | "btc" | "val";
+type MaximizedPanel = null | "btc" | "val" | "eq";
 
 const BG_CHART = "#0B1220";
 const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
@@ -58,7 +61,7 @@ function makeCommonOptions(yAxisWidth: number) {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: yAxisWidth,
+			minimumWidth: 85,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -80,14 +83,21 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const available = isMobile ? full - MOBILE_BOTTOM_TAB_HEIGHT : full;
 	switch (maximized) {
 		case "btc":
-			return { btc: available, val: 0 };
+			return { btc: available, val: 0, eq: 0 };
 		case "val":
 			return {
-				btc: Math.floor(available * 0.65),
-				val: Math.floor(available * 0.35),
+				btc: Math.floor(available * 0.55),
+				val: Math.floor(available * 0.45),
+				eq: 0,
+			};
+		case "eq":
+			return {
+				btc: Math.floor(available * 0.55),
+				val: 0,
+				eq: Math.floor(available * 0.45),
 			};
 		default:
-			return isMobile ? { btc: 160, val: 120 } : { btc: 300, val: 240 };
+			return isMobile ? { btc: 150, val: 110, eq: 110 } : { btc: 280, val: 180, eq: 160 };
 	}
 }
 
@@ -205,18 +215,54 @@ export const ValuationStudio: React.FC = () => {
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
 	const [dropdownOpenValuation, setDropdownOpenValuation] = useState(false);
+	const [startDate, setStartDate] = useState("2020-01-01");
+	const [endDate, setEndDate] = useState("2026-12-31");
+	const [feeBps, setFeeBps] = useState(10);
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const studioContainerRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
 	const valContainerRef = useRef<HTMLDivElement>(null);
-	const chartsRef = useRef<{ btc: IChartApi | null; val: IChartApi | null }>({
+	const eqContainerRef = useRef<HTMLDivElement>(null);
+	const chartsRef = useRef<{ btc: IChartApi | null; val: IChartApi | null; eq: IChartApi | null }>({
 		btc: null,
 		val: null,
+		eq: null,
 	});
+	const seriesRef = useRef<{
+		candle: any;
+		cumStrat: any;
+		cumMarket: any;
+	}>({ candle: null, cumStrat: null, cumMarket: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+
+	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => {
+		const score = Number(d.valuation_composite ?? 0);
+		const pos = score >= 1.50 ? 0 : 1;
+		return {
+			date: d.date,
+			close: d.close || d.btc_price || 0,
+			position: pos,
+		};
+	});
+
+	const backtestResult = useStudioBacktest(backtestData, startDate, endDate, feeBps);
+
+	useEffect(() => {
+		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
+			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+		}
+		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
+			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+		}
+		if (seriesRef.current.candle && backtestResult.markers.length) {
+			createSeriesMarkers(seriesRef.current.candle, backtestResult.markers as any);
+		} else if (seriesRef.current.candle) {
+			createSeriesMarkers(seriesRef.current.candle, []);
+		}
+	}, [backtestResult]);
 
 	useGSAP(
 		() => {
@@ -264,7 +310,7 @@ export const ValuationStudio: React.FC = () => {
 
 	// Handle maximize: resize charts and update time axis visibility
 	useEffect(() => {
-		const { btc, val } = chartsRef.current;
+		const { btc, val, eq } = chartsRef.current;
 		if (!btc) return;
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
@@ -273,15 +319,36 @@ export const ValuationStudio: React.FC = () => {
 		if (isMobile && maximized !== null) {
 			const containerH = wrapperRef.current?.clientHeight;
 			if (containerH && containerH > 0) {
-				const total = heights.btc + (heights.val || 0);
+				const total = heights.btc + heights.val + heights.eq;
 				if (total > 0) {
-					const ratioBtc = heights.btc / total;
-					btc.resize(w, Math.round(containerH * ratioBtc));
-					if (val) val.resize(w, Math.round(containerH * (1 - ratioBtc)));
-					btc.timeScale().applyOptions({ visible: heights.val === 0 });
-					if (val) val.timeScale().applyOptions({ visible: heights.val > 0 });
+					const yWidth = getChartYAxisWidth();
+					btc.resize(w, Math.round(containerH * (heights.btc / total)));
+					btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					if (val) {
+						val.resize(w, Math.round(containerH * (heights.val / total)));
+						val.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
+					if (eq) {
+						eq.resize(w, Math.round(containerH * (heights.eq / total)));
+						eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
+					}
+					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+						{ chart: val, h: heights.val, id: "val" },
+						{ chart: eq, h: heights.eq, id: "eq" },
+					];
+					const visiblePanels = panels.filter((p) => p.h > 0);
+					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
+					btc.timeScale().applyOptions({ visible: heights.val === 0 && heights.eq === 0 });
+					panels.forEach(({ chart, h, id }) => {
+						if (!chart) return;
+						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+					});
 					requestAnimationFrame(() => {
-						syncYAxisWidth(btcContainerRef.current, [btc, val!].filter(Boolean), getChartYAxisWidth());
+						syncYAxisWidth(
+							btcContainerRef.current,
+							[btc, val, eq].filter(Boolean),
+							getChartYAxisWidth(),
+						);
 					});
 					return;
 				}
@@ -295,21 +362,39 @@ export const ValuationStudio: React.FC = () => {
 			val.resize(w, heights.val);
 			val.priceScale("right").applyOptions({ minimumWidth: yWidth });
 		}
+		if (eq) {
+			eq.resize(w, heights.eq);
+			eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
+		}
 
-		// BTC time axis visible only when it's the only visible pane
-		btc.timeScale().applyOptions({ visible: heights.val === 0 });
-		if (val) val.timeScale().applyOptions({ visible: heights.val > 0 });
+		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+			{ chart: val, h: heights.val, id: "val" },
+			{ chart: eq, h: heights.eq, id: "eq" },
+		];
+		const visiblePanels = panels.filter((p) => p.h > 0);
+		const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
+
+		btc.timeScale().applyOptions({ visible: heights.val === 0 && heights.eq === 0 });
+		panels.forEach(({ chart, h, id }) => {
+			if (!chart) return;
+			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+		});
 		requestAnimationFrame(() => {
-			syncYAxisWidth(btcContainerRef.current, [btc, val].filter(Boolean), yWidth);
+			syncYAxisWidth(
+				btcContainerRef.current,
+				[btc, val, eq].filter(Boolean),
+				yWidth,
+			);
 		});
 	}, [maximized, isMobile]);
 
-	// Initialize 2-pane charts
+	// Initialize 3-pane charts
 	useEffect(() => {
 		if (
 			!dailyData.length ||
 			!btcContainerRef.current ||
-			!valContainerRef.current
+			!valContainerRef.current ||
+			!eqContainerRef.current
 		)
 			return;
 
@@ -334,14 +419,19 @@ export const ValuationStudio: React.FC = () => {
 			borderVisible: false,
 			wickUpColor: "#22C55E",
 			wickDownColor: "#EF4444",
+			priceFormat: {
+				type: "price",
+				precision: 0,
+				minMove: 1,
+			},
 		});
 
-		// Valuation Composite Pane (bottom, shows time axis)
+		// Valuation Composite Pane (middle, no time axis when eq visible)
 		const valChart = createChart(valContainerRef.current, {
 			...common,
 			width: w,
 			height: heights.val,
-			timeScale: { ...common.timeScale, visible: true },
+			timeScale: { ...common.timeScale, visible: false },
 		});
 
 		const valSeries = valChart.addSeries(AreaSeries, {
@@ -391,7 +481,27 @@ export const ValuationStudio: React.FC = () => {
 			title: "Extreme Undervalued -2.00",
 		});
 
-		chartsRef.current = { btc: btcChart, val: valChart };
+		// ── Pane 3: Equity Curve (Cum_Strat vs Cum_Market) ──
+		const eqChart = createChart(eqContainerRef.current, {
+			...common,
+			width: w,
+			height: heights.eq,
+			timeScale: { ...common.timeScale, visible: true },
+		});
+
+		const cumStratSeries = eqChart.addSeries(LineSeries, {
+			color: "#22C55E",
+			lineWidth: 2,
+			title: "Cum_Strat",
+		});
+		const cumMarketSeries = eqChart.addSeries(LineSeries, {
+			color: "#3B82F6",
+			lineWidth: 2,
+			title: "Cum_Market (BTC)",
+		});
+
+		chartsRef.current = { btc: btcChart, val: valChart, eq: eqChart };
+		seriesRef.current = { candle: candleSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
 
 		// Populate data
 		candleSeries.setData(
@@ -422,6 +532,7 @@ export const ValuationStudio: React.FC = () => {
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
 			{ chart: valChart, series: valSeries },
+			{ chart: eqChart, series: cumStratSeries },
 		];
 
 		allCharts.forEach(({ chart }, idx) => {
@@ -433,12 +544,7 @@ export const ValuationStudio: React.FC = () => {
 					const hovered = dailyData.find((p) => p.date === timeStr);
 					setHoveredPoint(hovered || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
-						if (i === idx) return;
-						const val =
-							i === 0
-								? (btcDataMap.get(timeStr) ?? 0)
-								: (valDataMap.get(timeStr) ?? 0);
-						c.setCrosshairPosition(val, param.time as Time, s);
+						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
 				} else {
 					setHoveredPoint(null);
@@ -467,15 +573,15 @@ export const ValuationStudio: React.FC = () => {
 
 		// Resize observer
 		// Sync Y-axis widths after initial render
+		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					syncYAxisWidth(
-						btcContainerRef.current,
-						[btcChart, valChart],
-						getChartYAxisWidth(),
-					);
-				});
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btcChart, valChart, eqChart],
+					getChartYAxisWidth(),
+				);
 			});
+		});
 
 		const ro = new ResizeObserver(() => {
 			if (!wrapperRef.current) return;
@@ -486,7 +592,9 @@ export const ValuationStudio: React.FC = () => {
 			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			valChart.applyOptions({ width: nw });
 			valChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
-			syncYAxisWidth(btcContainerRef.current, [btcChart, valChart], yWidth);
+			eqChart.applyOptions({ width: nw });
+			eqChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(btcContainerRef.current, [btcChart, valChart, eqChart], yWidth);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 
@@ -494,7 +602,9 @@ export const ValuationStudio: React.FC = () => {
 			ro.disconnect();
 			btcChart.remove();
 			valChart.remove();
-			chartsRef.current = { btc: null, val: null };
+			eqChart.remove();
+			chartsRef.current = { btc: null, val: null, eq: null };
+			seriesRef.current = { candle: null, cumStrat: null, cumMarket: null };
 		};
 	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -852,6 +962,188 @@ export const ValuationStudio: React.FC = () => {
 								ref={valContainerRef}
 								style={{ width: "100%", height: `${heights.val}px` }}
 							/>
+						</div>
+						{/* Pane 3: Equity Curve Subplot (Cum_Strat vs Cum_Market) */}
+						<div
+							className={`chart-subplot ${heights.eq === 0 ? "chart-subplot-hidden" : ""}`}
+						>
+							<div className="chart-subplot-header">
+								<div className="subplot-title">
+									<span className="subplot-badge">CAUSAL COMP</span>
+									<span>Dynamic Backtest Equity Curve</span>
+								</div>
+								<div className="subplot-controls">
+									<button
+										className="icon-btn"
+										onClick={() =>
+											setMaximized(maximized === "eq" ? null : "eq")
+										}
+										title={
+											maximized === "eq"
+												? "Restore"
+												: "Maximize Equity pane"
+										}
+									>
+										{maximized === "eq" ? (
+											<Minimize2 size={14} />
+										) : (
+											<Maximize2 size={14} />
+										)}
+									</button>
+								</div>
+							</div>
+							<div
+								ref={eqContainerRef}
+								style={{ width: "100%", height: `${heights.eq}px` }}
+							/>
+						</div>
+					</div>
+
+					{/* Interactive Backtest Controls & Metrics Bar */}
+					<div className="glass-card" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
+						<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+							<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+								<span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.05em" }}>BACKTEST CONFIG</span>
+								<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+									<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Start Date:</label>
+									<input
+										type="date"
+										value={startDate}
+										onChange={(e) => setStartDate(e.target.value)}
+										style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+									/>
+								</div>
+								<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+									<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>End Date:</label>
+									<input
+										type="date"
+										value={endDate}
+										onChange={(e) => setEndDate(e.target.value)}
+										style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+									/>
+								</div>
+								<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+									<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Fee Friction ({feeBps} bps):</label>
+									<input
+										type="range"
+										min="0"
+										max="50"
+										step="1"
+										value={feeBps}
+										onChange={(e) => setFeeBps(Number(e.target.value))}
+										style={{ width: "100px", accentColor: "var(--accent)" }}
+									/>
+								</div>
+							</div>
+							<div style={{ display: "flex", gap: "8px" }}>
+								<button
+									className="toggle-btn"
+									onClick={() => { setStartDate("2020-01-01"); setEndDate("2026-12-31"); setFeeBps(10); }}
+									style={{ fontSize: "11px", padding: "4px 8px" }}
+								>
+									Reset Defaults
+								</button>
+							</div>
+						</div>
+
+						<div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)", gap: "10px" }}>
+							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>WIN RATE</div>
+								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.winRate >= 50 ? "var(--signal-bull)" : "var(--text-main)" }}>
+									{backtestResult.metrics.winRate.toFixed(1)}%
+								</div>
+							</div>
+							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>PROFIT FACTOR</div>
+								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.profitFactor >= 1.5 ? "var(--signal-bull)" : backtestResult.metrics.profitFactor >= 1.0 ? "var(--text-main)" : "var(--signal-bear)" }}>
+									{backtestResult.metrics.profitFactor.toFixed(2)}
+								</div>
+							</div>
+							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>TOTAL TRADES</div>
+								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--text-main)" }}>
+									{backtestResult.metrics.totalTrades}
+								</div>
+							</div>
+							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>SHARPE RATIO</div>
+								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.sharpeRatio >= 1.0 ? "var(--signal-bull)" : "var(--text-main)" }}>
+									{backtestResult.metrics.sharpeRatio.toFixed(2)}
+								</div>
+							</div>
+							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>MAX DRAWDOWN</div>
+								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--signal-bear)" }}>
+									-{backtestResult.metrics.maxDrawdown.toFixed(1)}%
+								</div>
+							</div>
+							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
+								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>STRATEGY vs BTC HOLD</div>
+								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.totalReturnStrat >= backtestResult.metrics.totalReturnMarket ? "var(--signal-bull)" : "var(--signal-bear)" }}>
+									{backtestResult.metrics.totalReturnStrat >= 0 ? `+${backtestResult.metrics.totalReturnStrat.toFixed(1)}%` : `${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`}
+									<span style={{ fontSize: "11px", fontWeight: 400, color: "var(--text-muted)", marginLeft: "4px" }}>
+										(vs {backtestResult.metrics.totalReturnMarket >= 0 ? `+${backtestResult.metrics.totalReturnMarket.toFixed(1)}%` : `${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`})
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Execution Log Table */}
+					<div className="glass-card" style={{ padding: "14px" }}>
+						<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+							<div className="card-header-left">
+								<span className="card-header-tag">CAUSAL EXECUTION LOG</span>
+								<h3 className="card-header-title">Completed Trade Attribution Table</h3>
+							</div>
+							<div className="card-header-right">
+								<span className="card-header-meta">{backtestResult.trades.length} TRADES IN WINDOW</span>
+							</div>
+						</div>
+
+						<div style={{ overflowX: "auto", maxHeight: "360px" }}>
+							<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+								<thead>
+									<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+										<th style={{ padding: "8px" }}>ID</th>
+										<th style={{ padding: "8px" }}>ENTRY DATE</th>
+										<th style={{ padding: "8px" }}>ENTRY PRICE</th>
+										<th style={{ padding: "8px" }}>EXIT DATE</th>
+										<th style={{ padding: "8px" }}>EXIT PRICE</th>
+										<th style={{ padding: "8px" }}>HOLD DAYS</th>
+										<th style={{ padding: "8px" }}>EXIT REASON</th>
+										<th style={{ padding: "8px", textAlign: "right" }}>NET RETURN</th>
+									</tr>
+								</thead>
+								<tbody>
+									{backtestResult.trades.length === 0 ? (
+										<tr>
+											<td colSpan={8} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+												No completed trades found in the selected date window.
+											</td>
+										</tr>
+									) : (
+										backtestResult.trades.map((t) => (
+											<tr key={t.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "background 0.15s" }}>
+												<td style={{ padding: "8px", color: "var(--text-muted)" }}>{t.id}</td>
+												<td style={{ padding: "8px" }}>{t.entryDate}</td>
+												<td style={{ padding: "8px" }}>${t.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+												<td style={{ padding: "8px" }}>{t.exitDate}</td>
+												<td style={{ padding: "8px" }}>${t.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+												<td style={{ padding: "8px" }}>{t.holdDays}d</td>
+												<td style={{ padding: "8px" }}>
+													<span style={{ padding: "2px 6px", borderRadius: "4px", fontSize: "10px", background: t.exitReason.includes("Bull") ? "rgba(34,197,94,0.1)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", color: t.exitReason.includes("Bull") ? "var(--signal-bull)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "var(--signal-bear)" : "var(--text-main)" }}>
+														{t.exitReason}
+													</span>
+												</td>
+												<td style={{ padding: "8px", textAlign: "right", fontWeight: 700, color: t.returnPct >= 0 ? "var(--signal-bull)" : "var(--signal-bear)" }}>
+													{t.returnPct >= 0 ? `+${t.returnPct.toFixed(2)}%` : `${t.returnPct.toFixed(2)}%`}
+												</td>
+											</tr>
+										))
+									)}
+								</tbody>
+							</table>
 						</div>
 					</div>
 

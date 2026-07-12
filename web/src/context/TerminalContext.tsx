@@ -51,7 +51,11 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       mttd_imo: newPoint.mttd_imo?.oscillator ?? (typeof newPoint.mttd_imo === 'number' ? newPoint.mttd_imo : 0),
       mttd_er_ratio: newPoint.mttd_imo?.efficiency_ratio ?? 0,
       mttd_shannon_entropy: newPoint.mttd_imo?.shannon_entropy ?? 0,
-      ichimoku_imo: newPoint.ichimoku_imo?.oscillator ?? (typeof newPoint.ichimoku_imo === 'number' ? newPoint.ichimoku_imo : 0)
+      ichimoku_imo: newPoint.ichimoku_imo?.oscillator ?? (typeof newPoint.ichimoku_imo === 'number' ? newPoint.ichimoku_imo : 0),
+      ichimoku_entropy: newPoint.ichimoku_imo?.entropy ?? undefined,
+      ichimoku_er: newPoint.ichimoku_imo?.er ?? undefined,
+      ichimoku_imo_std: newPoint.ichimoku_imo?.imo_std ?? undefined,
+      ichimoku_position: newPoint.ichimoku_imo?.position ?? undefined,
     };
     setDailyData(prev => {
       const idx = prev.findIndex(item => item.date === mappedPoint.date);

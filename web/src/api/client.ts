@@ -104,6 +104,19 @@ export const quantClient = {
 			ichimoku_imo:
 				item.ichimoku_imo?.oscillator ??
 				(typeof item.ichimoku_imo === "number" ? item.ichimoku_imo : 0),
+			ichimoku_s_tk: item.ichimoku_imo?.s_tk ?? undefined,
+			ichimoku_s_cloud: item.ichimoku_imo?.s_cloud ?? undefined,
+			ichimoku_s_future: item.ichimoku_imo?.s_future ?? undefined,
+			ichimoku_s_chikou: item.ichimoku_imo?.s_chikou ?? undefined,
+			ichimoku_tenkan: item.ichimoku_imo?.tenkan ?? undefined,
+			ichimoku_kijun: item.ichimoku_imo?.kijun ?? undefined,
+			ichimoku_senkou_a: item.ichimoku_imo?.senkou_a ?? undefined,
+			ichimoku_senkou_b: item.ichimoku_imo?.senkou_b ?? undefined,
+			ichimoku_chikou: item.ichimoku_imo?.chikou ?? undefined,
+			ichimoku_entropy: item.ichimoku_imo?.entropy ?? undefined,
+			ichimoku_er: item.ichimoku_imo?.er ?? undefined,
+			ichimoku_imo_std: item.ichimoku_imo?.imo_std ?? undefined,
+			ichimoku_position: item.ichimoku_imo?.position ?? undefined,
 		}));
 
 		return verifyCausalData(mapped);

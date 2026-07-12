@@ -43,8 +43,7 @@ export function syncYAxisWidth(
 		const canvases = btcContainer.querySelectorAll("canvas");
 		if (canvases.length > 0) {
 			const firstCanvas = canvases[0] as HTMLElement;
-			const estimated =
-				btcContainer.offsetWidth - firstCanvas.offsetWidth;
+			const estimated = btcContainer.offsetWidth - firstCanvas.offsetWidth;
 			if (estimated > 0) {
 				axisWidth = Math.max(estimated, yWidth);
 			}

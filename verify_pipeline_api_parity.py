@@ -5,6 +5,7 @@ import json
 import sqlite3
 import urllib.request
 import datetime
+import pandas as pd
 
 PROJECTS_DIR = "/home/ubuntu/projects"
 if PROJECTS_DIR not in sys.path:
@@ -87,7 +88,9 @@ def verify_parity():
           u.valuation_composite,
           u.lttd_regime, u.lttd_score, u.lttd_prob_bull, u.lttd_prob_bear, u.lttd_prob_sideways,
           u.mttd_imo, u.mttd_er, u.mttd_entropy, u.mttd_position, u.mttd_immunity_active,
-          u.ichimoku_imo, u.ichimoku_regime, u.ichimoku_position
+          u.ichimoku_imo, u.ichimoku_regime, u.ichimoku_position,
+          u.ichi_s_tk, u.ichi_s_cloud, u.ichi_s_future, u.ichi_s_chikou,
+          u.ichi_tenkan, u.ichi_kijun, u.ichi_senkou_a, u.ichi_senkou_b, u.ichi_chikou
         FROM unified_daily_analytics u
         LEFT JOIN master_ohlcv m ON u.date = m.date
         WHERE u.date <= ?
@@ -174,10 +177,23 @@ def verify_parity():
         run_check(check_numeric_match, "mttd_imo.position", row[16], api_item["mttd_imo"]["position"])
         run_check(check_string_match, "mttd_imo.immunity_active", bool(row[17]), api_item["mttd_imo"]["immunity_active"])
         
-        # 5. Ichimoku IMO
+        # 5. Ichimoku IMO (existing fields)
         run_check(check_numeric_match, "ichimoku_imo.oscillator", row[18], api_item["ichimoku_imo"]["oscillator"])
         run_check(check_string_match, "ichimoku_imo.regime", row[19], api_item["ichimoku_imo"]["regime"])
         run_check(check_numeric_match, "ichimoku_imo.position", row[20], api_item["ichimoku_imo"]["position"])
+        
+        # 6. Ichimoku S-Components (NEW)
+        run_check(check_numeric_match, "ichimoku_imo.s_tk", row[21], api_item["ichimoku_imo"].get("s_tk"))
+        run_check(check_numeric_match, "ichimoku_imo.s_cloud", row[22], api_item["ichimoku_imo"].get("s_cloud"))
+        run_check(check_numeric_match, "ichimoku_imo.s_future", row[23], api_item["ichimoku_imo"].get("s_future"))
+        run_check(check_numeric_match, "ichimoku_imo.s_chikou", row[24], api_item["ichimoku_imo"].get("s_chikou"))
+        
+        # 7. Ichimoku Price-Level Lines (NEW)
+        run_check(check_numeric_match, "ichimoku_imo.tenkan", row[25], api_item["ichimoku_imo"].get("tenkan"))
+        run_check(check_numeric_match, "ichimoku_imo.kijun", row[26], api_item["ichimoku_imo"].get("kijun"))
+        run_check(check_numeric_match, "ichimoku_imo.senkou_a", row[27], api_item["ichimoku_imo"].get("senkou_a"))
+        run_check(check_numeric_match, "ichimoku_imo.senkou_b", row[28], api_item["ichimoku_imo"].get("senkou_b"))
+        run_check(check_numeric_match, "ichimoku_imo.chikou", row[29], api_item["ichimoku_imo"].get("chikou"))
 
     print(f"\nCompleted {total_checks} checks across {len(db_rows)} daily rows.")
     print(f"Passed Checks: {passed_checks}/{total_checks} ({passed_checks/total_checks*100 if total_checks else 0:.2f}%)")
@@ -191,7 +207,94 @@ def verify_parity():
         sys.exit(1)
     else:
         print("\nSUCCESS! 100% 1:1 Parity verified between maftia_quant.db and API Gateway :8765 across all metrics!")
-        sys.exit(0)
+        
+    # Cross-validation: compare against prior system's raw output
+    print("\n=== Cross-validation: prior system output vs DB ===")
+    try:
+        ichimoku_dir = "/home/ubuntu/projects/quant-lttd-ichimoku"
+        if ichimoku_dir not in sys.path:
+            sys.path.insert(0, ichimoku_dir)
+        from src.ichimoku_quant.data import fetch_btc_data
+        from src.ichimoku_quant.features import generate_ichimoku_features
+        from src.ichimoku_quant.strategy import generate_signals
+        
+        df_prior = fetch_btc_data()
+        df_prior = generate_ichimoku_features(df_prior)
+        df_prior = generate_signals(df_prior)
+        df_prior.index = pd.to_datetime(df_prior.index)
+        
+        # Compare against DB
+        conn = get_wal_connection(DB_PATH)
+        cursor = conn.cursor()
+        prior_discrepancies = []
+        prior_checks = 0
+        prior_passed = 0
+        
+        for idx, r in df_prior.iterrows():
+            dt = idx.strftime("%Y-%m-%d")
+            cursor.execute(
+                """SELECT ichimoku_imo, ichi_s_tk, ichi_s_cloud, ichi_s_future, ichi_s_chikou,
+                           ichi_tenkan, ichi_kijun, ichi_senkou_a, ichi_senkou_b
+                    FROM unified_daily_analytics WHERE date = ?""",
+                (dt,)
+            )
+            db_row = cursor.fetchone()
+            if db_row is None:
+                continue
+            
+            prior_checks += 1
+            
+            checks = [
+                ("IMO", r.get("IMO"), db_row[0]),
+                ("S_TK", r.get("S_TK"), db_row[1]),
+                ("S_Cloud", r.get("S_Cloud"), db_row[2]),
+                ("S_Future", r.get("S_Future"), db_row[3]),
+                ("S_Chikou", r.get("S_Chikou"), db_row[4]),
+                ("tenkan_sen", r.get("tenkan_sen"), db_row[5]),
+                ("kijun_sen", r.get("kijun_sen"), db_row[6]),
+                ("senkou_span_a", r.get("senkou_span_a"), db_row[7]),
+                ("senkou_span_b", r.get("senkou_span_b"), db_row[8]),
+            ]
+            
+            all_match = True
+            for name, prior_val, db_val in checks:
+                if prior_val is None or pd.isnull(prior_val):
+                    if db_val is not None:
+                        all_match = False
+                        prior_discrepancies.append(f"[{dt}] {name}: prior is NaN but DB has {db_val}")
+                    continue
+                if db_val is None:
+                    all_match = False
+                    prior_discrepancies.append(f"[{dt}] {name}: prior has {float(prior_val):.4f} but DB is NULL")
+                    continue
+                diff = abs(float(prior_val) - float(db_val))
+                if diff >= 1e-6:
+                    all_match = False
+                    prior_discrepancies.append(f"[{dt}] {name}: prior {float(prior_val):.4f} vs DB {float(db_val):.4f} (diff={diff:.8f})")
+            
+            if all_match:
+                prior_passed += 1
+        
+        conn.close()
+        
+        print(f"Cross-validation: {prior_passed}/{prior_checks} date rows match perfectly between prior system and DB.")
+        if prior_discrepancies:
+            print(f"Found {len(prior_discrepancies)} discrepancies with prior system:")
+            for d in prior_discrepancies[:10]:
+                print(f"  - {d}")
+            return 1
+        else:
+            print("SUCCESS! DB output matches prior system 1:1.")
+            return 0
+            
+    except ImportError as e:
+        print(f"Could not import prior system modules for cross-validation: {e}")
+        print("Skipping cross-validation. Basic parity check still passed.")
+        return 0
+    except Exception as e:
+        print(f"Cross-validation error: {e}")
+        return 1
 
 if __name__ == "__main__":
-    verify_parity()
+    sys.exit(verify_parity())
+

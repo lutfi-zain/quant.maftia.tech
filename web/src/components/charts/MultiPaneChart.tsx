@@ -18,6 +18,7 @@ import {
 	createSeriesMarkers,
 } from "lightweight-charts";
 import type { DailyAnalyticsPoint } from "../../api/types";
+import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 
 type MaximizedPanel = null | "btc" | "val" | "lttd" | "mttd";
 
@@ -51,7 +52,7 @@ function makeCommonOptions(yAxisWidth: number) {
 			horzLines: { color: GRID_COLOR },
 		},
 		rightPriceScale: {
-			minimumWidth: yAxisWidth,
+			minimumWidth: 85,
 			borderColor: BORDER_COLOR,
 			autoScale: true,
 		},
@@ -168,6 +169,17 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		});
 		// BTC time axis visible only when it's the only pane or nothing below it
 		btc.timeScale().applyOptions({ visible: visiblePanels.length === 0 });
+
+		const yWidth = getChartYAxisWidth();
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					priceContainerRef.current,
+					[btc, val, lttd, mttd],
+					yWidth,
+				);
+			});
+		});
 	}, [maximized, isMobile]);
 
 	// Chart initialization — runs once on data available
@@ -202,6 +214,11 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 			borderVisible: false,
 			wickUpColor: "#22C55E",
 			wickDownColor: "#EF4444",
+			priceFormat: {
+				type: "price",
+				precision: 0,
+				minMove: 1,
+			},
 		});
 
 		// Ichimoku IMO as thin overlay line (proper signal, not price approximation)
@@ -320,10 +337,10 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 							: 0.0),
 				color:
 					p.lttd_regime === "BULL"
-						? "#22C55E"
+						? "#10B981"
 						: p.lttd_regime === "BEAR"
-							? "#EF4444"
-							: "#F59E0B",
+							? "#F43F5E"
+							: "#EAB308",
 			})),
 		);
 		mttdSeries.setData(
@@ -337,7 +354,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 				markers.push({
 					time: p.date as Time,
 					position: "belowBar",
-					color: "#F59E0B",
+					color: "#00F0FF",
 					shape: "arrowUp",
 					text: "BUY",
 				});
@@ -345,7 +362,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 				markers.push({
 					time: p.date as Time,
 					position: "aboveBar",
-					color: "#EF4444",
+					color: "#F43F5E",
 					shape: "arrowDown",
 					text: "SELL",
 				});
@@ -405,8 +422,19 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 				chart.applyOptions({ width: newW });
 				chart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			});
+			syncYAxisWidth(priceContainerRef.current, [btcChart, valChart, lttdChart, mttdChart], yWidth);
 		});
 		if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
+
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					priceContainerRef.current,
+					[btcChart, valChart, lttdChart, mttdChart],
+					getChartYAxisWidth(),
+				);
+			});
+		});
 
 		btcChart.timeScale().fitContent();
 
@@ -464,20 +492,8 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 	return (
 		<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 			{/* Tooltip Bar */}
-			<div
-				className="glass-card"
-				style={{
-					padding: "10px 20px",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-					fontFamily: "JetBrains Mono",
-					fontSize: "12px",
-					flexWrap: "wrap",
-					gap: "8px",
-				}}
-			>
-				<div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+			<div className="chart-top-toolbar">
+				<div className="toolbar-metrics-group">
 					<span style={{ color: "var(--text-dim)" }}>
 						DATE:{" "}
 						<strong style={{ color: "var(--text-mono)" }}>
@@ -504,7 +520,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 						</strong>
 					</span>
 				</div>
-				<div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+				<div className="toolbar-metrics-group">
 					<span style={{ color: "var(--text-dim)" }}>
 						LTTD:{" "}
 						<strong
@@ -534,13 +550,13 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 					</span>
 				</div>
 				{/* LOG/LIN + Maximize controls */}
-				<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+				<div className="toolbar-controls-group">
 					{maximized !== null && (
 						<button
 							className="icon-btn"
 							onClick={() => setMaximized(null)}
 							title="Restore all panels"
-							style={{ fontSize: "15px", width: "auto", padding: "0 8px" }}
+							style={{ fontSize: "13px", width: "auto", padding: "0 10px" }}
 						>
 							✕ Restore
 						</button>
@@ -575,22 +591,12 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 					return (
 						<div key={id} className={`chart-subplot ${hiddenClass}`}>
 							<div className="chart-subplot-header">
-								<span
-									className="subplot-title"
-									style={{ color: "var(--text-dim)" }}
-								>
-									{label}
-								</span>
+								<div className="subplot-title">
+									<span className="subplot-badge">SYS {id?.toUpperCase()}</span>
+									<span>{label}</span>
+								</div>
 								<div className="subplot-controls">
-									<span
-										style={{
-											fontFamily: "JetBrains Mono",
-											fontSize: "10px",
-											color: "rgba(255,255,255,0.2)",
-										}}
-									>
-										85px
-									</span>
+									<span className="subplot-axis-lock">85px</span>
 									<button
 										className="icon-btn"
 										onClick={() =>

@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
           width: '30px',
           height: '30px',
           borderRadius: '4px',
-          background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+          background: 'linear-gradient(135deg, #00f0ff, #0284c7)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -74,12 +74,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
           fontWeight: 700,
           fontFamily: 'JetBrains Mono',
           fontSize: '14px',
-          boxShadow: '0 0 16px rgba(245,158,11,0.25)'
+          boxShadow: '0 0 16px rgba(0, 240, 255, 0.25)'
         }}>
           MQ
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.3px', fontFamily: 'Inter, sans-serif' }}>
+          <div style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.3px', fontFamily: 'Geist, sans-serif' }}>
             MAFTIA <span style={{ color: 'var(--accent)' }}>QUANT</span>
           </div>
           <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>
@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
                     transition: 'all 0.15s ease',
                     textAlign: 'left',
                     boxShadow: isActive ? 'inset 2px 0 0 var(--accent)' : 'none',
-                    fontFamily: 'Inter, sans-serif'
+                    fontFamily: 'Geist, sans-serif'
                   }}
                 >
                   <Icon size={16} style={{ color: isActive ? 'var(--accent)' : 'var(--text-dim)', flexShrink: 0 }} />

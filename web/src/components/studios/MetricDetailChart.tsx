@@ -49,7 +49,7 @@ function makeCommonOptions(yAxisWidth: number) {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
 			textColor: TEXT_COLOR,
-			fontFamily: "JetBrains Mono",
+			fontFamily: "Geist Mono, monospace",
 			fontSize: 11,
 		},
 		grid: {
@@ -725,7 +725,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 					fontWeight: 700,
 					padding: "2px 8px",
 					borderRadius: "4px",
-					fontFamily: "JetBrains Mono",
+					fontFamily: "Geist Mono, monospace",
 					backgroundColor: isInverted ? "rgba(245,158,11,0.15)" : "rgba(96,165,250,0.15)",
 					color: isInverted ? "var(--accent)" : "var(--signal-quant)"
 				}}>
@@ -738,7 +738,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 						fontSize: "10px",
 						fontWeight: 700,
 						color: "#FFAAAA",
-						fontFamily: "JetBrains Mono",
+						fontFamily: "Geist Mono, monospace",
 						display: "flex",
 						alignItems: "center",
 						gap: "4px"
@@ -780,7 +780,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							border: "1px solid var(--border-panel)",
 							borderRadius: "4px",
 							color: "#fff",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "12px",
 						}}
 					/>
@@ -810,7 +810,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							border: "1px solid var(--border-panel)",
 							borderRadius: "4px",
 							color: "#fff",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "12px",
 						}}
 					/>
@@ -840,7 +840,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							border: "1px solid var(--border-panel)",
 							borderRadius: "4px",
 							color: "#fff",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "12px",
 						}}
 					/>
@@ -870,7 +870,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							border: "1px solid var(--border-panel)",
 							borderRadius: "4px",
 							color: "#fff",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "12px",
 						}}
 					/>
@@ -900,7 +900,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							border: "1px solid var(--border-panel)",
 							borderRadius: "4px",
 							color: "#fff",
-							fontFamily: "JetBrains Mono",
+							fontFamily: "Geist Mono, monospace",
 							fontSize: "12px",
 						}}
 					/>
@@ -962,7 +962,7 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 						borderRadius: "4px",
 						fontSize: "11px",
 						lineHeight: "1.3",
-						fontFamily: "JetBrains Mono",
+						fontFamily: "Geist Mono, monospace",
 						backgroundColor:
 							toast.type === "success"
 								? "rgba(34,197,94,0.15)"
@@ -980,20 +980,12 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 	return (
 		<div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 			{/* Metric Detail Header Navigation */}
-			<div
-				className="glass-card"
-				style={{
-					padding: "12px 16px",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
+			<div className="modal-header-bar">
 				<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
 					<button
 						onClick={onClose}
 						className="icon-btn flex items-center justify-center"
-						style={{ width: "30px", height: "30px" }}
+						style={{ width: "32px", height: "32px" }}
 						title="Back to Composite"
 					>
 						<ArrowLeft size={18} />
@@ -1001,25 +993,26 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 					<div>
 						<span
 							style={{
-								fontSize: "11px",
-								fontWeight: 600,
+								fontSize: "10px",
+								fontWeight: 700,
 								color: "var(--signal-quant)",
+								letterSpacing: "0.5px",
 							}}
 						>
 							DETAILED COMPONENT ZOOM
 						</span>
-						<h3 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>
+						<h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>
 							{metricDisplayName}
 						</h3>
 					</div>
 				</div>
 
-				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+				<div className="modal-header-actions">
 					{maximizedPanel !== null && (
 						<button
 							onClick={() => setMaximizedPanel(null)}
 							className="icon-btn flex items-center gap-1"
-							style={{ fontSize: "12px", width: "auto", padding: "0 12px" }}
+							style={{ fontSize: "12px", width: "auto", padding: "0 10px" }}
 						>
 							<Minimize2 size={14} /> Restore subplots
 						</button>
@@ -1033,11 +1026,9 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 							gap: "6px",
 							backgroundColor: "rgba(30, 41, 59, 0.5)",
 							border: "1px solid var(--border-panel)",
-							padding: "6px 12px",
-							borderRadius: "4px",
 							cursor: "pointer",
 							color: "var(--text-primary)",
-							fontSize: "12px",
+							fontSize: "11px",
 							fontWeight: 600,
 						}}
 					>
@@ -1066,8 +1057,8 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 								color: "#000",
 								border: "none",
 								borderRadius: "4px",
-								fontWeight: 600,
-								fontSize: "12px",
+								fontWeight: 700,
+								fontSize: "11px",
 								cursor: "pointer",
 							}}
 						>

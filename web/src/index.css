@@ -67,7 +67,7 @@
 
 	/* ─── Responsive Chart Y-Axis Width ─── */
 	/* Desktop: 85px (architecture mandate). Overridden to 65px on mobile below. */
-	--chart-yaxis-width: 95;
+	--chart-yaxis-width: 85;
 }
 
 * {
@@ -829,7 +829,7 @@ pre,
 @media (max-width: 767px) {
 	/* Chart Y-axis relaxed to 65px for more plot area */
 	:root {
-		--chart-yaxis-width: 75;
+		--chart-yaxis-width: 65;
 	}
 
 	/* Show mobile-only elements */

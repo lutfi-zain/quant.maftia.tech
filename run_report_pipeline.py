@@ -163,6 +163,18 @@ def main():
   ichimoku_imo           REAL,
   ichimoku_regime        TEXT,
   ichimoku_position      REAL,
+  ichi_s_tk              REAL,
+  ichi_s_cloud           REAL,
+  ichi_s_future          REAL,
+  ichi_s_chikou          REAL,
+  ichi_tenkan            REAL,
+  ichi_kijun             REAL,
+  ichi_senkou_a          REAL,
+  ichi_senkou_b          REAL,
+  ichi_chikou            REAL,
+  ichi_entropy           REAL,
+  ichi_er                REAL,
+  ichi_imo_std           REAL,
   FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 )"""
         )
@@ -178,6 +190,19 @@ def main():
   PRIMARY KEY (date, system_source, component_name)
 )"""
         )
+        # Migration: add missing Ichimoku columns to existing unified_daily_analytics table
+        existing_cols = [r[1] for r in master_conn.execute("PRAGMA table_info(unified_daily_analytics)").fetchall()]
+        ichi_new_cols = ['ichi_s_tk', 'ichi_s_cloud', 'ichi_s_future', 'ichi_s_chikou',
+                         'ichi_tenkan', 'ichi_kijun', 'ichi_senkou_a', 'ichi_senkou_b', 'ichi_chikou',
+                         'ichi_entropy', 'ichi_er', 'ichi_imo_std']
+        for col_name in ichi_new_cols:
+            if col_name not in existing_cols:
+                try:
+                    master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col_name} REAL")
+                    print(f"  Added column {col_name} to unified_daily_analytics")
+                except Exception as e:
+                    print(f"  Could not add column {col_name}: {e}")
+        master_conn.commit()
         current_utc_date_str = pd.Timestamp.now('UTC').strftime("%Y-%m-%d")
         master_records = 0
         for _, mrow in df_master.iterrows():
@@ -354,12 +379,30 @@ def main():
 
     ich_data_all = {}
     try:
+        # Compute chikou = Close shifted LEFT by p2=60 bars (traditional Ichimoku offset)
+        # At date t, chikou = Close[t + 60], matching Pine Script's offset=-60 behavior
+        ich_chikou_series = df_ich['Close'].shift(-60)
         for idx, r in df_ich[df_ich.index <= pd.to_datetime(current_utc_date_str)].iterrows():
             dt = idx.strftime("%Y-%m-%d")
             ich_data_all[dt] = {
                 "imo": float(r["IMO"]) if pd.notnull(r["IMO"]) else None,
                 "regime": str(r["Regime"]).upper() if pd.notnull(r["Regime"]) else "NEUTRAL",
-                "pos": float(r["Pos"]) if pd.notnull(r["Pos"]) else 0.0
+                "pos": float(r["Pos"]) if pd.notnull(r["Pos"]) else 0.0,
+                # S-component values (tanh-normalized oscillators)
+                "s_tk": float(r["S_TK"]) if "S_TK" in r and pd.notnull(r["S_TK"]) else None,
+                "s_cloud": float(r["S_Cloud"]) if "S_Cloud" in r and pd.notnull(r["S_Cloud"]) else None,
+                "s_future": float(r["S_Future"]) if "S_Future" in r and pd.notnull(r["S_Future"]) else None,
+                "s_chikou": float(r["S_Chikou"]) if "S_Chikou" in r and pd.notnull(r["S_Chikou"]) else None,
+                # Raw Ichimoku price-level lines (for chart overlay)
+                "tenkan": float(r["tenkan_sen"]) if "tenkan_sen" in r and pd.notnull(r["tenkan_sen"]) else None,
+                "kijun": float(r["kijun_sen"]) if "kijun_sen" in r and pd.notnull(r["kijun_sen"]) else None,
+                "senkou_a": float(r["senkou_span_a"]) if "senkou_span_a" in r and pd.notnull(r["senkou_span_a"]) else None,
+                "senkou_b": float(r["senkou_span_b"]) if "senkou_span_b" in r and pd.notnull(r["senkou_span_b"]) else None,
+                "chikou": float(ich_chikou_series.loc[idx]) if pd.notnull(ich_chikou_series.loc[idx]) else None,
+                # Ichimoku gating limits (Entropy, ER, Adaptive Threshold)
+                "entropy": float(r["Entropy"]) if "Entropy" in r and pd.notnull(r["Entropy"]) else None,
+                "er": float(r["ER"]) if "ER" in r and pd.notnull(r["ER"]) else None,
+                "imo_std": float(r["IMO_Std"]) if "IMO_Std" in r and pd.notnull(r["IMO_Std"]) else None
             }
     except Exception as e:
         print(f"Error fetching full Ichimoku signals: {e}")
@@ -412,19 +455,39 @@ def main():
             if c_row is not None:
                 btc_p = float(c_row[0])
 
+        # Extract Ichimoku extended fields from ich_rec
+        ich_s_tk = ich_rec.get("s_tk")
+        ich_s_cloud = ich_rec.get("s_cloud")
+        ich_s_future = ich_rec.get("s_future")
+        ich_s_chikou = ich_rec.get("s_chikou")
+        ich_tenkan = ich_rec.get("tenkan")
+        ich_kijun = ich_rec.get("kijun")
+        ich_senkou_a = ich_rec.get("senkou_a")
+        ich_senkou_b = ich_rec.get("senkou_b")
+        ich_chikou = ich_rec.get("chikou")
+        ich_entropy = ich_rec.get("entropy")
+        ich_er = ich_rec.get("er")
+        ich_imo_std = ich_rec.get("imo_std")
+
         execute_parameterized(
             master_conn,
             """INSERT OR REPLACE INTO unified_daily_analytics (
                 date, btc_price, valuation_composite,
                 lttd_regime, lttd_score, lttd_prob_bull, lttd_prob_bear, lttd_prob_sideways,
                 mttd_imo, mttd_er, mttd_entropy, mttd_position, mttd_immunity_active,
-                ichimoku_imo, ichimoku_regime, ichimoku_position
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ichimoku_imo, ichimoku_regime, ichimoku_position,
+                ichi_s_tk, ichi_s_cloud, ichi_s_future, ichi_s_chikou,
+                ichi_tenkan, ichi_kijun, ichi_senkou_a, ichi_senkou_b, ichi_chikou,
+                ichi_entropy, ichi_er, ichi_imo_std
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 dt, btc_p, val_comp,
                 lttd_reg, lttd_score, p_bull, p_bear, p_side,
                 mttd_imo, mttd_er, mttd_ent, mttd_pos_val, mttd_imm,
-                ich_imo, ich_reg, ich_pos_val
+                ich_imo, ich_reg, ich_pos_val,
+                ich_s_tk, ich_s_cloud, ich_s_future, ich_s_chikou,
+                ich_tenkan, ich_kijun, ich_senkou_a, ich_senkou_b, ich_chikou,
+                ich_entropy, ich_er, ich_imo_std
             ),
             commit=False
         )
@@ -497,9 +560,36 @@ def main():
     except Exception as e:
         print(f"Error syncing MTTD component signals: {e}")
 
+    ich_comp_count = 0
+    try:
+        for dt, ich_rec in ich_data_all.items():
+            for icomp in ["IMO", "S_TK", "S_Cloud", "S_Future", "S_Chikou"]:
+                # Map dict keys to column values
+                val_map = {
+                    "IMO": ich_rec.get("imo"),
+                    "S_TK": ich_rec.get("s_tk"),
+                    "S_Cloud": ich_rec.get("s_cloud"),
+                    "S_Future": ich_rec.get("s_future"),
+                    "S_Chikou": ich_rec.get("s_chikou")
+                }
+                ival = val_map.get(icomp)
+                if ival is not None and pd.notnull(ival):
+                    s_dir = 1 if ival > 0.15 else (-1 if ival < -0.15 else 0)
+                    execute_parameterized(
+                        master_conn,
+                        """INSERT OR REPLACE INTO unified_component_signals (
+                            date, system_source, component_name, raw_value, normalized_score, signal_direction
+                        ) VALUES (?, 'ICHIMOKU', ?, ?, ?, ?)""",
+                        (dt, icomp, ival, ival, s_dir),
+                        commit=False
+                    )
+                    ich_comp_count += 1
+    except Exception as e:
+        print(f"Error syncing ICHIMOKU component signals: {e}")
+
     master_conn.commit()
     master_conn.close()
-    print(f"UnifiedComponentSignals synced: Upserted {val_comp_count + lttd_comp_count + mttd_comp_count} component records into maftia_quant.db.")
+    print(f"UnifiedComponentSignals synced: Upserted {val_comp_count + lttd_comp_count + mttd_comp_count + ich_comp_count} component records into maftia_quant.db.")
 
     # Generate Markdown Table lines
     table_lines = []

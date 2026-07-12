@@ -71,11 +71,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ activeTab, wsStatus 
             {/* Brand */}
             <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '14px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #00f0ff, #0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 700, fontFamily: 'JetBrains Mono', fontSize: '14px', boxShadow: '0 0 16px rgba(0, 240, 255, 0.25)' }}>
                   MQ
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>
+                  <div style={{ fontWeight: 700, fontSize: '14px', fontFamily: 'Geist, sans-serif' }}>
                     MAFTIA <span style={{ color: 'var(--accent)' }}>QUANT</span>
                   </div>
                   <div style={{ fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>

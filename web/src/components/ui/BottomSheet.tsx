@@ -108,7 +108,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             fontSize: '14px',
             fontWeight: 700,
             color: 'var(--text-main)',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'Geist, sans-serif',
             borderBottom: '1px solid var(--border-subtle)',
             marginBottom: '4px',
           }}>

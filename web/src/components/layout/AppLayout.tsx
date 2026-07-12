@@ -7,7 +7,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { RefreshCw } from 'lucide-react';
 
 interface AppLayoutProps {
-  children: (activeTab: ActiveTab) => React.ReactNode;
+  children: (activeTab: ActiveTab, onSelectStudio: (studio: ActiveTab) => void) => React.ReactNode;
   wsStatus: 'Connected' | 'Reconnecting' | 'Disconnected';
 }
 
@@ -82,7 +82,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
                   fontWeight: 700,
                   letterSpacing: '-0.4px',
                   color: 'var(--text-main)',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'Geist, sans-serif',
                 }}
               >
                 {PAGE_TITLES[activeTab]}
@@ -128,7 +128,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
 
         {/* Dynamic Studio/Dashboard Content */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          {children(activeTab)}
+          {children(activeTab, (studio) => setActiveTab(studio))}
         </div>
       </main>
 
