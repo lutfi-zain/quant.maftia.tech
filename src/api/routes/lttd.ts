@@ -83,7 +83,7 @@ lttdRouter.get("/latest", (c) => {
         m.open, m.high, m.low, m.close, m.volume,
         u.lttd_regime, u.lttd_score,
         u.lttd_prob_bull, u.lttd_prob_bear, u.lttd_prob_sideways,
-        u.target_exposure
+        u.lttd_exposure
       FROM unified_daily_analytics u
       LEFT JOIN master_ohlcv m ON u.date = m.date
       WHERE u.date <= ?
@@ -109,7 +109,7 @@ lttdRouter.get("/latest", (c) => {
 			lttd_prob_bull: row.lttd_prob_bull ?? null,
 			lttd_prob_bear: row.lttd_prob_bear ?? null,
 			lttd_prob_sideways: row.lttd_prob_sideways ?? null,
-			target_exposure: row.target_exposure ?? null,
+			target_exposure: row.lttd_exposure ?? null,
 		});
 	} catch (err: any) {
 		console.error("Error in /api/v1/lttd/latest:", err);
@@ -135,7 +135,7 @@ lttdRouter.get("/history", (c) => {
         m.open, m.high, m.low, m.close, m.volume,
         u.lttd_regime, u.lttd_score,
         u.lttd_prob_bull, u.lttd_prob_bear, u.lttd_prob_sideways,
-        u.target_exposure
+        u.lttd_exposure
       FROM unified_daily_analytics u
       LEFT JOIN master_ohlcv m ON u.date = m.date
       WHERE u.date >= ? AND u.date <= ?
@@ -162,7 +162,7 @@ lttdRouter.get("/history", (c) => {
 				lttd_prob_bull: row.lttd_prob_bull ?? null,
 				lttd_prob_bear: row.lttd_prob_bear ?? null,
 				lttd_prob_sideways: row.lttd_prob_sideways ?? null,
-				target_exposure: row.target_exposure ?? null,
+				target_exposure: row.lttd_exposure ?? null,
 			})),
 		);
 	} catch (err: any) {
@@ -188,7 +188,7 @@ lttdRouter.get("/chart", (c) => {
         u.date,
         m.open, m.high, m.low, m.close, m.volume,
         u.lttd_score,
-        u.target_exposure
+        u.lttd_exposure
       FROM unified_daily_analytics u
       LEFT JOIN master_ohlcv m ON u.date = m.date
       WHERE u.date >= ? AND u.date <= ?
@@ -211,7 +211,7 @@ lttdRouter.get("/chart", (c) => {
 				close: row.close ?? 0,
 				volume: row.volume ?? 0,
 				lttd_score: row.lttd_score ?? 0,
-				target_exposure: row.target_exposure ?? 0,
+				target_exposure: row.lttd_exposure ?? 0,
 			})),
 		);
 	} catch (err: any) {
@@ -579,7 +579,7 @@ lttdRouter.get("/backtest", (c) => {
         m.close,
         u.lttd_regime,
         u.lttd_score,
-        u.target_exposure
+        u.lttd_exposure
       FROM unified_daily_analytics u
       LEFT JOIN master_ohlcv m ON u.date = m.date
       WHERE u.date >= ? AND u.date <= ?
@@ -645,12 +645,20 @@ lttdRouter.get("/backtest", (c) => {
 		const tradeLog: any[] = [];
 		let tradeId = 0;
 
-		// Compute position from regime (BULL=1.0, BEAR=0.0, SIDEWAYS=0.0)
+		// Compute position from lttd_exposure (target_exposure from prior system)
+		// Falls back to regime-based position when exposure is null
 		for (let i = 0; i < rows.length; i++) {
 			const row = rows[i];
 			const regime = parseRegime(row.lttd_regime);
 			const close = row.close ?? row.btc_price ?? 0;
-			const exposure = regime === "BULL" ? 1.0 : 0.0;
+			const exposure =
+				row.lttd_exposure !== null && row.lttd_exposure !== undefined
+					? row.lttd_exposure > 0
+						? 1.0
+						: 0.0
+					: regime === "BULL"
+						? 1.0
+						: 0.0;
 
 			if (i > 0 && prevClose !== null && prevClose > 0) {
 				const btcReturn = (close - prevClose) / prevClose;
