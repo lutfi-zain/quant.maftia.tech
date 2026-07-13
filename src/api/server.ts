@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server'
 import { app } from './index.js'
 import { wsServer } from './websocket.js'
 
-const port = 8765
+const port = 8910
 
 console.log(`=== STARTING HONO v4 API GATEWAY (NODE/TSX RUNTIME) ON PORT ${port} ===`)
 

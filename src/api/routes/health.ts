@@ -11,7 +11,7 @@ healthRouter.get('/', (c) => {
     return c.json({
       status: 'healthy',
       service: 'api.quant.maftia.tech',
-      port: 8765,
+      port: 8910,
       database: {
         accessible: true,
         mode: 'read-only WAL',
@@ -30,7 +30,7 @@ healthRouter.get('/', (c) => {
     return c.json({
       status: 'unhealthy',
       service: 'api.quant.maftia.tech',
-      port: 8765,
+      port: 8910,
       database: {
         accessible: false,
         error: error.message

@@ -42,7 +42,7 @@ test.describe('Full-Stack E2E Quantitative Terminal Verification', () => {
     // Wait for the main executive header and bento summary
     await expect(page.locator('h1')).toContainText('Master Executive Dashboard');
     await expect(page.getByText('CausalFilter t−1')).toBeVisible();
-    await expect(page.getByText('PORT :8765')).toBeVisible();
+    await expect(page.getByText('PORT :8910')).toBeVisible();
 
     // Verify Lightweight Charts render
     await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Sidebar, ActiveTab } from './Sidebar';
+import type React from 'react';
+import { useState } from 'react';
+import { Sidebar, type ActiveTab } from './Sidebar';
 import { BottomTabBar } from './BottomTabBar';
 import { MobileHeader } from './MobileHeader';
 import { useTerminal } from '../../context/TerminalContext';
@@ -88,7 +89,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
                 {PAGE_TITLES[activeTab]}
               </h1>
               <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '3px', fontFamily: 'JetBrains Mono' }}>
-                Unified quantitative consensus & interlocking defense metrics · api.quant.maftia.tech:8765
+                Unified quantitative consensus & interlocking defense metrics · api.quant.maftia.tech:8910
               </p>
             </div>
 

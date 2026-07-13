@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { TerminalProvider, useTerminal } from './context/TerminalContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { BentoSummary } from './components/dashboard/BentoSummary';
@@ -29,7 +29,7 @@ const TerminalContent: React.FC = () => {
               <span style={{ color: 'var(--status-success)', fontWeight: 600 }}>STRICT CAUSAL LOCK</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>SQLite WAL Concurrency (:8765):</span>
+              <span>SQLite WAL Concurrency (:8910):</span>
               <span style={{ color: 'var(--accent)', fontWeight: 600 }}>OPENING SOCKET...</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -57,7 +57,7 @@ const TerminalContent: React.FC = () => {
             {error}
           </div>
           <div style={{ padding: '12px', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: '1.5' }}>
-            Ensure the Unified API Gateway (`src/api/index.ts`) is running on port `:8765` (`http://0.0.0.0:8765`) and SQLite WAL file locks are released.
+            Ensure the Unified API Gateway (`src/api/index.ts`) is running on port `:8910` (`http://0.0.0.0:8910`) and SQLite WAL file locks are released.
           </div>
           <button
             onClick={refreshData}

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { 
   LayoutDashboard, 
   BarChart3, 
@@ -179,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, wsStat
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>
-          <span>PORT :8765</span>
+          <span>PORT :8910</span>
           <span>CausalFilter t−1</span>
         </div>
       </div>

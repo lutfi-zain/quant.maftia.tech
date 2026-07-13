@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { RefreshCw, Radio, Menu, X } from 'lucide-react';
 import type { ActiveTab } from './Sidebar';
 import { useTerminal } from '../../context/TerminalContext';
@@ -117,7 +118,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ activeTab, wsStatus 
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>
-                <span>PORT :8765</span>
+                <span>PORT :8910</span>
                 <span>CausalFilter t−1</span>
               </div>
             </div>

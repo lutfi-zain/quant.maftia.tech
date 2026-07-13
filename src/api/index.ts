@@ -27,7 +27,7 @@ app.get('/', (c) => {
   return c.json({
     service: 'Unified Quantitative & Statistical Bitcoin Intelligence API Gateway',
     status: 'active',
-    port: 8765,
+    port: 8910,
     docs: '/api/v1/health'
   })
 })
@@ -35,7 +35,7 @@ app.get('/', (c) => {
 import { bunWebSocketHandlers } from './websocket.js'
 
 export default {
-  port: 8765,
+  port: 8910,
   hostname: '0.0.0.0',
   fetch(req: Request, server: any) {
     if (new URL(req.url).pathname.startsWith('/ws/')) {

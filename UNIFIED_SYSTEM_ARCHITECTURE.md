@@ -9,6 +9,7 @@
 ## 1. Visi & Strategi Penggabungan (The Unified Vision)
 
 Saat ini, ekosistem kuantitatif di bawah `/home/ubuntu/projects` terdiri dari 4 proyek yang independen namun memiliki ketergantungan sirkular secara fungsional:
+
 1. `quant-btc-valuation-system`: Mengukur siklus valuasi makroekonomi berdasarkan 17 indikator (*Fundamental, Teknikal, Sentimen*).
 2. `quant-btc-lttd-system`: Mengklasifikasikan arah tren jangka panjang (*Bull, Bear, Sideways*) menggunakan *Gaussian HMM*, *PCA*, dan *Ensemble L1-Lasso/XGBoost*.
 3. `quant-btc-mttd-system`: Mengambil keputusa posisi tren jangka menengah menggunakan konsensus multi-prinsip (*Efficiency Ratio, Shannon Entropy, Chikou Momentum*).
@@ -72,19 +73,24 @@ graph TB
 ```
 
 ### 2.1 Layer 1: Unified Data Ingestion Service
+
 Menggantikan pengambilan data yang berulang di setiap folder proyek dengan satu layanan penarikan data terpusat (`Ingestion Controller`):
+
 - **OHLCV Master Feed:** Mengambil harga OHLCV harian Bitcoin secara *real-time* dan menyimpannya di satu titik kebenaran (*Single Source of Truth*).
 - **BRK API Bulk Service:** Mengambil 4 seri *on-chain* (`sth_mvrv`, `sth_nupl`, `sth_sopr_24h`, `sth_supply_in_profit`) dari `bitview.space` dalam satu panggilan HTTP *bulk request*.
 - **Causal Freshness Guard:** Memastikan *stamp* data on-chain terverifikasi ≥ $t-1$ sebelum mengizinkan mesin kuantitatif melakukan kalkulasi.
 
 ### 2.2 Layer 2: Core Orchestration & Processing Engine
+
 Menyatukan keempat modul kalkulasi secara modular dan terorkestrasi:
+
 1. **Valuation Engine:** Menghitung 17 komponen dari 3 pilar dan melakukan interpolasi linear piecewise ke rentang `[-2.0, +2.0]`.
 2. **LTTD Engine:** Menerima data OHLCV master, melatih 3-State Gaussian HMM (Log Returns + 20d Vol), melakukan filter VIF & PCA, serta mengevaluasi model ensemble (*XGBoost / L1-Lasso*).
 3. **MTTD v2 Engine:** Menerima *output* dari 10 Keluarga Statistik dan mengevaluasi gerbang komposit `IMO`, `Efficiency Ratio (ER)`, dan `Shannon Entropy`.
 4. **Ichimoku Engine:** Melakukan dekomposisi $\tanh$ stasioner dan penyaringan spektral *Ehlers SuperSmoother* pada 5 gerbang konfirmasi.
 
 ### 2.3 Layer 3: Consolidated Database Schema (`maftia_quant.db`)
+
 Menggabungkan 4 database terpisah (`metrics.db`, `lttd.db`, `btc_daily.json`, dan `mttd_data.json`) ke dalam skema relasional bersatu berpresisi tinggi:
 
 ```sql
@@ -142,7 +148,9 @@ CREATE TABLE unified_component_signals (
 ```
 
 ### 2.4 Layer 4: Single API Gateway (`https://api.quant.maftia.tech`)
-Menggantikan kebingungan manajemen port lokal (`:3000`, `:8765`, `:8766`, `:5173`) dengan **satu API Gateway berkinerja tinggi berbasis Hono v4 (Bun Runtime)**:
+
+Menggantikan kebingungan manajemen port lokal (`:3000`, `:8910`, `:8911`, `:5173`) dengan **satu API Gateway berkinerja tinggi berbasis Hono v4 (Bun Runtime)**:
+
 - **`GET /api/v1/executive-summary`**: Mengembalikan ringkasan eksekutif harian terbaru (konsensus 4 sistem) dalam satu payload JSON super cepat.
 - **`GET /api/v1/timeseries/master`**: Mengembalikan histori waktu lengkap yang sudah diselaraskan (*outer join*) untuk grafik penjelajah utama.
 - **`GET /api/v1/system/:system_name/details`**: Mengambil detail spesifik dari `valuation`, `lttd`, `mttd`, atau `ichimoku`.
@@ -185,13 +193,16 @@ flowchart LR
 Antarmuka pengguna terpadu dibangun menggunakan **React 19, TypeScript, Vite, dan TradingView Lightweight Charts v5.2.0**. Platform ini dikemas ke dalam 6 modul utama:
 
 ### 4.1 Master Executive Dashboard (`/`)
+
 Tampilan utama yang menyuguhkan status eksekutif sekilas (*at-a-glance*) bagi para manajer investasi dan periset kuantitatif:
+
 - **Macro Bento Grid Header:** 4 Kartu status beresolusi tinggi yang menampilkan status langsung dari `Valuation Score`, `LTTD Regime & Probability`, `MTTD IMO Position`, dan `Ichimoku Denoised Signal`.
 - **Cross-System Confluence Gauge:** Meteran komposit melingkar (*Radial Arc Gauge*) yang menyimpulkan persentase keyakinan pasar terpadu (`0%` Sangat Bearish s.d `100%` Sangat Bullish).
 - **Consensus Action Banner:** Spanduk rekomendasi tindakan otomatis (*e.g., "STRONG BEARISH REGIME — 0.0% EXPOSURE RECOMMENDED — ALL SYSTEMS IN CASH OR HEDGE MODE"*).
 - **Unified Summary Table (Pengganti Laporan Markdown):** Tabel interaktif harian yang menggantikan keluaran statis `latest_week_scores_report.md` dengan fitur pengurutan (*sorting*), pemfilteran tanggal, dan unduhan langsung berformat CSV/PDF/Markdown.
 
 ### 4.2 Deep-Dive Analytical Sandboxes (5 Studio Khusus)
+
 1. **Valuation Pillar Studio (`/valuation`):**
    - Eksplorasi mendalam 17 metrik fundamental, teknikal, dan sentimen.
    - *Custom Threshold Builder:* Memungkinkan periset menggeser batas atas/bawah secara interaktif pada grafik mentah dan melihat dampak perubahannya terhadap *Master Composite Score* secara *real-time*.
@@ -206,16 +217,18 @@ Tampilan utama yang menyuguhkan status eksekutif sekilas (*at-a-glance*) bagi pa
    - Tampilan perbandingan langsung antara *Raw Non-Stationary Ichimoku Cloud* dengan *Stationary Bounded $\tanh$ Oscillators (`S_TK, S_Cloud, S_Future, S_Chikou`)*.
    - Visualisasi dinamika *SuperSmoother IIR transfer function* pada harga.
 
-
 ---
 
 ## 5. Proposal Layout, Desain UI/UX & Rich Aesthetics System
 
 ### 5.1 Filosofi Visual: *High-End Quantitative Financial Terminal*
+
 Desain antarmuka `quant.maftia.tech` harus menakjubkan sejak pandangan pertama (*wow at first glance*), memadukan estetika terminal keuangan kelas dunia (*Bloomberg Terminal / TradingView*) dengan kebersihan desain modern (*Glassmorphism, Minimalist Industrial Brutalist, Dark-Tech UI*).
 
 ### 5.2 Curated Color Palette & Design Tokens (HSL Tailored)
+
 Sistem menghindari warna dasar yang membosankan (*plain red/green*) dan menerapkan palet warna HSL yang terukur dan harmonis untuk menjaga kenyamanan mata pada pemantauan berjam-jam:
+
 ```css
 :root {
   /* Surface & Background Tokens */
@@ -239,6 +252,7 @@ Sistem menghindari warna dasar yang membosankan (*plain red/green*) dan menerapk
 ```
 
 ### 5.3 Typography System
+
 - **Display & Headings:** Google Font **Outfit** atau **Inter** (ketebalan `600`/`700`), memberikan kesan modern, geometris, dan sangat tepercaya.
 - **Data Grids, Numbers & Formulas:** Google Font **JetBrains Mono** atau **Roboto Mono**, memastikan keselarasan vertikal tabular pada seluruh angka desimal dan metrik kuantitatif.
 
@@ -269,7 +283,9 @@ Sistem menghindari warna dasar yang membosankan (*plain red/green*) dan menerapk
 ```
 
 ### 5.5 Inovasi UX Charting Kritis: *Vertical Cursor Sync & 85px Y-Axis Lock*
+
 Mengadopsi dan menyempurnakan fitur terbaik dari *Valuation System* dan *Ichimoku Quant*:
+
 1. **Vertical Crosshair Synchronization:** Ketika periset mengarahkan kursor pada tanggal *21 Juni 2026* di grafik harga utama (Subplot 1), garis vertikal penunjuk waktu secara otomatis muncul di posisi yang sama persis pada Subplot 2 (`Valuation`), Subplot 3 (`LTTD`), dan Subplot 4 (`MTTD/Ichimoku`).
 2. **Y-Axis Width Lock (`85px`):** Sumbu harga/nilai di sisi kanan seluruh *subplot* dikunci secara ketat pada lebar minimum `85px`. Tanpa penguncian ini, angka harga BTC yang panjang (`$63,508.84`) dan angka osilator yang pendek (`-0.45`) akan menyebabkan pergeseran horizontal pada area grafik. Penguncian `85px` menjamin bahwa sumbu waktu horizontal ($X$-axis) tepat bergaris lurus dari atas ke bawah layar.
 
@@ -282,7 +298,7 @@ Untuk mewujudkan ekosistem terpadu ini secara mulus tanpa mengganggu validitas m
 | Fase | Nama Milestone | Target Utama & Output Kritis | Estimasi Waktu |
 |---|---|---|---|
 | **Phase 1** | **Unified Storage & Data Orchestration** | • Pembangunan skema SQLite WAL / PostgreSQL master (`maftia_quant.db`).<br/>• Pembuatan skrip `UnifiedIngestionService` untuk menarik data OHLCV & BRK API secara otomatis.<br/>• Migrasi data historis dari `metrics.db` dan `lttd.db` ke database master. | **Minggu 1 – 2** |
-| **Phase 2** | **Single Backend API Gateway (`Hono + Bun`)** | • Pembangunan API Gateway di Port tunggal (`:8765` / `api.quant.maftia.tech`).<br/>• Pembuatan *endpoint* terpadu `/api/v1/executive-summary` dan `/api/v1/timeseries/master`.<br/>• Integrasi WebSocket Server untuk penyiaran *sync crosshair* & pembaruan kalkulasi harian. | **Minggu 3 – 4** |
+| **Phase 2** | **Single Backend API Gateway (`Hono + Bun`)** | • Pembangunan API Gateway di Port tunggal (`:8910` / `api.quant.maftia.tech`).<br/>• Pembuatan *endpoint* terpadu `/api/v1/executive-summary` dan `/api/v1/timeseries/master`.<br/>• Integrasi WebSocket Server untuk penyiaran *sync crosshair* & pembaruan kalkulasi harian. | **Minggu 3 – 4** |
 | **Phase 3** | **Frontend Core & Master Executive Dashboard** | • *Scaffold* aplikasi React 19 + Vite + TypeScript di bawah folder `/home/ubuntu/projects/quant.maftia.tech/web`.<br/>• Implementasi *Design System Tokens (Obsidian HSL)* dan *Sidebar Layout*.<br/>• Integrasi *TradingView Lightweight Charts v5.2* dengan *Vertical Sync & 85px Y-Axis Lock*. | **Minggu 5 – 6** |
 | **Phase 4** | **Deep-Dive Sandboxes & Advanced Backtester** | • Pembangunan 4 Studio Khusus (`Valuation Pillar Studio`, `LTTD Lab`, `MTTD Console`, `Ichimoku Terminal`).<br/>• Implementasi *Interactive Backtest Simulator* di peramban.<br/>• Pengaktifan sistem notifikasi *webhook/alert* otomatis untuk laporan harian/mingguan. | **Minggu 7 – 8** |
 

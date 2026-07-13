@@ -208,9 +208,14 @@ export const LttdLab: React.FC = () => {
 		const regime = d.lttd_regime || "SIDEWAYS";
 		// Use target_exposure from DB if available (matching prior system behavior), else fall back to regime
 		const rawExposure = d.lttd_target_exposure;
-		const pos = rawExposure !== undefined && rawExposure !== null
-			? (rawExposure > 0 ? 1 : 0)
-			: regime === "BULL" ? 1 : 0;
+		const pos =
+			rawExposure !== undefined && rawExposure !== null
+				? rawExposure > 0
+					? 1
+					: 0
+				: regime === "BULL"
+					? 1
+					: 0;
 		return {
 			date: d.date,
 			close: d.close || d.btc_price || 0,
@@ -522,8 +527,9 @@ export const LttdLab: React.FC = () => {
 		const exposureArr = dailyData.map((p) => ({
 			time: p.date as Time,
 			value:
-				((p as any).lttd_target_exposure ?? ((p as any).target_exposure ?? (p.lttd_regime === "BULL" ? 100 : 0))) *
-				100,
+				((p as any).lttd_target_exposure ??
+					(p as any).target_exposure ??
+					(p.lttd_regime === "BULL" ? 100 : 0)) * 100,
 		}));
 		exposureSeries.setData(exposureArr as any);
 

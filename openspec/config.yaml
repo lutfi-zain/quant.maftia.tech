@@ -7,7 +7,7 @@ context: |
   Tech Stack:
   - Python 3.11+ (Data ingestion, core quant & statistical engines, Gaussian HMM, PCA, VIF pruning, Ehlers SuperSmoother IIR)
   - JavaScript / TypeScript Runtime: Bun v1.0+ (`/home/ubuntu/.bun/bin/bun`)
-  - Backend API Gateway: Hono v4 + Bun (`api.quant.maftia.tech` on port `:8765`)
+  - Backend API Gateway: Hono v4 + Bun (`api.quant.maftia.tech` on port `:8910`)
   - Frontend SPA: React 19 + Vite + TypeScript + Lightweight Charts v5.2
   - Database: SQLite with Write-Ahead Logging (`WAL`) mode (`maftia_quant.db` and subsystem `.db` files)
   
@@ -37,7 +37,7 @@ rules:
     - Enforce parameterized SQL queries (`?-style`) and SQLite Write-Ahead Logging (`WAL`) mode concurrency across all database operations.
   design:
     - For frontend charting components (`Lightweight Charts v5.2`), strictly mandate locking the right price/oscillator Y-axis width to `85px` and implement real-time Vertical Crosshair Synchronization across all subplots.
-    - For cross-system queries and data feeds, route strictly through the single unified Hono v4 + Bun API Gateway (`:8765`). Never spin up ad-hoc temporary backend servers on random ports.
+    - For cross-system queries and data feeds, route strictly through the single unified Hono v4 + Bun API Gateway (`:8910`). Never spin up ad-hoc temporary backend servers on random ports.
   tasks:
     - Break implementation tasks into modular chunks aligned with the 4-system boundary structure.
     - Include automated pipeline verification using `python3 /home/ubuntu/projects/run_report_pipeline.py` as the final acceptance criterion for data/quant changes.

@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { CircuitBreakersResponse, DailyAnalyticsPoint } from '../../api/types';
+import type React from 'react';
+import { useState, useRef } from 'react';
+import type { CircuitBreakersResponse, DailyAnalyticsPoint } from '../../api/types';
 import { 
   AlertTriangle, 
   CheckCircle2, 
@@ -116,7 +117,7 @@ export const BentoSummary: React.FC<BentoSummaryProps> = ({
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '5px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-panel)', color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'Geist Mono, JetBrains Mono, monospace', fontWeight: 600 }}>
           <Lock size={12} style={{ color: 'var(--accent)' }} />
-          <span>ZERO LOOKAHEAD BIAS ($t-1$) · WAL CONCURRENCY :8765</span>
+          <span>ZERO LOOKAHEAD BIAS ($t-1$) · WAL CONCURRENCY :8910</span>
         </div>
 
         <h2 style={{
