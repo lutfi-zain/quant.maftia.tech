@@ -1,177 +1,250 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Full-Stack E2E Quantitative Terminal Verification', () => {
-  test.beforeEach(async ({ page }) => {
-    // Task 2.2: Global error monitoring across console and page errors
-    const errors: string[] = [];
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        const text = msg.text();
-        // Ignore benign favicon or external font fetch warnings if any, but catch JS/React/API errors
-        if (!text.includes('favicon.ico')) {
-          errors.push(`Console Error: ${text}`);
-        }
-      }
-    });
+test.describe("Full-Stack E2E Quantitative Terminal Verification", () => {
+	test.beforeEach(async ({ page }) => {
+		// Task 2.2: Global error monitoring across console and page errors
+		const errors: string[] = [];
+		page.on("console", (msg) => {
+			if (msg.type() === "error") {
+				const text = msg.text();
+				// Ignore benign favicon or external font fetch warnings if any, but catch JS/React/API errors
+				if (!text.includes("favicon.ico")) {
+					errors.push(`Console Error: ${text}`);
+				}
+			}
+		});
 
-    page.on('pageerror', err => {
-      errors.push(`Page Error: ${err.message}`);
-    });
+		page.on("pageerror", (err) => {
+			errors.push(`Page Error: ${err.message}`);
+		});
 
-    // Attach errors list to page context for verification during assertions
-    (page as any).__consoleErrors = errors;
-  });
+		// Attach errors list to page context for verification during assertions
+		(page as any).__consoleErrors = errors;
+	});
 
-  const assertNoRuntimeErrors = (page: any) => {
-    const errors: string[] = (page as any).__consoleErrors || [];
-    expect(errors, `Expected zero JavaScript console/page errors, found:\n${errors.join('\n')}`).toEqual([]);
-  };
+	const assertNoRuntimeErrors = (page: any) => {
+		const errors: string[] = (page as any).__consoleErrors || [];
+		expect(
+			errors,
+			`Expected zero JavaScript console/page errors, found:\n${errors.join("\n")}`,
+		).toEqual([]);
+	};
 
-  const assertNoNaNOrUndefined = async (page: any) => {
-    // Task 2.6: Ensure no NaN, null, undefined, or broken placeholders appear in visible text
-    const bodyText = await page.locator('body').innerText();
-    expect(bodyText).not.toContain('NaN');
-    expect(bodyText).not.toContain('undefined');
-    expect(bodyText).not.toContain('[object Object]');
-    expect(bodyText).not.toContain('TELEMETRY SYNCHRONIZATION ERROR');
-  };
+	const assertNoNaNOrUndefined = async (page: any) => {
+		// Task 2.6: Ensure no NaN, null, undefined, or broken placeholders appear in visible text
+		const bodyText = await page.locator("body").innerText();
+		expect(bodyText).not.toContain("NaN");
+		expect(bodyText).not.toContain("undefined");
+		expect(bodyText).not.toContain("[object Object]");
+		expect(bodyText).not.toContain("TELEMETRY SYNCHRONIZATION ERROR");
+	};
 
-  test('Task 2.3 & 2.6: Executive Dashboard navigates cleanly and renders complete quantitative telemetry without NaN/errors', async ({ page }) => {
-    await page.goto('/');
-    
-    // Wait for the main executive header and bento summary
-    await expect(page.locator('h1')).toContainText('Master Executive Dashboard');
-    await expect(page.getByText('CausalFilter t−1')).toBeVisible();
-    await expect(page.getByText('PORT :8910')).toBeVisible();
+	test("Task 2.3 & 2.6: Executive Dashboard navigates cleanly and renders complete quantitative telemetry without NaN/errors", async ({
+		page,
+	}) => {
+		await page.goto("/");
 
-    // Verify Lightweight Charts render
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
-    const chartContainers = page.locator('.tv-lightweight-charts');
-    expect(await chartContainers.count(), 'Dashboard should render 4 vertically stacked subplots').toBeGreaterThanOrEqual(4);
+		// Wait for the main executive header and bento summary
+		await expect(page.locator("h1")).toContainText(
+			"Master Executive Dashboard",
+		);
+		await expect(page.getByText("CausalFilter t−1")).toBeVisible();
+		await expect(page.getByText("PORT :8910")).toBeVisible();
 
-    await assertNoNaNOrUndefined(page);
-    assertNoRuntimeErrors(page);
-  });
+		// Verify Lightweight Charts render
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
+		const chartContainers = page.locator(".tv-lightweight-charts");
+		expect(
+			await chartContainers.count(),
+			"Dashboard should render 4 vertically stacked subplots",
+		).toBeGreaterThanOrEqual(4);
 
-  test('Task 2.4: Live DOM layout strictly enforces 85px right Y-axis width across all dashboard subplots', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
+		await assertNoNaNOrUndefined(page);
+		assertNoRuntimeErrors(page);
+	});
 
-    // In Lightweight Charts DOM (v5), right price scale is in the 3rd table cell of the first row
-    const rightScaleCells = page.locator('.tv-lightweight-charts tr:first-child > td:nth-child(3) > div');
-    const count = await rightScaleCells.count();
-    expect(count, 'Should have right price scale cells for each subplot').toBeGreaterThanOrEqual(4);
+	test("Task 2.4: Live DOM layout strictly enforces 85px right Y-axis width across all dashboard subplots", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
 
-    for (let i = 0; i < count; i++) {
-      const cell = rightScaleCells.nth(i);
-      const box = await cell.boundingBox();
-      if (box && box.height > 10) {
-        // Assert container bounding box width equals strictly 85px (within 1px subpixel rendering tolerance)
-        expect(Math.abs(Math.round(box.width) - 85), `Subplot ${i + 1} right price scale DOM width must equal 85px (±1px)`).toBeLessThanOrEqual(1);
-      }
-    }
-    assertNoRuntimeErrors(page);
-  });
+		// In Lightweight Charts DOM (v5), right price scale is in the 3rd table cell of the first row
+		const rightScaleCells = page.locator(
+			".tv-lightweight-charts tr:first-child > td:nth-child(3) > div",
+		);
+		const count = await rightScaleCells.count();
+		expect(
+			count,
+			"Should have right price scale cells for each subplot",
+		).toBeGreaterThanOrEqual(4);
 
-  test('Task 2.5: Real-time crosshair synchronization coordinates vertical crosshairs across all 4 dashboard subplots', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
+		for (let i = 0; i < count; i++) {
+			const cell = rightScaleCells.nth(i);
+			const box = await cell.boundingBox();
+			if (box && box.height > 10) {
+				// Assert container bounding box width equals strictly 85px (within 1px subpixel rendering tolerance)
+				expect(
+					Math.abs(Math.round(box.width) - 85),
+					`Subplot ${i + 1} right price scale DOM width must equal 85px (±1px)`,
+				).toBeLessThanOrEqual(1);
+			}
+		}
+		assertNoRuntimeErrors(page);
+	});
 
-    const chartPanes = page.locator('.tv-lightweight-charts');
-    const priceChart = chartPanes.nth(0);
-    const box = await priceChart.boundingBox();
-    expect(box).not.toBeNull();
+	test("Task 2.5: Real-time crosshair synchronization coordinates vertical crosshairs across all 4 dashboard subplots", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
 
-    if (box) {
-      // Dispatch mouse movement across the center of the primary price chart canvas
-      const targetX = box.x + box.width * 0.4;
-      const targetY = box.y + box.height * 0.5;
-      await page.mouse.move(targetX, targetY);
-      await page.waitForTimeout(300);
+		const chartPanes = page.locator(".tv-lightweight-charts");
+		const priceChart = chartPanes.nth(0);
+		const box = await priceChart.boundingBox();
+		expect(box).not.toBeNull();
 
-      // Verify that hovered data point tooltip or crosshair state is activated across subplots without errors
-      await assertNoNaNOrUndefined(page);
-      assertNoRuntimeErrors(page);
-    }
-  });
+		if (box) {
+			// Dispatch mouse movement across the center of the primary price chart canvas
+			const targetX = box.x + box.width * 0.4;
+			const targetY = box.y + box.height * 0.5;
+			await page.mouse.move(targetX, targetY);
+			await page.waitForTimeout(300);
 
-  test('Task 2.3 & 2.6: Valuation Studio (/valuation) navigates cleanly and displays all 17 component badges without NaN', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('aside', { state: 'visible' });
+			// Verify that hovered data point tooltip or crosshair state is activated across subplots without errors
+			await assertNoNaNOrUndefined(page);
+			assertNoRuntimeErrors(page);
+		}
+	});
 
-    await page.getByRole('button', { name: /Valuation Studio/i }).click();
-    await expect(page.locator('h1')).toContainText('Valuation Pillar Studio (17 Indicators)');
+	test("Task 2.3 & 2.6: Valuation Studio (/valuation) navigates cleanly and displays all 17 component badges without NaN", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await page.waitForSelector("aside", { state: "visible" });
 
-    // Wait for components and chart to render
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
-    await assertNoNaNOrUndefined(page);
+		await page.getByRole("button", { name: /Valuation Studio/i }).click();
+		await expect(page.locator("h1")).toContainText(
+			"Valuation Pillar Studio (17 Indicators)",
+		);
 
-    // Verify indicator cards render numerical/Z-score data cleanly
-    const cards = page.locator('.glass-card');
-    expect(await cards.count()).toBeGreaterThanOrEqual(3);
+		// Wait for components and chart to render
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
+		await assertNoNaNOrUndefined(page);
 
-    // Verify 85px Y-axis lock on Valuation chart canvas
-    const rightCell = page.locator('.tv-lightweight-charts tr:first-child > td:nth-child(3) > div').first();
-    const box = await rightCell.boundingBox();
-    if (box && box.height > 10) {
-      expect(Math.abs(Math.round(box.width) - 85)).toBeLessThanOrEqual(1);
-    }
+		// Verify indicator cards render numerical/Z-score data cleanly
+		const cards = page.locator(".glass-card");
+		expect(await cards.count()).toBeGreaterThanOrEqual(3);
 
-    assertNoRuntimeErrors(page);
-  });
+		// Verify 85px Y-axis lock on Valuation chart canvas
+		const rightCell = page
+			.locator(".tv-lightweight-charts tr:first-child > td:nth-child(3) > div")
+			.first();
+		const box = await rightCell.boundingBox();
+		if (box && box.height > 10) {
+			expect(Math.abs(Math.round(box.width) - 85)).toBeLessThanOrEqual(1);
+		}
 
-  test('Task 2.3 & 2.6: LTTD Lab (/lttd) navigates cleanly and verifies 3-State Gaussian HMM regime badges', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('aside', { state: 'visible' });
+		assertNoRuntimeErrors(page);
+	});
 
-    await page.getByRole('button', { name: /LTTD Lab/i }).click();
-    await expect(page.locator('h1')).toContainText('LTTD Lab (3-State Gaussian HMM)');
+	test("Task 2.3 & 2.6: LTTD Lab (/lttd) navigates cleanly and verifies 3-State Gaussian HMM regime badges", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await page.waitForSelector("aside", { state: "visible" });
 
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
-    await assertNoNaNOrUndefined(page);
+		await page.getByRole("button", { name: /LTTD Lab/i }).click();
+		await expect(page.locator("h1")).toContainText(
+			"LTTD Lab (3-State Gaussian HMM)",
+		);
 
-    // Verify regime badge text matches domain ubiquitous language (BULL, BEAR, SIDEWAYS)
-    const bodyText = await page.locator('body').innerText();
-    const hasRegime = bodyText.includes('BULL') || bodyText.includes('BEAR') || bodyText.includes('SIDEWAYS');
-    expect(hasRegime, 'LTTD Lab must display valid HMM regime classification').toBe(true);
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
+		await assertNoNaNOrUndefined(page);
 
-    assertNoRuntimeErrors(page);
-  });
+		// Verify regime badge text matches domain ubiquitous language (BULL, BEAR, SIDEWAYS)
+		const bodyText = await page.locator("body").innerText();
+		const hasRegime =
+			bodyText.includes("BULL") ||
+			bodyText.includes("BEAR") ||
+			bodyText.includes("SIDEWAYS");
+		expect(
+			hasRegime,
+			"LTTD Lab must display valid HMM regime classification",
+		).toBe(true);
 
-  test('Task 2.3 & 2.6: MTTD Console (/mttd) navigates cleanly and verifies 10 Statistical Families and Gates without NaN', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('aside', { state: 'visible' });
+		assertNoRuntimeErrors(page);
+	});
 
-    await page.getByRole('button', { name: /MTTD Console/i }).click();
-    await expect(page.locator('h1')).toContainText('MTTD Console (10 Statistical Families)');
+	test("Task 2.3 & 2.6: MTTD Console (/mttd) navigates cleanly and verifies 10 Statistical Families and Gates without NaN", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await page.waitForSelector("aside", { state: "visible" });
 
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
-    await assertNoNaNOrUndefined(page);
+		await page.getByRole("button", { name: /MTTD Console/i }).click();
+		await expect(page.locator("h1")).toContainText(
+			"MTTD Console (10 Statistical Families)",
+		);
 
-    // Verify efficiency ratio and entropy gate values appear
-    const bodyText = await page.locator('body').innerText();
-    expect(bodyText.includes('Efficiency') || bodyText.includes('Entropy') || bodyText.includes('Chikou')).toBe(true);
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
+		await assertNoNaNOrUndefined(page);
 
-    assertNoRuntimeErrors(page);
-  });
+		// Verify efficiency ratio and entropy gate values appear
+		const bodyText = await page.locator("body").innerText();
+		expect(
+			bodyText.includes("Efficiency") ||
+				bodyText.includes("Entropy") ||
+				bodyText.includes("Chikou"),
+		).toBe(true);
 
-  test('Task 2.3 & 2.6: Ichimoku Terminal (/ichimoku) navigates cleanly and verifies SuperSmoother IIR cloud rendering', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('aside', { state: 'visible' });
+		assertNoRuntimeErrors(page);
+	});
 
-    await page.getByRole('button', { name: /Ichimoku Terminal/i }).click();
-    await expect(page.locator('h1')).toContainText('Ichimoku Terminal (SuperSmoother IIR)');
+	test("Task 2.3 & 2.6: Ichimoku Terminal (/ichimoku) navigates cleanly and verifies SuperSmoother IIR cloud rendering", async ({
+		page,
+	}) => {
+		await page.goto("/");
+		await page.waitForSelector("aside", { state: "visible" });
 
-    await page.waitForSelector('.tv-lightweight-charts', { state: 'visible', timeout: 15000 });
-    await assertNoNaNOrUndefined(page);
+		await page.getByRole("button", { name: /Ichimoku Terminal/i }).click();
+		await expect(page.locator("h1")).toContainText(
+			"Ichimoku Terminal (SuperSmoother IIR)",
+		);
 
-    // Verify 85px Y-axis lock on Ichimoku chart canvas
-    const rightCell = page.locator('.tv-lightweight-charts tr:first-child > td:nth-child(3) > div').first();
-    const box = await rightCell.boundingBox();
-    if (box && box.height > 10) {
-      expect(Math.abs(Math.round(box.width) - 85)).toBeLessThanOrEqual(1);
-    }
+		await page.waitForSelector(".tv-lightweight-charts", {
+			state: "visible",
+			timeout: 15000,
+		});
+		await assertNoNaNOrUndefined(page);
 
-    assertNoRuntimeErrors(page);
-  });
+		// Verify 85px Y-axis lock on Ichimoku chart canvas
+		const rightCell = page
+			.locator(".tv-lightweight-charts tr:first-child > td:nth-child(3) > div")
+			.first();
+		const box = await rightCell.boundingBox();
+		if (box && box.height > 10) {
+			expect(Math.abs(Math.round(box.width) - 85)).toBeLessThanOrEqual(1);
+		}
+
+		assertNoRuntimeErrors(page);
+	});
 });

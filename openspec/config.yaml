@@ -3,25 +3,25 @@ schema: spec-driven
 context: |
   Repository: quant.maftia.tech
   Domain: Unified Quantitative & Statistical Bitcoin Intelligence Platform (4-System Multi-Layered Quantitative Defense & High-End Financial Terminal)
-  
+
   Tech Stack:
   - Python 3.11+ (Data ingestion, core quant & statistical engines, Gaussian HMM, PCA, VIF pruning, Ehlers SuperSmoother IIR)
   - JavaScript / TypeScript Runtime: Bun v1.0+ (`/home/ubuntu/.bun/bin/bun`)
   - Backend API Gateway: Hono v4 + Bun (`api.quant.maftia.tech` on port `:8910`)
   - Frontend SPA: React 19 + Vite + TypeScript + Lightweight Charts v5.2
   - Database: SQLite with Write-Ahead Logging (`WAL`) mode (`maftia_quant.db` and subsystem `.db` files)
-  
+
   The 4 Unified Systems (Under `/home/ubuntu/projects/`):
   1. quant-btc-valuation-system: 17-indicator piecewise linear interpolated valuation score `[-2.0, +2.0]` & macro CircuitBreakerFilter (`>= +1.50`).
   2. quant-btc-lttd-system: 3-State Gaussian HMM (`BULL`, `BEAR`, `SIDEWAYS`) regime classifier using log returns and 20-day volatility (`SIDEWAYS` override forces `0.0` exposure).
   3. quant-btc-mttd-system: Multi-principle consensus oscillator `[-1.0, +1.0]` across 10 statistical families with Efficiency Ratio Gate (`>= 0.20`), Shannon Entropy Gate (`<= 2.30`), and Chikou Momentum Exit (`< -0.30`).
   4. quant-lttd-ichimoku: Denoised bounded $\tanh$ oscillator `[-1.0, +1.0]` filtered via Ehlers 2-pole SuperSmoother IIR transfer function.
-  
+
   Note: `quant-technical-indicator-bank` (`05. Indicator Bank`) has been explicitly removed and deprecated. Never reference or re-introduce it.
-  
+
   Ubiquitous Language (DDD):
   Always adhere to exact domain entities: `MasterOHLCV` (`master_ohlcv`), `ValuationComposite` (`valuation_composite`), `LTTDRegime` (`lttd_regime`), `MTTDIntegratedOscillator` (`mttd_imo`), `IchimokuDenoisedOscillator` (`ichimoku_imo`), `UnifiedDailyAnalytics` (`unified_daily_analytics`), and `UnifiedComponentSignals` (`unified_component_signals`).
-  
+
   Canonical Gold Standard References:
   - Architecture: UNIFIED_SYSTEM_ARCHITECTURE.md
   - Orchestration & Data Sync Pipeline: /home/ubuntu/projects/run_report_pipeline.py
