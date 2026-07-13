@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Fragment } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
@@ -167,7 +167,7 @@ export const LttdLab: React.FC = () => {
 	const [_hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
-	const [startDate, setStartDate] = useState("2016-01-01");
+	const [startDate, setStartDate] = useState("2017-03-01");
 	const [endDate, setEndDate] = useState("2026-12-31");
 	const [feeBps, setFeeBps] = useState(10);
 	const isMobile = useIsMobile();
@@ -206,7 +206,11 @@ export const LttdLab: React.FC = () => {
 
 	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => {
 		const regime = d.lttd_regime || "SIDEWAYS";
-		const pos = regime === "BULL" ? 1 : 0;
+		// Use target_exposure from DB if available (matching prior system behavior), else fall back to regime
+		const rawExposure = d.lttd_target_exposure;
+		const pos = rawExposure !== undefined && rawExposure !== null
+			? (rawExposure > 0 ? 1 : 0)
+			: regime === "BULL" ? 1 : 0;
 		return {
 			date: d.date,
 			close: d.close || d.btc_price || 0,
@@ -518,7 +522,7 @@ export const LttdLab: React.FC = () => {
 		const exposureArr = dailyData.map((p) => ({
 			time: p.date as Time,
 			value:
-				((p as any).target_exposure ?? (p.lttd_regime === "BULL" ? 100 : 0)) *
+				((p as any).lttd_target_exposure ?? ((p as any).target_exposure ?? (p.lttd_regime === "BULL" ? 100 : 0))) *
 				100,
 		}));
 		exposureSeries.setData(exposureArr as any);
@@ -1151,7 +1155,7 @@ export const LttdLab: React.FC = () => {
 						<button
 							className="toggle-btn"
 							onClick={() => {
-								setStartDate("2016-01-01");
+								setStartDate("2017-03-01");
 								setEndDate("2026-12-31");
 								setFeeBps(10);
 							}}
@@ -1954,7 +1958,7 @@ export const LttdLab: React.FC = () => {
 								{displayComponents.map((ind) => {
 									const isExpanded = expandedRow === ind.name;
 									return (
-										<React.Fragment key={ind.name}>
+										<Fragment key={ind.name}>
 											<tr
 												onClick={() =>
 													setExpandedRow(isExpanded ? null : ind.name)
@@ -2162,7 +2166,7 @@ export const LttdLab: React.FC = () => {
 													</td>
 												</tr>
 											)}
-										</React.Fragment>
+										</Fragment>
 									);
 								})}
 							</tbody>

@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { DailyAnalyticsPoint, CircuitBreakersResponse } from '../api/types';
+import type React from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import type { DailyAnalyticsPoint, CircuitBreakersResponse } from '../api/types';
 import { quantClient } from '../api/client';
-import { useTerminalWebSocket, WSConnectionStatus } from '../hooks/useTerminalWebSocket';
+import { useTerminalWebSocket, type WSConnectionStatus } from '../hooks/useTerminalWebSocket';
 
 interface SyncGap {
   serverDate: string | null;
@@ -48,6 +49,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       lttd_prob_bull: newPoint.lttd_regime?.prob_bull ?? 0,
       lttd_prob_bear: newPoint.lttd_regime?.prob_bear ?? 0,
       lttd_prob_sideways: newPoint.lttd_regime?.prob_sideways ?? 1,
+      lttd_target_exposure: newPoint.lttd_regime?.target_exposure ?? undefined,
       mttd_imo: newPoint.mttd_imo?.oscillator ?? (typeof newPoint.mttd_imo === 'number' ? newPoint.mttd_imo : 0),
       mttd_er_ratio: newPoint.mttd_imo?.efficiency_ratio ?? 0,
       mttd_shannon_entropy: newPoint.mttd_imo?.shannon_entropy ?? 0,

@@ -103,6 +103,7 @@ export const quantClient = {
 			lttd_prob_bull: item.lttd_regime?.prob_bull ?? 0,
 			lttd_prob_bear: item.lttd_regime?.prob_bear ?? 0,
 			lttd_prob_sideways: item.lttd_regime?.prob_sideways ?? 1,
+			lttd_target_exposure: item.lttd_regime?.target_exposure ?? undefined,
 			mttd_imo:
 				item.mttd_imo?.oscillator ??
 				(typeof item.mttd_imo === "number" ? item.mttd_imo : 0),

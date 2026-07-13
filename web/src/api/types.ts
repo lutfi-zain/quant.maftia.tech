@@ -13,6 +13,7 @@ export interface DailyAnalyticsPoint {
 	lttd_prob_bull?: number;
 	lttd_prob_bear?: number;
 	lttd_prob_sideways?: number;
+	lttd_target_exposure?: number;
 	mttd_er_ratio?: number;
 	mttd_shannon_entropy?: number;
 	ichimoku_s_tk?: number;

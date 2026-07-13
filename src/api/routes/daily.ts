@@ -24,7 +24,7 @@ dailyRouter.get("/", (c) => {
       m.open, m.high, m.low, m.close, m.volume,
       u.btc_price,
       u.valuation_composite,
-      u.lttd_regime, u.lttd_score, u.lttd_prob_bull, u.lttd_prob_bear, u.lttd_prob_sideways,
+      u.lttd_regime, u.lttd_score, u.lttd_prob_bull, u.lttd_prob_bear, u.lttd_prob_sideways, u.lttd_exposure,
       u.mttd_imo, u.mttd_er, u.mttd_entropy, u.mttd_position, u.mttd_immunity_active,
       u.ichimoku_imo, u.ichimoku_regime, u.ichimoku_position,
       u.ichi_s_tk, u.ichi_s_cloud, u.ichi_s_future, u.ichi_s_chikou,
@@ -60,6 +60,7 @@ dailyRouter.get("/", (c) => {
 			prob_bull: row.lttd_prob_bull,
 			prob_bear: row.lttd_prob_bear,
 			prob_sideways: row.lttd_prob_sideways,
+			target_exposure: row.lttd_exposure,
 			sideways_zero_exposure_lock:
 				row.lttd_regime === "SIDEWAYS" && (row.lttd_prob_sideways ?? 0) > 0.6,
 		},
