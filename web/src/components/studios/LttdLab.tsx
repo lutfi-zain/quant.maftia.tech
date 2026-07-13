@@ -167,7 +167,7 @@ export const LttdLab: React.FC = () => {
 	const [_hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
-	const [startDate, setStartDate] = useState("2020-01-01");
+	const [startDate, setStartDate] = useState("2016-01-01");
 	const [endDate, setEndDate] = useState("2026-12-31");
 	const [feeBps, setFeeBps] = useState(10);
 	const isMobile = useIsMobile();
@@ -656,7 +656,10 @@ export const LttdLab: React.FC = () => {
 		currentRegime === "SIDEWAYS" ||
 		(circuitBreakers?.lttd_macro_override.is_sideways_override ?? false);
 
-	const latestDiag = diagnosticsData.length > 0 ? diagnosticsData[diagnosticsData.length - 1] : null;
+	const latestDiag =
+		diagnosticsData.length > 0
+			? diagnosticsData[diagnosticsData.length - 1]
+			: null;
 	const diagIndicators = latestDiag?.indicator_scores || {};
 	const diagVif = latestDiag?.vif || {};
 	const diagVariance = latestDiag?.pca_variance_explained ?? 87.6;
@@ -666,7 +669,7 @@ export const LttdLab: React.FC = () => {
 			const signal = components.find((c) => c.component_name === name);
 			const score = signal
 				? toNum(signal.normalized_score)
-				: diagIndicators[name] ?? Math.cos(name.length) * 0.7;
+				: (diagIndicators[name] ?? Math.cos(name.length) * 0.7);
 			const vifVal = diagVif[name] ?? null;
 			return {
 				name,
@@ -1148,7 +1151,7 @@ export const LttdLab: React.FC = () => {
 						<button
 							className="toggle-btn"
 							onClick={() => {
-								setStartDate("2020-01-01");
+								setStartDate("2016-01-01");
 								setEndDate("2026-12-31");
 								setFeeBps(10);
 							}}
@@ -1924,248 +1927,249 @@ export const LttdLab: React.FC = () => {
 							}}
 						>
 							<thead>
-							<tr
-								style={{
-									borderBottom: "1px solid var(--border-panel)",
-									color: "var(--text-dim)",
-									fontSize: "11px",
-									textTransform: "uppercase",
-									fontFamily: "Geist Mono, monospace",
-								}}
-							>
-								<th style={{ padding: "8px 6px" }}>Feature / Component</th>
-								<th style={{ padding: "8px 6px" }}>Category</th>
-								<th style={{ padding: "8px 6px" }}>Description</th>
-								<th style={{ padding: "8px 6px", textAlign: "right" }}>
-									Score
-								</th>
-								<th style={{ padding: "8px 6px", textAlign: "right" }}>
-									VIF
-								</th>
-								<th style={{ padding: "8px 6px", textAlign: "center" }}>
-									Signal
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{displayComponents.map((ind) => {
-								const isExpanded = expandedRow === ind.name;
-								return (
-									<React.Fragment key={ind.name}>
-										<tr
-											onClick={() =>
-												setExpandedRow(isExpanded ? null : ind.name)
-											}
-											className="hover:bg-slate-800/30 hover-physics-card transition-all"
-											style={{
-												borderBottom: isExpanded
-													? "none"
-													: "1px solid rgba(255,255,255,0.03)",
-												fontSize: "13px",
-												cursor: "pointer",
-											}}
-										>
-											<td
+								<tr
+									style={{
+										borderBottom: "1px solid var(--border-panel)",
+										color: "var(--text-dim)",
+										fontSize: "11px",
+										textTransform: "uppercase",
+										fontFamily: "Geist Mono, monospace",
+									}}
+								>
+									<th style={{ padding: "8px 6px" }}>Feature / Component</th>
+									<th style={{ padding: "8px 6px" }}>Category</th>
+									<th style={{ padding: "8px 6px" }}>Description</th>
+									<th style={{ padding: "8px 6px", textAlign: "right" }}>
+										Score
+									</th>
+									<th style={{ padding: "8px 6px", textAlign: "right" }}>
+										VIF
+									</th>
+									<th style={{ padding: "8px 6px", textAlign: "center" }}>
+										Signal
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{displayComponents.map((ind) => {
+									const isExpanded = expandedRow === ind.name;
+									return (
+										<React.Fragment key={ind.name}>
+											<tr
+												onClick={() =>
+													setExpandedRow(isExpanded ? null : ind.name)
+												}
+												className="hover:bg-slate-800/30 hover-physics-card transition-all"
 												style={{
-													padding: "10px 6px",
-													fontWeight: 600,
-													color: "var(--text-primary)",
+													borderBottom: isExpanded
+														? "none"
+														: "1px solid rgba(255,255,255,0.03)",
+													fontSize: "13px",
+													cursor: "pointer",
 												}}
 											>
-												{ind.name}{" "}
-												<span style={{ fontSize: "10px", color: "var(--text-dim)" }}>
-													{isExpanded ? "▲" : "▼"}
-												</span>
-											</td>
-											<td style={{ padding: "10px 6px" }}>
-												<span
-													style={{
-														fontSize: "11px",
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontFamily: "Geist Mono, monospace",
-														backgroundColor: "rgba(245,158,11,0.1)",
-														color: "var(--accent)",
-													}}
-												>
-													{ind.category}
-												</span>
-											</td>
-											<td
-												style={{
-													padding: "10px 6px",
-													color: "var(--text-dim)",
-												}}
-											>
-												{ind.description}
-											</td>
-											<td
-												style={{
-													padding: "10px 6px",
-													textAlign: "right",
-													fontFamily: "Geist Mono, monospace",
-													fontWeight: 700,
-													color:
-														ind.score >= 0.3
-															? "var(--signal-bull)"
-															: ind.score <= -0.3
-																? "var(--signal-bear)"
-																: "var(--text-primary)",
-												}}
-											>
-												{ind.score > 0
-													? `+${ind.score.toFixed(3)}`
-													: ind.score.toFixed(3)}
-											</td>
-											<td
-												style={{
-													padding: "10px 6px",
-													textAlign: "right",
-													fontFamily: "Geist Mono, monospace",
-													fontWeight: 700,
-													color:
-														ind.vif !== null && ind.vif > 10
-															? "#EF4444"
-															: "var(--text-dim)",
-												}}
-											>
-												{ind.vif !== null
-													? ind.vif.toFixed(2)
-													: "—"}
-											</td>
-											<td style={{ padding: "10px 6px", textAlign: "center" }}>
-												<span
-													style={{
-														display: "inline-block",
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontSize: "11px",
-														fontFamily: "Geist Mono, monospace",
-														backgroundColor:
-															ind.direction === 1
-																? "rgba(34,197,94,0.15)"
-																: ind.direction === -1
-																	? "rgba(239,68,68,0.15)"
-																	: "rgba(255,255,255,0.05)",
-														color:
-															ind.direction === 1
-																? "var(--signal-bull)"
-																: ind.direction === -1
-																	? "var(--signal-bear)"
-																	: "var(--text-dim)",
-													}}
-												>
-												{ind.direction === 1
-													? "BULL"
-													: ind.direction === -1
-														? "BEAR"
-														: "NEUTRAL"}
-												</span>
-											</td>
-										</tr>
-										{isExpanded && (
-											<tr>
 												<td
-													colSpan={6}
 													style={{
-														padding: "12px 16px",
-														background: "rgba(255,255,255,0.02)",
-														borderBottom:
-															"1px solid rgba(255,255,255,0.03)",
-														fontSize: "12px",
+														padding: "10px 6px",
+														fontWeight: 600,
+														color: "var(--text-primary)",
 													}}
 												>
-													<div
+													{ind.name}{" "}
+													<span
 														style={{
-															display: "flex",
-															flexDirection: "column",
-															gap: "8px",
+															fontSize: "10px",
+															color: "var(--text-dim)",
+														}}
+													>
+														{isExpanded ? "▲" : "▼"}
+													</span>
+												</td>
+												<td style={{ padding: "10px 6px" }}>
+													<span
+														style={{
+															fontSize: "11px",
+															padding: "2px 8px",
+															borderRadius: "4px",
+															fontFamily: "Geist Mono, monospace",
+															backgroundColor: "rgba(245,158,11,0.1)",
+															color: "var(--accent)",
+														}}
+													>
+														{ind.category}
+													</span>
+												</td>
+												<td
+													style={{
+														padding: "10px 6px",
+														color: "var(--text-dim)",
+													}}
+												>
+													{ind.description}
+												</td>
+												<td
+													style={{
+														padding: "10px 6px",
+														textAlign: "right",
+														fontFamily: "Geist Mono, monospace",
+														fontWeight: 700,
+														color:
+															ind.score >= 0.3
+																? "var(--signal-bull)"
+																: ind.score <= -0.3
+																	? "var(--signal-bear)"
+																	: "var(--text-primary)",
+													}}
+												>
+													{ind.score > 0
+														? `+${ind.score.toFixed(3)}`
+														: ind.score.toFixed(3)}
+												</td>
+												<td
+													style={{
+														padding: "10px 6px",
+														textAlign: "right",
+														fontFamily: "Geist Mono, monospace",
+														fontWeight: 700,
+														color:
+															ind.vif !== null && ind.vif > 10
+																? "#EF4444"
+																: "var(--text-dim)",
+													}}
+												>
+													{ind.vif !== null ? ind.vif.toFixed(2) : "—"}
+												</td>
+												<td
+													style={{ padding: "10px 6px", textAlign: "center" }}
+												>
+													<span
+														style={{
+															display: "inline-block",
+															padding: "2px 8px",
+															borderRadius: "4px",
+															fontSize: "11px",
+															fontFamily: "Geist Mono, monospace",
+															backgroundColor:
+																ind.direction === 1
+																	? "rgba(34,197,94,0.15)"
+																	: ind.direction === -1
+																		? "rgba(239,68,68,0.15)"
+																		: "rgba(255,255,255,0.05)",
+															color:
+																ind.direction === 1
+																	? "var(--signal-bull)"
+																	: ind.direction === -1
+																		? "var(--signal-bear)"
+																		: "var(--text-dim)",
+														}}
+													>
+														{ind.direction === 1
+															? "BULL"
+															: ind.direction === -1
+																? "BEAR"
+																: "NEUTRAL"}
+													</span>
+												</td>
+											</tr>
+											{isExpanded && (
+												<tr>
+													<td
+														colSpan={6}
+														style={{
+															padding: "12px 16px",
+															background: "rgba(255,255,255,0.02)",
+															borderBottom: "1px solid rgba(255,255,255,0.03)",
+															fontSize: "12px",
 														}}
 													>
 														<div
 															style={{
-																color: "var(--text-dim)",
-																fontSize: "11px",
-															}}
-														>
-															{ind.description}
-														</div>
-														<div
-															style={{
-																display: "grid",
-																gridTemplateColumns:
-																	"repeat(3, 1fr)",
+																display: "flex",
+																flexDirection: "column",
 																gap: "8px",
-																fontSize: "11px",
-																fontFamily:
-																	"Geist Mono, monospace",
 															}}
 														>
-															<div>
-																<span style={{ color: "var(--text-muted)" }}>
-																	Score:{" "}
-																</span>
-																<span
-																	style={{
-																		color:
-																			ind.score >= 0.3
-																				? "var(--signal-bull)"
-																				: ind.score <= -0.3
-																					? "var(--signal-bear)"
+															<div
+																style={{
+																	color: "var(--text-dim)",
+																	fontSize: "11px",
+																}}
+															>
+																{ind.description}
+															</div>
+															<div
+																style={{
+																	display: "grid",
+																	gridTemplateColumns: "repeat(3, 1fr)",
+																	gap: "8px",
+																	fontSize: "11px",
+																	fontFamily: "Geist Mono, monospace",
+																}}
+															>
+																<div>
+																	<span style={{ color: "var(--text-muted)" }}>
+																		Score:{" "}
+																	</span>
+																	<span
+																		style={{
+																			color:
+																				ind.score >= 0.3
+																					? "var(--signal-bull)"
+																					: ind.score <= -0.3
+																						? "var(--signal-bear)"
+																						: "var(--text-primary)",
+																		}}
+																	>
+																		{ind.score > 0
+																			? `+${ind.score.toFixed(3)}`
+																			: ind.score.toFixed(3)}
+																	</span>
+																</div>
+																<div>
+																	<span style={{ color: "var(--text-muted)" }}>
+																		VIF:{" "}
+																	</span>
+																	<span
+																		style={{
+																			color:
+																				ind.vif !== null && ind.vif > 10
+																					? "#EF4444"
 																					: "var(--text-primary)",
-																	}}
-																>
-																	{ind.score > 0
-																		? `+${ind.score.toFixed(3)}`
-																		: ind.score.toFixed(3)}
-																</span>
-															</div>
-															<div>
-																<span style={{ color: "var(--text-muted)" }}>
-																	VIF:{" "}
-																</span>
-																<span
-																	style={{
-																		color:
-																			ind.vif !== null &&
-																				ind.vif > 10
-																				? "#EF4444"
-																				: "var(--text-primary)",
-																	}}
-																>
-																	{ind.vif !== null
-																		? ind.vif.toFixed(2)
-																		: "—"}
-																</span>
-															</div>
-															<div>
-																<span style={{ color: "var(--text-muted)" }}>
-																	PCA Variance Explained:{" "}
-																</span>
-																<span
-																	style={{
-																		color:
-																			diagVariance > 85
-																				? "var(--signal-bull)"
-																				: "var(--text-primary)",
-																	}}
-																>
-																	{diagVariance.toFixed(1)}%
-																</span>
+																		}}
+																	>
+																		{ind.vif !== null
+																			? ind.vif.toFixed(2)
+																			: "—"}
+																	</span>
+																</div>
+																<div>
+																	<span style={{ color: "var(--text-muted)" }}>
+																		PCA Variance Explained:{" "}
+																	</span>
+																	<span
+																		style={{
+																			color:
+																				diagVariance > 85
+																					? "var(--signal-bull)"
+																					: "var(--text-primary)",
+																		}}
+																	>
+																		{diagVariance.toFixed(1)}%
+																	</span>
+																</div>
 															</div>
 														</div>
-													</div>
-												</td>
-											</tr>
-										)}
-									</React.Fragment>
-								);
-							})}
-						</tbody>
-					</table>
-				</div>
-			)}
+													</td>
+												</tr>
+											)}
+										</React.Fragment>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+				)}
+			</div>
 		</div>
-	</div>
-);
+	);
 };
