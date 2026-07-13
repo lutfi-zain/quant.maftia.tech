@@ -56,8 +56,7 @@ const ACTIONS = [
 		description: "Run backfill_all.py (Heavy)",
 		icon: <Database size={18} />,
 		confirm: true,
-		confirmMsg:
-			"Full repopulation will take a long time. Proceed?",
+		confirmMsg: "Full repopulation will take a long time. Proceed?",
 	},
 ];
 
@@ -66,7 +65,12 @@ export const LttdControlCenter: React.FC = () => {
 	const [isRunning, setIsRunning] = useState(false);
 	const [runningAction, setRunningAction] = useState<string | null>(null);
 
-	const handleTrigger = async (actionId: string, actionName: string, needsConfirm?: boolean, confirmMsg?: string) => {
+	const handleTrigger = async (
+		actionId: string,
+		actionName: string,
+		needsConfirm?: boolean,
+		confirmMsg?: string,
+	) => {
 		if (isRunning) return;
 
 		if (needsConfirm && confirmMsg) {
@@ -98,10 +102,9 @@ export const LttdControlCenter: React.FC = () => {
 						? {
 								...log,
 								status: data.success ? "success" : "error",
-								output:
-									data.success
-										? data.output.substring(0, 500)
-										: data.error_output || "Unknown error",
+								output: data.success
+									? data.output.substring(0, 500)
+									: data.error_output || "Unknown error",
 							}
 						: log,
 				),
@@ -158,12 +161,7 @@ export const LttdControlCenter: React.FC = () => {
 						<button
 							key={act.id}
 							onClick={() =>
-								handleTrigger(
-									act.id,
-									act.name,
-									act.confirm,
-									act.confirmMsg,
-								)
+								handleTrigger(act.id, act.name, act.confirm, act.confirmMsg)
 							}
 							disabled={isRunning}
 							style={{
@@ -185,13 +183,11 @@ export const LttdControlCenter: React.FC = () => {
 							}}
 							onMouseEnter={(e) => {
 								if (!isRunning)
-									e.currentTarget.style.background =
-										"rgba(255,255,255,0.05)";
+									e.currentTarget.style.background = "rgba(255,255,255,0.05)";
 							}}
 							onMouseLeave={(e) => {
 								if (!isRunning)
-									e.currentTarget.style.background =
-										"rgba(255,255,255,0.02)";
+									e.currentTarget.style.background = "rgba(255,255,255,0.02)";
 							}}
 						>
 							{isCurrentAction ? (
@@ -265,7 +261,9 @@ export const LttdControlCenter: React.FC = () => {
 										marginBottom: "4px",
 									}}
 								>
-									<span style={{ color: "var(--text-muted)", fontSize: "10px" }}>
+									<span
+										style={{ color: "var(--text-muted)", fontSize: "10px" }}
+									>
 										{log.timestamp}
 									</span>
 									<span style={{ color: "var(--text-main)", fontWeight: 600 }}>

@@ -270,75 +270,123 @@ export const quantClient = {
 
 	async fetchLttdLatest(): Promise<LttdLatestRecord> {
 		const res = await fetch(`${API_BASE}/api/v1/lttd/latest`);
-		if (!res.ok) throw new Error(`Failed to fetch LTTD latest: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD latest: ${res.statusText}`);
 		return res.json();
 	},
 
-	async fetchLttdHistory(start?: string, end?: string, limit?: number): Promise<LttdLatestRecord[]> {
-		const url = new URL(`${API_BASE}/api/v1/lttd/history`, window.location.origin);
-		if (start) url.searchParams.set('start', start);
-		if (end) url.searchParams.set('end', end);
-		if (limit) url.searchParams.set('limit', limit.toString());
+	async fetchLttdHistory(
+		start?: string,
+		end?: string,
+		limit?: number,
+	): Promise<LttdLatestRecord[]> {
+		const url = new URL(
+			`${API_BASE}/api/v1/lttd/history`,
+			window.location.origin,
+		);
+		if (start) url.searchParams.set("start", start);
+		if (end) url.searchParams.set("end", end);
+		if (limit) url.searchParams.set("limit", limit.toString());
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch LTTD history: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD history: ${res.statusText}`);
 		return verifyCausalData(await res.json());
 	},
 
-	async fetchLttdChart(start?: string, end?: string): Promise<LttdChartRecord[]> {
-		const url = new URL(`${API_BASE}/api/v1/lttd/chart`, window.location.origin);
-		if (start) url.searchParams.set('start', start);
-		if (end) url.searchParams.set('end', end);
+	async fetchLttdChart(
+		start?: string,
+		end?: string,
+	): Promise<LttdChartRecord[]> {
+		const url = new URL(
+			`${API_BASE}/api/v1/lttd/chart`,
+			window.location.origin,
+		);
+		if (start) url.searchParams.set("start", start);
+		if (end) url.searchParams.set("end", end);
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch LTTD chart: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD chart: ${res.statusText}`);
 		return verifyCausalData(await res.json());
 	},
 
-	async fetchLttdRegime(start?: string, end?: string): Promise<LttdRegimeRecord[]> {
-		const url = new URL(`${API_BASE}/api/v1/lttd/regime`, window.location.origin);
-		if (start) url.searchParams.set('start', start);
-		if (end) url.searchParams.set('end', end);
+	async fetchLttdRegime(
+		start?: string,
+		end?: string,
+	): Promise<LttdRegimeRecord[]> {
+		const url = new URL(
+			`${API_BASE}/api/v1/lttd/regime`,
+			window.location.origin,
+		);
+		if (start) url.searchParams.set("start", start);
+		if (end) url.searchParams.set("end", end);
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch LTTD regime: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD regime: ${res.statusText}`);
 		return verifyCausalData(await res.json());
 	},
 
-	async fetchLttdDiagnostics(start?: string, end?: string): Promise<LttdDiagnosticsRecord[]> {
-		const url = new URL(`${API_BASE}/api/v1/lttd/diagnostics`, window.location.origin);
-		if (start) url.searchParams.set('start', start);
-		if (end) url.searchParams.set('end', end);
+	async fetchLttdDiagnostics(
+		start?: string,
+		end?: string,
+	): Promise<LttdDiagnosticsRecord[]> {
+		const url = new URL(
+			`${API_BASE}/api/v1/lttd/diagnostics`,
+			window.location.origin,
+		);
+		if (start) url.searchParams.set("start", start);
+		if (end) url.searchParams.set("end", end);
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch LTTD diagnostics: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD diagnostics: ${res.statusText}`);
 		return verifyCausalData(await res.json());
 	},
 
-	async fetchLttdOnchain(start?: string, end?: string): Promise<LttdOnchainRecord[]> {
-		const url = new URL(`${API_BASE}/api/v1/lttd/onchain`, window.location.origin);
-		if (start) url.searchParams.set('start', start);
-		if (end) url.searchParams.set('end', end);
+	async fetchLttdOnchain(
+		start?: string,
+		end?: string,
+	): Promise<LttdOnchainRecord[]> {
+		const url = new URL(
+			`${API_BASE}/api/v1/lttd/onchain`,
+			window.location.origin,
+		);
+		if (start) url.searchParams.set("start", start);
+		if (end) url.searchParams.set("end", end);
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch LTTD onchain: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD onchain: ${res.statusText}`);
 		return verifyCausalData(await res.json());
 	},
 
 	async triggerLttdAction(action: string): Promise<LttdActionResponse> {
 		const res = await fetch(`${API_BASE}/api/v1/lttd/actions/run`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ action }),
 		});
-		if (!res.ok) throw new Error(`Failed to trigger LTTD action: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to trigger LTTD action: ${res.statusText}`);
 		return res.json();
 	},
 
-	async fetchLttdBacktest(start?: string, end?: string, feeBps?: number): Promise<LttdBacktestResponse> {
-		const url = new URL(`${API_BASE}/api/v1/lttd/backtest`, window.location.origin);
-		if (start) url.searchParams.set('start', start);
-		if (end) url.searchParams.set('end', end);
-		if (feeBps !== undefined) url.searchParams.set('fee_bps', feeBps.toString());
+	async fetchLttdBacktest(
+		start?: string,
+		end?: string,
+		feeBps?: number,
+	): Promise<LttdBacktestResponse> {
+		const url = new URL(
+			`${API_BASE}/api/v1/lttd/backtest`,
+			window.location.origin,
+		);
+		if (start) url.searchParams.set("start", start);
+		if (end) url.searchParams.set("end", end);
+		if (feeBps !== undefined)
+			url.searchParams.set("fee_bps", feeBps.toString());
 		const res = await fetch(url.toString());
-		if (!res.ok) throw new Error(`Failed to fetch LTTD backtest: ${res.statusText}`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch LTTD backtest: ${res.statusText}`);
 		const json = await res.json();
-		if (json.equity_curve) json.equity_curve = verifyCausalData(json.equity_curve);
+		if (json.equity_curve)
+			json.equity_curve = verifyCausalData(json.equity_curve);
 		return json;
 	},
 };

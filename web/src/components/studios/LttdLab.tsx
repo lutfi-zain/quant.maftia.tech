@@ -29,7 +29,10 @@ import {
 } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { useStudioBacktest, type StudioDailyRecord } from "../../lib/studioBacktest";
+import {
+	useStudioBacktest,
+	type StudioDailyRecord,
+} from "../../lib/studioBacktest";
 import { LttdOnchainPanel } from "./LttdOnchainPanel";
 import { LttdControlCenter } from "./LttdControlCenter";
 
@@ -85,35 +88,35 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 			return { btc: available, score: 0, exposure: 0, regime: 0, eq: 0 };
 		case "score":
 			return {
-				btc: Math.floor(available * 0.50),
-				score: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
+				score: Math.floor(available * 0.5),
 				exposure: 0,
 				regime: 0,
 				eq: 0,
 			};
 		case "exposure":
 			return {
-				btc: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
 				score: 0,
-				exposure: Math.floor(available * 0.50),
+				exposure: Math.floor(available * 0.5),
 				regime: 0,
 				eq: 0,
 			};
 		case "regime":
 			return {
-				btc: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
 				score: 0,
 				exposure: 0,
-				regime: Math.floor(available * 0.50),
+				regime: Math.floor(available * 0.5),
 				eq: 0,
 			};
 		case "eq":
 			return {
-				btc: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
 				score: 0,
 				exposure: 0,
 				regime: 0,
-				eq: Math.floor(available * 0.50),
+				eq: Math.floor(available * 0.5),
 			};
 		default:
 			return isMobile
@@ -159,6 +162,8 @@ const LTTD_COMPONENT_METADATA: Record<
 export const LttdLab: React.FC = () => {
 	const { dailyData, circuitBreakers } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
+	const [diagnosticsData, setDiagnosticsData] = useState<any[]>([]);
+	const [expandedRow, setExpandedRow] = useState<string | null>(null);
 	const [_hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
@@ -188,7 +193,14 @@ export const LttdLab: React.FC = () => {
 		regime: any;
 		cumStrat: any;
 		cumMarket: any;
-	}>({ candle: null, score: null, exposure: null, regime: null, cumStrat: null, cumMarket: null });
+	}>({
+		candle: null,
+		score: null,
+		exposure: null,
+		regime: null,
+		cumStrat: null,
+		cumMarket: null,
+	});
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
@@ -204,7 +216,12 @@ export const LttdLab: React.FC = () => {
 		};
 	});
 
-	const backtestResult = useStudioBacktest(backtestData, startDate, endDate, feeBps);
+	const backtestResult = useStudioBacktest(
+		backtestData,
+		startDate,
+		endDate,
+		feeBps,
+	);
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
@@ -214,7 +231,10 @@ export const LttdLab: React.FC = () => {
 			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
-			createSeriesMarkers(seriesRef.current.candle, backtestResult.markers as any);
+			createSeriesMarkers(
+				seriesRef.current.candle,
+				backtestResult.markers as any,
+			);
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
@@ -248,6 +268,15 @@ export const LttdLab: React.FC = () => {
 			.catch((e) => {
 				console.error("Failed to load LTTD components:", e);
 			});
+
+		quantClient
+			.fetchLttdDiagnostics()
+			.then((data) => {
+				setDiagnosticsData(data);
+			})
+			.catch((e) => {
+				console.error("Failed to load LTTD diagnostics:", e);
+			});
 	}, []);
 
 	// Log/linear toggle
@@ -266,7 +295,11 @@ export const LttdLab: React.FC = () => {
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		const allNonBtcCharts: Array<{ chart: IChartApi | null; key: string; h: number }> = [
+		const allNonBtcCharts: Array<{
+			chart: IChartApi | null;
+			key: string;
+			h: number;
+		}> = [
 			{ chart: score, key: "score", h: heights.score },
 			{ chart: exposure, key: "exposure", h: heights.exposure },
 			{ chart: regime, key: "regime", h: heights.regime },
@@ -274,10 +307,16 @@ export const LttdLab: React.FC = () => {
 		];
 
 		const resizeFn = (containerH?: number) => {
-			const total = heights.btc + heights.score + heights.exposure + heights.regime + heights.eq;
-			const effectiveH = containerH && total > 0
-				? (h: number) => Math.round(containerH * (h / total))
-				: (h: number) => h;
+			const total =
+				heights.btc +
+				heights.score +
+				heights.exposure +
+				heights.regime +
+				heights.eq;
+			const effectiveH =
+				containerH && total > 0
+					? (h: number) => Math.round(containerH * (h / total))
+					: (h: number) => h;
 
 			const yWidth = getChartYAxisWidth();
 			btc.resize(w, effectiveH(heights.btc));
@@ -290,7 +329,10 @@ export const LttdLab: React.FC = () => {
 			});
 
 			const visiblePanels = allNonBtcCharts.filter((p) => p.h > 0);
-			const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].key : null;
+			const bottomId =
+				visiblePanels.length > 0
+					? visiblePanels[visiblePanels.length - 1].key
+					: null;
 
 			btc.timeScale().applyOptions({
 				visible: visiblePanels.length === 0,
@@ -343,7 +385,9 @@ export const LttdLab: React.FC = () => {
 			height: heights.btc,
 			timeScale: { ...common.timeScale, visible: false },
 		});
-		btcChart.priceScale("right").applyOptions({ mode: PriceScaleMode.Logarithmic });
+		btcChart
+			.priceScale("right")
+			.applyOptions({ mode: PriceScaleMode.Logarithmic });
 
 		const candleSeries = btcChart.addSeries(CandlestickSeries, {
 			upColor: "#22C55E",
@@ -396,9 +440,27 @@ export const LttdLab: React.FC = () => {
 			title: "Regime State",
 		});
 		// Reference lines
-		regimeSeries.createPriceLine({ price: 1, color: "rgba(34,197,94,0.3)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
-		regimeSeries.createPriceLine({ price: 0, color: "rgba(255,255,255,0.2)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
-		regimeSeries.createPriceLine({ price: -1, color: "rgba(239,68,68,0.3)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+		regimeSeries.createPriceLine({
+			price: 1,
+			color: "rgba(34,197,94,0.3)",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: false,
+		});
+		regimeSeries.createPriceLine({
+			price: 0,
+			color: "rgba(255,255,255,0.2)",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: false,
+		});
+		regimeSeries.createPriceLine({
+			price: -1,
+			color: "rgba(239,68,68,0.3)",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: false,
+		});
 
 		// 5. Equity Curve Pane
 		const eqChart = createChart(eqContainerRef.current, {
@@ -418,8 +480,21 @@ export const LttdLab: React.FC = () => {
 			title: "Cum_Market (BTC)",
 		});
 
-		chartsRef.current = { btc: btcChart, score: scoreChart, exposure: exposureChart, regime: regimeChart, eq: eqChart };
-		seriesRef.current = { candle: candleSeries, score: scoreSeries, exposure: exposureSeries, regime: regimeSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
+		chartsRef.current = {
+			btc: btcChart,
+			score: scoreChart,
+			exposure: exposureChart,
+			regime: regimeChart,
+			eq: eqChart,
+		};
+		seriesRef.current = {
+			candle: candleSeries,
+			score: scoreSeries,
+			exposure: exposureSeries,
+			regime: regimeSeries,
+			cumStrat: cumStratSeries,
+			cumMarket: cumMarketSeries,
+		};
 
 		// ── Populate Data ───────────────────────────────────────────────────
 
@@ -442,15 +517,18 @@ export const LttdLab: React.FC = () => {
 
 		const exposureArr = dailyData.map((p) => ({
 			time: p.date as Time,
-			value: ((p as any).target_exposure ?? (p.lttd_regime === "BULL" ? 100 : 0)) * 100,
+			value:
+				((p as any).target_exposure ?? (p.lttd_regime === "BULL" ? 100 : 0)) *
+				100,
 		}));
 		exposureSeries.setData(exposureArr as any);
 
 		regimeSeries.setData(
 			dailyData.map((p) => {
-				const regime = typeof p.lttd_regime === "object" && p.lttd_regime !== null
-					? (p.lttd_regime as any).regime
-					: p.lttd_regime || "SIDEWAYS";
+				const regime =
+					typeof p.lttd_regime === "object" && p.lttd_regime !== null
+						? (p.lttd_regime as any).regime
+						: p.lttd_regime || "SIDEWAYS";
 				let val = 0;
 				if (regime === "BULL") val = 1;
 				else if (regime === "BEAR") val = -1;
@@ -544,8 +622,21 @@ export const LttdLab: React.FC = () => {
 			exposureChart.remove();
 			regimeChart.remove();
 			eqChart.remove();
-			chartsRef.current = { btc: null, score: null, exposure: null, regime: null, eq: null };
-			seriesRef.current = { candle: null, score: null, exposure: null, regime: null, cumStrat: null, cumMarket: null };
+			chartsRef.current = {
+				btc: null,
+				score: null,
+				exposure: null,
+				regime: null,
+				eq: null,
+			};
+			seriesRef.current = {
+				candle: null,
+				score: null,
+				exposure: null,
+				regime: null,
+				cumStrat: null,
+				cumMarket: null,
+			};
 		};
 	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -565,17 +656,24 @@ export const LttdLab: React.FC = () => {
 		currentRegime === "SIDEWAYS" ||
 		(circuitBreakers?.lttd_macro_override.is_sideways_override ?? false);
 
+	const latestDiag = diagnosticsData.length > 0 ? diagnosticsData[diagnosticsData.length - 1] : null;
+	const diagIndicators = latestDiag?.indicator_scores || {};
+	const diagVif = latestDiag?.vif || {};
+	const diagVariance = latestDiag?.pca_variance_explained ?? 87.6;
+
 	const displayComponents = Object.entries(LTTD_COMPONENT_METADATA).map(
 		([name, meta]) => {
 			const signal = components.find((c) => c.component_name === name);
 			const score = signal
 				? toNum(signal.normalized_score)
-				: Math.cos(name.length) * 0.7;
+				: diagIndicators[name] ?? Math.cos(name.length) * 0.7;
+			const vifVal = diagVif[name] ?? null;
 			return {
 				name,
 				category: meta.category,
 				description: meta.description,
 				score: toNum(score),
+				vif: vifVal,
 				direction: toNum(score) > 0.3 ? 1 : toNum(score) < -0.3 ? -1 : 0,
 			};
 		},
@@ -836,8 +934,12 @@ export const LttdLab: React.FC = () => {
 						<div className="subplot-controls">
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "score" ? null : "score")}
-								title={maximized === "score" ? "Restore" : "Maximize Score pane"}
+								onClick={() =>
+									setMaximized(maximized === "score" ? null : "score")
+								}
+								title={
+									maximized === "score" ? "Restore" : "Maximize Score pane"
+								}
 							>
 								{maximized === "score" ? (
 									<Minimize2 size={14} />
@@ -865,8 +967,14 @@ export const LttdLab: React.FC = () => {
 						<div className="subplot-controls">
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "exposure" ? null : "exposure")}
-								title={maximized === "exposure" ? "Restore" : "Maximize Exposure pane"}
+								onClick={() =>
+									setMaximized(maximized === "exposure" ? null : "exposure")
+								}
+								title={
+									maximized === "exposure"
+										? "Restore"
+										: "Maximize Exposure pane"
+								}
 							>
 								{maximized === "exposure" ? (
 									<Minimize2 size={14} />
@@ -894,8 +1002,12 @@ export const LttdLab: React.FC = () => {
 						<div className="subplot-controls">
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "regime" ? null : "regime")}
-								title={maximized === "regime" ? "Restore" : "Maximize Regime pane"}
+								onClick={() =>
+									setMaximized(maximized === "regime" ? null : "regime")
+								}
+								title={
+									maximized === "regime" ? "Restore" : "Maximize Regime pane"
+								}
 							>
 								{maximized === "regime" ? (
 									<Minimize2 size={14} />
@@ -941,30 +1053,86 @@ export const LttdLab: React.FC = () => {
 			</div>
 
 			{/* Interactive Backtest Controls & Metrics Bar */}
-			<div className="glass-card" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
-				<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
-					<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-						<span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.05em" }}>BACKTEST CONFIG</span>
+			<div
+				className="glass-card"
+				style={{
+					padding: "14px",
+					display: "flex",
+					flexDirection: "column",
+					gap: "12px",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: "12px",
+						borderBottom: "1px solid var(--border)",
+						paddingBottom: "12px",
+					}}
+				>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "12px",
+							flexWrap: "wrap",
+						}}
+					>
+						<span
+							style={{
+								fontSize: "12px",
+								fontWeight: 700,
+								color: "var(--text-main)",
+								letterSpacing: "0.05em",
+							}}
+						>
+							BACKTEST CONFIG
+						</span>
 						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Start Date:</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								Start Date:
+							</label>
 							<input
 								type="date"
 								value={startDate}
 								onChange={(e) => setStartDate(e.target.value)}
-								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+								style={{
+									background: "#0B1220",
+									border: "1px solid var(--border)",
+									color: "var(--text-main)",
+									padding: "4px 8px",
+									borderRadius: "4px",
+									fontSize: "11px",
+									fontFamily: "Geist Mono, monospace",
+								}}
 							/>
 						</div>
 						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>End Date:</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								End Date:
+							</label>
 							<input
 								type="date"
 								value={endDate}
 								onChange={(e) => setEndDate(e.target.value)}
-								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+								style={{
+									background: "#0B1220",
+									border: "1px solid var(--border)",
+									color: "var(--text-main)",
+									padding: "4px 8px",
+									borderRadius: "4px",
+									fontSize: "11px",
+									fontFamily: "Geist Mono, monospace",
+								}}
 							/>
 						</div>
 						<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Fee Friction ({feeBps} bps):</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								Fee Friction ({feeBps} bps):
+							</label>
 							<input
 								type="range"
 								min="0"
@@ -979,7 +1147,11 @@ export const LttdLab: React.FC = () => {
 					<div style={{ display: "flex", gap: "8px" }}>
 						<button
 							className="toggle-btn"
-							onClick={() => { setStartDate("2020-01-01"); setEndDate("2026-12-31"); setFeeBps(10); }}
+							onClick={() => {
+								setStartDate("2020-01-01");
+								setEndDate("2026-12-31");
+								setFeeBps(10);
+							}}
 							style={{ fontSize: "11px", padding: "4px 8px" }}
 						>
 							Reset Defaults
@@ -1109,7 +1281,8 @@ export const LttdLab: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.sharpeRatio >= backtestResult.metrics.sharpeRatioMarket
+									backtestResult.metrics.sharpeRatio >=
+									backtestResult.metrics.sharpeRatioMarket
 										? "var(--signal-bull)"
 										: "var(--text-main)",
 							}}
@@ -1150,7 +1323,8 @@ export const LttdLab: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.annReturnStrat >= backtestResult.metrics.annReturnMarket
+									backtestResult.metrics.annReturnStrat >=
+									backtestResult.metrics.annReturnMarket
 										? "var(--signal-bull)"
 										: "var(--signal-bear)",
 							}}
@@ -1166,9 +1340,11 @@ export const LttdLab: React.FC = () => {
 									marginLeft: "4px",
 								}}
 							>
-								(vs {backtestResult.metrics.annReturnMarket >= 0
+								(vs{" "}
+								{backtestResult.metrics.annReturnMarket >= 0
 									? `+${backtestResult.metrics.annReturnMarket.toFixed(1)}%`
-									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`})
+									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`}
+								)
 							</span>
 						</div>
 					</div>
@@ -1307,20 +1483,44 @@ export const LttdLab: React.FC = () => {
 
 			{/* Execution Log Table */}
 			<div className="glass-card" style={{ padding: "14px" }}>
-				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+				<div
+					className="card-header-bar"
+					style={{
+						margin: "-14px -14px 14px -14px",
+						width: "calc(100% + 28px)",
+						borderRadius: "4px 4px 0 0",
+					}}
+				>
 					<div className="card-header-left">
 						<span className="card-header-tag">CAUSAL EXECUTION LOG</span>
-						<h3 className="card-header-title">Completed Trade Attribution Table</h3>
+						<h3 className="card-header-title">
+							Completed Trade Attribution Table
+						</h3>
 					</div>
 					<div className="card-header-right">
-						<span className="card-header-meta">{backtestResult.trades.length} TRADES IN WINDOW</span>
+						<span className="card-header-meta">
+							{backtestResult.trades.length} TRADES IN WINDOW
+						</span>
 					</div>
 				</div>
 
 				<div style={{ overflowX: "auto", maxHeight: "360px" }}>
-					<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+					<table
+						style={{
+							width: "100%",
+							borderCollapse: "collapse",
+							fontSize: "12px",
+							fontFamily: "Geist Mono, monospace",
+						}}
+					>
 						<thead>
-							<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+							<tr
+								style={{
+									borderBottom: "1px solid var(--border)",
+									textAlign: "left",
+									color: "var(--text-muted)",
+								}}
+							>
 								<th style={{ padding: "8px" }}>ID</th>
 								<th style={{ padding: "8px" }}>ENTRY DATE</th>
 								<th style={{ padding: "8px" }}>ENTRY PRICE</th>
@@ -1328,32 +1528,91 @@ export const LttdLab: React.FC = () => {
 								<th style={{ padding: "8px" }}>EXIT PRICE</th>
 								<th style={{ padding: "8px" }}>HOLD DAYS</th>
 								<th style={{ padding: "8px" }}>EXIT REASON</th>
-								<th style={{ padding: "8px", textAlign: "right" }}>NET RETURN</th>
+								<th style={{ padding: "8px", textAlign: "right" }}>
+									NET RETURN
+								</th>
 							</tr>
 						</thead>
 						<tbody>
 							{backtestResult.trades.length === 0 ? (
 								<tr>
-									<td colSpan={8} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+									<td
+										colSpan={8}
+										style={{
+											padding: "20px",
+											textAlign: "center",
+											color: "var(--text-muted)",
+										}}
+									>
 										No completed trades found in the selected date window.
 									</td>
 								</tr>
 							) : (
 								backtestResult.trades.map((t) => (
-									<tr key={t.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "background 0.15s" }}>
-										<td style={{ padding: "8px", color: "var(--text-muted)" }}>{t.id}</td>
+									<tr
+										key={t.id}
+										style={{
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+											transition: "background 0.15s",
+										}}
+									>
+										<td style={{ padding: "8px", color: "var(--text-muted)" }}>
+											{t.id}
+										</td>
 										<td style={{ padding: "8px" }}>{t.entryDate}</td>
-										<td style={{ padding: "8px" }}>${t.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>
+											$
+											{t.entryPrice.toLocaleString(undefined, {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}
+										</td>
 										<td style={{ padding: "8px" }}>{t.exitDate}</td>
-										<td style={{ padding: "8px" }}>${t.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>
+											$
+											{t.exitPrice.toLocaleString(undefined, {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}
+										</td>
 										<td style={{ padding: "8px" }}>{t.holdDays}d</td>
 										<td style={{ padding: "8px" }}>
-											<span style={{ padding: "2px 6px", borderRadius: "4px", fontSize: "10px", background: t.exitReason.includes("Bull") ? "rgba(34,197,94,0.1)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", color: t.exitReason.includes("Bull") ? "var(--signal-bull)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "var(--signal-bear)" : "var(--text-main)" }}>
+											<span
+												style={{
+													padding: "2px 6px",
+													borderRadius: "4px",
+													fontSize: "10px",
+													background: t.exitReason.includes("Bull")
+														? "rgba(34,197,94,0.1)"
+														: t.exitReason.includes("Bear") ||
+																t.exitReason.includes("Stop")
+															? "rgba(239,68,68,0.1)"
+															: "rgba(255,255,255,0.05)",
+													color: t.exitReason.includes("Bull")
+														? "var(--signal-bull)"
+														: t.exitReason.includes("Bear") ||
+																t.exitReason.includes("Stop")
+															? "var(--signal-bear)"
+															: "var(--text-main)",
+												}}
+											>
 												{t.exitReason}
 											</span>
 										</td>
-										<td style={{ padding: "8px", textAlign: "right", fontWeight: 700, color: t.returnPct >= 0 ? "var(--signal-bull)" : "var(--signal-bear)" }}>
-											{t.returnPct >= 0 ? `+${t.returnPct.toFixed(2)}%` : `${t.returnPct.toFixed(2)}%`}
+										<td
+											style={{
+												padding: "8px",
+												textAlign: "right",
+												fontWeight: 700,
+												color:
+													t.returnPct >= 0
+														? "var(--signal-bull)"
+														: "var(--signal-bear)",
+											}}
+										>
+											{t.returnPct >= 0
+												? `+${t.returnPct.toFixed(2)}%`
+												: `${t.returnPct.toFixed(2)}%`}
 										</td>
 									</tr>
 								))
@@ -1365,17 +1624,39 @@ export const LttdLab: React.FC = () => {
 
 			{/* Regime Transition Audit Table */}
 			<div className="glass-card" style={{ padding: "14px" }}>
-				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+				<div
+					className="card-header-bar"
+					style={{
+						margin: "-14px -14px 14px -14px",
+						width: "calc(100% + 28px)",
+						borderRadius: "4px 4px 0 0",
+					}}
+				>
 					<div className="card-header-left">
 						<span className="card-header-tag">REGIME TRANSITION AUDIT</span>
-						<h3 className="card-header-title">Historical Regime Change Events</h3>
+						<h3 className="card-header-title">
+							Historical Regime Change Events
+						</h3>
 					</div>
 				</div>
 
 				<div style={{ overflowX: "auto", maxHeight: "300px" }}>
-					<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+					<table
+						style={{
+							width: "100%",
+							borderCollapse: "collapse",
+							fontSize: "12px",
+							fontFamily: "Geist Mono, monospace",
+						}}
+					>
 						<thead>
-							<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+							<tr
+								style={{
+									borderBottom: "1px solid var(--border)",
+									textAlign: "left",
+									color: "var(--text-muted)",
+								}}
+							>
 								<th style={{ padding: "8px" }}>DATE</th>
 								<th style={{ padding: "8px" }}>PREVIOUS REGIME</th>
 								<th style={{ padding: "8px" }}>NEW REGIME</th>
@@ -1383,43 +1664,65 @@ export const LttdLab: React.FC = () => {
 							</tr>
 						</thead>
 						<tbody>
-							{(dailyData.length >= 2 ? (() => {
-								const transitions: any[] = [];
-								const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
-								for (let i = 1; i < sorted.length; i++) {
-									const prev = typeof sorted[i - 1].lttd_regime === "object" && sorted[i - 1].lttd_regime !== null
-										? (sorted[i - 1].lttd_regime as any).regime
-										: sorted[i - 1].lttd_regime || "SIDEWAYS";
-									const curr = typeof sorted[i].lttd_regime === "object" && sorted[i].lttd_regime !== null
-										? (sorted[i].lttd_regime as any).regime
-										: sorted[i].lttd_regime || "SIDEWAYS";
-									if (prev !== curr) {
-										transitions.push({
-											date: sorted[i].date,
-											prev,
-											curr,
-											score: (sorted[i] as any).lttd_score ?? 0,
-										});
-									}
-								}
-								return transitions.reverse();
-							})() : []).length === 0 ? (
+							{(dailyData.length >= 2
+								? (() => {
+										const transitions: any[] = [];
+										const sorted = [...dailyData].sort((a, b) =>
+											a.date.localeCompare(b.date),
+										);
+										for (let i = 1; i < sorted.length; i++) {
+											const prev =
+												typeof sorted[i - 1].lttd_regime === "object" &&
+												sorted[i - 1].lttd_regime !== null
+													? (sorted[i - 1].lttd_regime as any).regime
+													: sorted[i - 1].lttd_regime || "SIDEWAYS";
+											const curr =
+												typeof sorted[i].lttd_regime === "object" &&
+												sorted[i].lttd_regime !== null
+													? (sorted[i].lttd_regime as any).regime
+													: sorted[i].lttd_regime || "SIDEWAYS";
+											if (prev !== curr) {
+												transitions.push({
+													date: sorted[i].date,
+													prev,
+													curr,
+													score: (sorted[i] as any).lttd_score ?? 0,
+												});
+											}
+										}
+										return transitions.reverse();
+									})()
+								: []
+							).length === 0 ? (
 								<tr>
-									<td colSpan={4} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+									<td
+										colSpan={4}
+										style={{
+											padding: "20px",
+											textAlign: "center",
+											color: "var(--text-muted)",
+										}}
+									>
 										No regime transitions detected.
 									</td>
 								</tr>
 							) : (
 								(() => {
 									const transitions: any[] = [];
-									const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
+									const sorted = [...dailyData].sort((a, b) =>
+										a.date.localeCompare(b.date),
+									);
 									for (let i = 1; i < sorted.length; i++) {
-										const prev = typeof sorted[i - 1].lttd_regime === "object" && sorted[i - 1].lttd_regime !== null
-											? (sorted[i - 1].lttd_regime as any).regime
-											: sorted[i - 1].lttd_regime || "SIDEWAYS";
-										const curr = typeof sorted[i].lttd_regime === "object" && sorted[i].lttd_regime !== null
-											? (sorted[i].lttd_regime as any).regime
-											: sorted[i].lttd_regime || "SIDEWAYS";
+										const prev =
+											typeof sorted[i - 1].lttd_regime === "object" &&
+											sorted[i - 1].lttd_regime !== null
+												? (sorted[i - 1].lttd_regime as any).regime
+												: sorted[i - 1].lttd_regime || "SIDEWAYS";
+										const curr =
+											typeof sorted[i].lttd_regime === "object" &&
+											sorted[i].lttd_regime !== null
+												? (sorted[i].lttd_regime as any).regime
+												: sorted[i].lttd_regime || "SIDEWAYS";
 										if (prev !== curr) {
 											transitions.push({
 												date: sorted[i].date,
@@ -1430,15 +1733,73 @@ export const LttdLab: React.FC = () => {
 										}
 									}
 									return transitions.reverse().map((t: any) => (
-										<tr key={t.date} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+										<tr
+											key={t.date}
+											style={{
+												borderBottom: "1px solid rgba(255,255,255,0.03)",
+											}}
+										>
 											<td style={{ padding: "8px" }}>{t.date}</td>
 											<td style={{ padding: "8px" }}>
-												<span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: 700, background: t.prev === "BULL" ? "rgba(34,197,94,0.15)" : t.prev === "BEAR" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: t.prev === "BULL" ? "#22C55E" : t.prev === "BEAR" ? "#EF4444" : "#F59E0B" }}>{t.prev}</span>
+												<span
+													style={{
+														padding: "2px 8px",
+														borderRadius: "4px",
+														fontSize: "11px",
+														fontWeight: 700,
+														background:
+															t.prev === "BULL"
+																? "rgba(34,197,94,0.15)"
+																: t.prev === "BEAR"
+																	? "rgba(239,68,68,0.15)"
+																	: "rgba(245,158,11,0.15)",
+														color:
+															t.prev === "BULL"
+																? "#22C55E"
+																: t.prev === "BEAR"
+																	? "#EF4444"
+																	: "#F59E0B",
+													}}
+												>
+													{t.prev}
+												</span>
 											</td>
 											<td style={{ padding: "8px" }}>
-												<span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: 700, background: t.curr === "BULL" ? "rgba(34,197,94,0.15)" : t.curr === "BEAR" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: t.curr === "BULL" ? "#22C55E" : t.curr === "BEAR" ? "#EF4444" : "#F59E0B" }}>{t.curr}</span>
+												<span
+													style={{
+														padding: "2px 8px",
+														borderRadius: "4px",
+														fontSize: "11px",
+														fontWeight: 700,
+														background:
+															t.curr === "BULL"
+																? "rgba(34,197,94,0.15)"
+																: t.curr === "BEAR"
+																	? "rgba(239,68,68,0.15)"
+																	: "rgba(245,158,11,0.15)",
+														color:
+															t.curr === "BULL"
+																? "#22C55E"
+																: t.curr === "BEAR"
+																	? "#EF4444"
+																	: "#F59E0B",
+													}}
+												>
+													{t.curr}
+												</span>
 											</td>
-											<td style={{ padding: "8px", textAlign: "right", fontFamily: "Geist Mono, monospace", fontWeight: 700 }}>{t.score > 0 ? `+${t.score.toFixed(4)}` : t.score.toFixed(4)}</td>
+											<td
+												style={{
+													padding: "8px",
+													textAlign: "right",
+													fontFamily: "Geist Mono, monospace",
+													fontWeight: 700,
+												}}
+											>
+												{t.score > 0
+													? `+${t.score.toFixed(4)}`
+													: t.score.toFixed(4)}
+											</td>
 										</tr>
 									));
 								})()
@@ -1563,118 +1924,248 @@ export const LttdLab: React.FC = () => {
 							}}
 						>
 							<thead>
-								<tr
-									style={{
-										borderBottom: "1px solid var(--border-panel)",
-										color: "var(--text-dim)",
-										fontSize: "11px",
-										textTransform: "uppercase",
-										fontFamily: "Geist Mono, monospace",
-									}}
-								>
-									<th style={{ padding: "8px 6px" }}>Feature / Component</th>
-									<th style={{ padding: "8px 6px" }}>Category</th>
-									<th style={{ padding: "8px 6px" }}>Description</th>
-									<th style={{ padding: "8px 6px", textAlign: "right" }}>
-										Normalized Value
-									</th>
-									<th style={{ padding: "8px 6px", textAlign: "center" }}>
-										Regime Contribution
-									</th>
-								</tr>
-							</thead>
-							<tbody>
-								{displayComponents.map((ind) => (
-									<tr
-										key={ind.name}
-										className="hover:bg-slate-800/30 hover-physics-card transition-all"
-										style={{
-											borderBottom: "1px solid rgba(255,255,255,0.03)",
-											fontSize: "13px",
-										}}
-									>
-										<td
+							<tr
+								style={{
+									borderBottom: "1px solid var(--border-panel)",
+									color: "var(--text-dim)",
+									fontSize: "11px",
+									textTransform: "uppercase",
+									fontFamily: "Geist Mono, monospace",
+								}}
+							>
+								<th style={{ padding: "8px 6px" }}>Feature / Component</th>
+								<th style={{ padding: "8px 6px" }}>Category</th>
+								<th style={{ padding: "8px 6px" }}>Description</th>
+								<th style={{ padding: "8px 6px", textAlign: "right" }}>
+									Score
+								</th>
+								<th style={{ padding: "8px 6px", textAlign: "right" }}>
+									VIF
+								</th>
+								<th style={{ padding: "8px 6px", textAlign: "center" }}>
+									Signal
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							{displayComponents.map((ind) => {
+								const isExpanded = expandedRow === ind.name;
+								return (
+									<React.Fragment key={ind.name}>
+										<tr
+											onClick={() =>
+												setExpandedRow(isExpanded ? null : ind.name)
+											}
+											className="hover:bg-slate-800/30 hover-physics-card transition-all"
 											style={{
-												padding: "10px 6px",
-												fontWeight: 600,
-												color: "var(--text-primary)",
+												borderBottom: isExpanded
+													? "none"
+													: "1px solid rgba(255,255,255,0.03)",
+												fontSize: "13px",
+												cursor: "pointer",
 											}}
 										>
-											{ind.name}
-										</td>
-										<td style={{ padding: "10px 6px" }}>
-											<span
+											<td
 												style={{
-													fontSize: "11px",
-													padding: "2px 8px",
-													borderRadius: "4px",
-													fontFamily: "Geist Mono, monospace",
-													backgroundColor: "rgba(245,158,11,0.1)",
-													color: "var(--accent)",
+													padding: "10px 6px",
+													fontWeight: 600,
+													color: "var(--text-primary)",
 												}}
 											>
-												{ind.category}
-											</span>
-										</td>
-										<td
-											style={{ padding: "10px 6px", color: "var(--text-dim)" }}
-										>
-											{ind.description}
-										</td>
-										<td
-											style={{
-												padding: "10px 6px",
-												textAlign: "right",
-												fontFamily: "Geist Mono, monospace",
-												fontWeight: 700,
-												color:
-													ind.score >= 0.3
-														? "var(--signal-bull)"
-														: ind.score <= -0.3
-															? "var(--signal-bear)"
-															: "var(--text-primary)",
-											}}
-										>
-											{ind.score > 0
-												? `+${ind.score.toFixed(3)}`
-												: ind.score.toFixed(3)}
-										</td>
-										<td style={{ padding: "10px 6px", textAlign: "center" }}>
-											<span
+												{ind.name}{" "}
+												<span style={{ fontSize: "10px", color: "var(--text-dim)" }}>
+													{isExpanded ? "▲" : "▼"}
+												</span>
+											</td>
+											<td style={{ padding: "10px 6px" }}>
+												<span
+													style={{
+														fontSize: "11px",
+														padding: "2px 8px",
+														borderRadius: "4px",
+														fontFamily: "Geist Mono, monospace",
+														backgroundColor: "rgba(245,158,11,0.1)",
+														color: "var(--accent)",
+													}}
+												>
+													{ind.category}
+												</span>
+											</td>
+											<td
 												style={{
-													display: "inline-block",
-													padding: "2px 8px",
-													borderRadius: "4px",
-													fontSize: "11px",
+													padding: "10px 6px",
+													color: "var(--text-dim)",
+												}}
+											>
+												{ind.description}
+											</td>
+											<td
+												style={{
+													padding: "10px 6px",
+													textAlign: "right",
 													fontFamily: "Geist Mono, monospace",
-													backgroundColor:
-														ind.direction === 1
-															? "rgba(34,197,94,0.15)"
-															: ind.direction === -1
-																? "rgba(239,68,68,0.15)"
-																: "rgba(255,255,255,0.05)",
+													fontWeight: 700,
 													color:
-														ind.direction === 1
+														ind.score >= 0.3
 															? "var(--signal-bull)"
-															: ind.direction === -1
+															: ind.score <= -0.3
 																? "var(--signal-bear)"
-																: "var(--text-dim)",
+																: "var(--text-primary)",
 												}}
 											>
+												{ind.score > 0
+													? `+${ind.score.toFixed(3)}`
+													: ind.score.toFixed(3)}
+											</td>
+											<td
+												style={{
+													padding: "10px 6px",
+													textAlign: "right",
+													fontFamily: "Geist Mono, monospace",
+													fontWeight: 700,
+													color:
+														ind.vif !== null && ind.vif > 10
+															? "#EF4444"
+															: "var(--text-dim)",
+												}}
+											>
+												{ind.vif !== null
+													? ind.vif.toFixed(2)
+													: "—"}
+											</td>
+											<td style={{ padding: "10px 6px", textAlign: "center" }}>
+												<span
+													style={{
+														display: "inline-block",
+														padding: "2px 8px",
+														borderRadius: "4px",
+														fontSize: "11px",
+														fontFamily: "Geist Mono, monospace",
+														backgroundColor:
+															ind.direction === 1
+																? "rgba(34,197,94,0.15)"
+																: ind.direction === -1
+																	? "rgba(239,68,68,0.15)"
+																	: "rgba(255,255,255,0.05)",
+														color:
+															ind.direction === 1
+																? "var(--signal-bull)"
+																: ind.direction === -1
+																	? "var(--signal-bear)"
+																	: "var(--text-dim)",
+													}}
+												>
 												{ind.direction === 1
 													? "BULL"
 													: ind.direction === -1
 														? "BEAR"
 														: "NEUTRAL"}
-											</span>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				)}
-			</div>
+												</span>
+											</td>
+										</tr>
+										{isExpanded && (
+											<tr>
+												<td
+													colSpan={6}
+													style={{
+														padding: "12px 16px",
+														background: "rgba(255,255,255,0.02)",
+														borderBottom:
+															"1px solid rgba(255,255,255,0.03)",
+														fontSize: "12px",
+													}}
+												>
+													<div
+														style={{
+															display: "flex",
+															flexDirection: "column",
+															gap: "8px",
+														}}
+													>
+														<div
+															style={{
+																color: "var(--text-dim)",
+																fontSize: "11px",
+															}}
+														>
+															{ind.description}
+														</div>
+														<div
+															style={{
+																display: "grid",
+																gridTemplateColumns:
+																	"repeat(3, 1fr)",
+																gap: "8px",
+																fontSize: "11px",
+																fontFamily:
+																	"Geist Mono, monospace",
+															}}
+														>
+															<div>
+																<span style={{ color: "var(--text-muted)" }}>
+																	Score:{" "}
+																</span>
+																<span
+																	style={{
+																		color:
+																			ind.score >= 0.3
+																				? "var(--signal-bull)"
+																				: ind.score <= -0.3
+																					? "var(--signal-bear)"
+																					: "var(--text-primary)",
+																	}}
+																>
+																	{ind.score > 0
+																		? `+${ind.score.toFixed(3)}`
+																		: ind.score.toFixed(3)}
+																</span>
+															</div>
+															<div>
+																<span style={{ color: "var(--text-muted)" }}>
+																	VIF:{" "}
+																</span>
+																<span
+																	style={{
+																		color:
+																			ind.vif !== null &&
+																				ind.vif > 10
+																				? "#EF4444"
+																				: "var(--text-primary)",
+																	}}
+																>
+																	{ind.vif !== null
+																		? ind.vif.toFixed(2)
+																		: "—"}
+																</span>
+															</div>
+															<div>
+																<span style={{ color: "var(--text-muted)" }}>
+																	PCA Variance Explained:{" "}
+																</span>
+																<span
+																	style={{
+																		color:
+																			diagVariance > 85
+																				? "var(--signal-bull)"
+																				: "var(--text-primary)",
+																	}}
+																>
+																	{diagVariance.toFixed(1)}%
+																</span>
+															</div>
+														</div>
+													</div>
+												</td>
+											</tr>
+										)}
+									</React.Fragment>
+								);
+							})}
+						</tbody>
+					</table>
+				</div>
+			)}
 		</div>
-	);
+	</div>
+);
 };

@@ -131,9 +131,7 @@ export const LttdOnchainPanel: React.FC = () => {
 	}, []);
 
 	const latestVal =
-		onchainData.length > 0
-			? onchainData[onchainData.length - 1]
-			: null;
+		onchainData.length > 0 ? onchainData[onchainData.length - 1] : null;
 
 	const mkSeries = (
 		field: "sth_mvrv" | "sth_nupl" | "sth_sopr_24h",
@@ -145,8 +143,10 @@ export const LttdOnchainPanel: React.FC = () => {
 				value: r[field]!,
 			}));
 
-	const isMvrvAlert = latestVal && latestVal.sth_mvrv !== null && latestVal.sth_mvrv > 2.0;
-	const isNuplAlert = latestVal && latestVal.sth_nupl !== null && latestVal.sth_nupl > 0.75;
+	const isMvrvAlert =
+		latestVal && latestVal.sth_mvrv !== null && latestVal.sth_mvrv > 2.0;
+	const isNuplAlert =
+		latestVal && latestVal.sth_nupl !== null && latestVal.sth_nupl > 0.75;
 
 	return (
 		<div className="glass-card" style={{ padding: "14px" }}>
@@ -187,16 +187,22 @@ export const LttdOnchainPanel: React.FC = () => {
 						fontFamily: "Geist Mono, monospace",
 					}}
 				>
-					<span style={{ color: "var(--text-dim)" }}>
-						{latestVal.date}
-					</span>
+					<span style={{ color: "var(--text-dim)" }}>{latestVal.date}</span>
 					<div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
 						<span>
 							<span style={{ color: "var(--text-dim)" }}>STH-MVRV: </span>
-							<span style={{ color: isMvrvAlert ? "#EF4444" : "var(--text-main)" }}>
+							<span
+								style={{ color: isMvrvAlert ? "#EF4444" : "var(--text-main)" }}
+							>
 								{latestVal.sth_mvrv?.toFixed(2) ?? "N/A"}
 								{isMvrvAlert && (
-									<span style={{ color: "#EF4444", marginLeft: "4px", fontSize: "10px" }}>
+									<span
+										style={{
+											color: "#EF4444",
+											marginLeft: "4px",
+											fontSize: "10px",
+										}}
+									>
 										⚠ OVERRIDE
 									</span>
 								)}
@@ -204,10 +210,18 @@ export const LttdOnchainPanel: React.FC = () => {
 						</span>
 						<span>
 							<span style={{ color: "var(--text-dim)" }}>STH-NUPL: </span>
-							<span style={{ color: isNuplAlert ? "#EF4444" : "var(--text-main)" }}>
+							<span
+								style={{ color: isNuplAlert ? "#EF4444" : "var(--text-main)" }}
+							>
 								{latestVal.sth_nupl?.toFixed(2) ?? "N/A"}
 								{isNuplAlert && (
-									<span style={{ color: "#EF4444", marginLeft: "4px", fontSize: "10px" }}>
+									<span
+										style={{
+											color: "#EF4444",
+											marginLeft: "4px",
+											fontSize: "10px",
+										}}
+									>
 										⚠ OVERRIDE
 									</span>
 								)}

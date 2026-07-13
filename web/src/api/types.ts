@@ -122,7 +122,7 @@ export interface LttdLatestRecord {
 	low: number;
 	close: number;
 	volume: number;
-	lttd_regime: 'BULL' | 'BEAR' | 'SIDEWAYS';
+	lttd_regime: "BULL" | "BEAR" | "SIDEWAYS";
 	lttd_score: number;
 	lttd_prob_bull: number | null;
 	lttd_prob_bear: number | null;
@@ -132,7 +132,7 @@ export interface LttdLatestRecord {
 
 export interface LttdRegimeRecord {
 	date: string;
-	regime: 'BULL' | 'BEAR' | 'SIDEWAYS';
+	regime: "BULL" | "BEAR" | "SIDEWAYS";
 	p_bull: number;
 	p_bear: number;
 	p_sideways: number;
