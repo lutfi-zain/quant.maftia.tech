@@ -87,6 +87,7 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 					: "SIDEWAYS"),
 			lttd_prob_bull: newPoint.lttd_regime?.prob_bull ?? 0,
 			lttd_prob_bear: newPoint.lttd_regime?.prob_bear ?? 0,
+			lttd_score: newPoint.lttd_regime?.score ?? 0,
 			lttd_prob_sideways: newPoint.lttd_regime?.prob_sideways ?? 1,
 			lttd_target_exposure: newPoint.lttd_regime?.target_exposure ?? undefined,
 			mttd_imo:

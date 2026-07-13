@@ -100,6 +100,7 @@ export const quantClient = {
 			lttd_regime:
 				item.lttd_regime?.regime ??
 				(typeof item.lttd_regime === "string" ? item.lttd_regime : "SIDEWAYS"),
+			lttd_score: item.lttd_regime?.score ?? 0,
 			lttd_prob_bull: item.lttd_regime?.prob_bull ?? 0,
 			lttd_prob_bear: item.lttd_regime?.prob_bear ?? 0,
 			lttd_prob_sideways: item.lttd_regime?.prob_sideways ?? 1,

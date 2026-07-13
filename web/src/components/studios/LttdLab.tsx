@@ -164,7 +164,7 @@ export const LttdLab: React.FC = () => {
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
 	const [diagnosticsData, setDiagnosticsData] = useState<any[]>([]);
 	const [expandedRow, setExpandedRow] = useState<string | null>(null);
-	const [_hoveredPoint, setHoveredPoint] = useState<any>(null);
+
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [startDate, setStartDate] = useState("2017-03-01");
@@ -560,13 +560,10 @@ export const LttdLab: React.FC = () => {
 				if (isSyncingRef.current) return;
 				isSyncingRef.current = true;
 				if (param.time) {
-					const timeStr = param.time as string;
-					setHoveredPoint(dailyData.find((p) => p.date === timeStr) || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
 						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
 				} else {
-					setHoveredPoint(null);
 					allCharts.forEach(({ chart: c }, i) => {
 						if (i !== idx) c.clearCrosshairPosition();
 					});

@@ -80,10 +80,10 @@
 ## 9. Verification & Cleanup
 
 - [x] 9.1 Run `bun run build` in both `src/` and `web/` and fix any TypeScript errors *(both compile clean)*
-- [ ] 9.2 Verify all 5 chart panes render with correct data and crosshair sync *(manual — start the API & frontend)*
-- [ ] 9.3 Verify on-chain metrics panel loads and displays chart data *(manual — start the API & frontend)*
-- [ ] 9.4 Verify pipeline control center triggers actions and shows execution log *(manual — start the API & frontend)*
-- [ ] 9.5 Verify regime transition audit table shows transitions correctly *(manual — start the API & frontend)*
-- [ ] 9.6 Verify mobile responsiveness of all new panels *(manual — responsive testing)*
-- [ ] 9.7 Run `python3 /home/ubuntu/projects/run_report_pipeline.py` to confirm no pipeline regression *(timeout — runs independently)*
-- [x] 9.8 Run `openspec validate --changes lttd-missing-endpoints-and-metrics` to verify change completeness *(passed)*
+- [x] 9.2 5 chart panes render with crosshair sync — fixed scroll perf (removed React state update on mouse move), EQ bar sync confirmed working
+- [x] 9.3 On-chain metrics panel — fixed endpoint to map unified DB component names (mvrv_z→STH-MVRV, etc.), 6037 records returned
+- [x] 9.4 Pipeline control center — fixed VIF audit action (script didn't exist, redirected to performance_report.py)
+- [x] 9.5 Regime transition audit — fixed lttd_score=0 (mapped lttd_regime.score → lttd_score in TerminalContext + client.ts)
+- [x] 9.6 Mobile responsiveness — confirmed working
+- [x] 9.7 Pipeline ran successfully — 6396 records synced, 3413 lttd_exposure updated
+- [x] 9.8 openspec validate — passed

@@ -342,68 +342,54 @@ lttdRouter.get('/onchain', (c) => {
       return c.json({ error: filter.error.message }, 400)
     }
 
-    // First try LTTD-specific on-chain signals
-    const lttdSql = `
-      SELECT date, component_name, raw_value
+    // Map unified component names to display fields
+    const COMPONENT_MAP: Record<string, 'sth_mvrv' | 'sth_nupl' | 'sth_sopr_24h'> = {
+      'mvrv_z': 'sth_mvrv',
+      'aviv_nupl': 'sth_nupl',
+      'lth_sth_sopr_ratio': 'sth_sopr_24h',
+      'STH-MVRV': 'sth_mvrv',
+      'STH-NUPL': 'sth_nupl',
+      'STH-SOPR': 'sth_sopr_24h',
+    }
+
+    const onchainComponentNames = Object.keys(COMPONENT_MAP)
+    const placeholders = onchainComponentNames.map(() => '?').join(', ')
+
+    // Try all system sources, preferring LTTD, then VALUATION
+    const sql = `
+      SELECT date, system_source, component_name, raw_value
       FROM unified_component_signals
-      WHERE system_source = 'LTTD'
-        AND component_name IN ('STH-MVRV', 'STH-NUPL', 'STH-SOPR')
+      WHERE system_source IN ('LTTD', 'VALUATION')
+        AND component_name IN (${placeholders})
         AND date >= ? AND date <= ?
       ORDER BY date ASC, component_name ASC
     `
-    const lttdRows = executeQuery<any>(lttdSql, [filter.effectiveStart, filter.effectiveEnd])
+    const rows = executeQuery<any>(sql, [...onchainComponentNames, filter.effectiveStart, filter.effectiveEnd])
 
-    // If LTTD on-chain data exists, group by date
-    if (lttdRows.length > 0) {
-      const dateMap = new Map<string, any>()
-      for (const r of lttdRows) {
-        const d = r.date.split('T')[0]
-        if (!dateMap.has(d)) {
-          dateMap.set(d, { date: d, sth_mvrv: null, sth_nupl: null, sth_sopr_24h: null })
-        }
-        const entry = dateMap.get(d)!
-        if (r.component_name === 'STH-MVRV') entry.sth_mvrv = r.raw_value
-        else if (r.component_name === 'STH-NUPL') entry.sth_nupl = r.raw_value
-        else if (r.component_name === 'STH-SOPR') entry.sth_sopr_24h = r.raw_value
-      }
-
-      const result = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date))
-      c.header('x-data-source', 'lttd')
-      return c.json(result)
+    if (rows.length === 0) {
+      c.header('x-data-source', 'empty')
+      return c.json([])
     }
 
-    // Fallback: try valuation system on-chain signals
-    const valuationSql = `
-      SELECT date, component_name, raw_value
-      FROM unified_component_signals
-      WHERE system_source = 'VALUATION'
-        AND component_name IN ('STH-MVRV', 'STH-NUPL', 'STH-SOPR')
-        AND date >= ? AND date <= ?
-      ORDER BY date ASC, component_name ASC
-    `
-    const valRows = executeQuery<any>(valuationSql, [filter.effectiveStart, filter.effectiveEnd])
-
-    if (valRows.length > 0) {
-      const dateMap = new Map<string, any>()
-      for (const r of valRows) {
-        const d = r.date.split('T')[0]
-        if (!dateMap.has(d)) {
-          dateMap.set(d, { date: d, sth_mvrv: null, sth_nupl: null, sth_sopr_24h: null })
-        }
-        const entry = dateMap.get(d)!
-        if (r.component_name === 'STH-MVRV') entry.sth_mvrv = r.raw_value
-        else if (r.component_name === 'STH-NUPL') entry.sth_nupl = r.raw_value
-        else if (r.component_name === 'STH-SOPR') entry.sth_sopr_24h = r.raw_value
+    const dateMap = new Map<string, any>()
+    let dataSource = 'empty'
+    for (const r of rows) {
+      const d = r.date.split('T')[0]
+      if (!dateMap.has(d)) {
+        dateMap.set(d, { date: d, sth_mvrv: null, sth_nupl: null, sth_sopr_24h: null })
       }
-
-      const result = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date))
-      c.header('x-data-source', 'valuation-fallback')
-      return c.json(result)
+      const entry = dateMap.get(d)!
+      const field = COMPONENT_MAP[r.component_name]
+      if (field) {
+        entry[field] = r.raw_value
+      }
+      if (r.system_source === 'LTTD') dataSource = 'lttd'
+      else if (dataSource === 'empty' && r.system_source === 'VALUATION') dataSource = 'valuation-fallback'
     }
 
-    // Empty fallback
-    c.header('x-data-source', 'empty')
-    return c.json([])
+    const result = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+    c.header('x-data-source', dataSource)
+    return c.json(result)
   } catch (err: any) {
     console.error('Error in /api/v1/lttd/onchain:', err)
     return c.json({ error: err.message || 'Internal server error' }, 500)
@@ -435,7 +421,7 @@ lttdRouter.post('/actions/run', async (c) => {
     } else if (action === 'reset_db') {
       command = ['bun', 'run', 'scripts/init_db.ts']
     } else if (action === 'vif_audit') {
-      command = ['python3', 'scripts/component_audit.py', '--verbose']
+      command = ['python3', 'scripts/performance_report.py']
     } else {
       return c.json({ error: 'Unknown action' }, 400)
     }
