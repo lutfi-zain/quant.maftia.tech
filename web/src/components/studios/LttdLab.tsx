@@ -234,14 +234,52 @@ export const LttdLab: React.FC = () => {
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && seriesRef.current.cumMarket) {
-			// Both Cum_Strat and Cum_Market from backtestResult —
-			// same backtest window, same target_exposure rules
-			if (backtestResult.cumStrat.length > 0) {
-				seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+			// Build strat + market maps from backtest result
+			const stratMap = new Map<string, number>();
+			const marketMap = new Map<string, number>();
+			for (const pt of backtestResult.cumStrat) {
+				stratMap.set(pt.time, pt.value);
 			}
-			if (backtestResult.cumMarket.length > 0) {
-				seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+			for (const pt of backtestResult.cumMarket) {
+				marketMap.set(pt.time, pt.value);
 			}
+
+			// Pad to FULL date range so all chart panes have same bar count
+			const lastStrat =
+				backtestResult.cumStrat.length > 0
+					? backtestResult.cumStrat[backtestResult.cumStrat.length - 1].value
+					: 1.0;
+			const lastMarket =
+				backtestResult.cumMarket.length > 0
+					? backtestResult.cumMarket[backtestResult.cumMarket.length - 1].value
+					: 1.0;
+
+			const fullStrat: { time: string; value: number }[] = [];
+			const fullMarket: { time: string; value: number }[] = [];
+			let mkt = 1.0;
+			let prevC = 0;
+
+			for (const d of dailyData) {
+				const s = stratMap.get(d.date);
+				const m = marketMap.get(d.date);
+
+				// Strategy: flat 1.0 before window, actual during, hold last after
+				fullStrat.push({
+					time: d.date,
+					value: s ?? (d.date < startDate ? 1.0 : lastStrat),
+				});
+
+				// Market: real BTC return across full range
+				const c = d.close || (d as any).btc_price || 0;
+				if (prevC > 0 && c > 0) {
+					mkt *= 1.0 + (c - prevC) / prevC;
+				}
+				prevC = c;
+				fullMarket.push({ time: d.date, value: Number(mkt.toFixed(4)) });
+			}
+
+			seriesRef.current.cumStrat.setData(fullStrat as any);
+			seriesRef.current.cumMarket.setData(fullMarket as any);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
 			createSeriesMarkers(
@@ -251,7 +289,7 @@ export const LttdLab: React.FC = () => {
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
-	}, [backtestResult]);
+	}, [backtestResult, dailyData, startDate, endDate]);
 
 	useGSAP(
 		() => {
