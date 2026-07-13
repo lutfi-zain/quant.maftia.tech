@@ -234,40 +234,29 @@ export const LttdLab: React.FC = () => {
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && seriesRef.current.cumMarket) {
-			// Build strat map from backtest result
-			const stratMap = new Map<string, number>();
-			for (const pt of backtestResult.cumStrat) {
-				stratMap.set(pt.time, pt.value);
+			// Use backtest equity data directly (already filtered to window) —
+			// this naturally creates empty-bar gaps before/after the window
+			if (backtestResult.cumStrat.length > 0) {
+				seriesRef.current.cumStrat.setData(
+					backtestResult.cumStrat as any,
+				);
 			}
 
 			// Compute full-range market equity (real BTC buy & hold across ALL data)
-			const fullStrat: { time: string; value: number }[] = [];
 			const fullMarket: { time: string; value: number }[] = [];
-
 			let marketEq = 1.0;
 			let prevClose = 0;
-
 			for (const d of dailyData) {
 				const close = d.close || (d as any).btc_price || 0;
-
-				// Market equity: real BTC return across full range
 				if (prevClose > 0 && close > 0) {
 					marketEq *= 1.0 + (close - prevClose) / prevClose;
 				}
 				prevClose = close;
-				fullMarket.push({ time: d.date, value: Number(marketEq.toFixed(4)) });
-
-				// Strategy equity: actual values inside window, flat (1.0) outside (empty bars)
-				if (d.date >= startDate && d.date <= endDate) {
-					const v = stratMap.get(d.date);
-					fullStrat.push({ time: d.date, value: v ?? 1.0 });
-				} else {
-					// Outside window — don't push data = blank gap on chart
-					// Lightweight Charts line naturally breaks at missing data
-				}
+				fullMarket.push({
+					time: d.date,
+					value: Number(marketEq.toFixed(4)),
+				});
 			}
-
-			seriesRef.current.cumStrat.setData(fullStrat as any);
 			seriesRef.current.cumMarket.setData(fullMarket as any);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
