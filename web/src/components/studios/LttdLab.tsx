@@ -10,17 +10,16 @@ import {
 	type IChartApi,
 	ColorType,
 	CrosshairMode,
-	ISeriesApi,
 	type Time,
 	LineStyle,
 	CandlestickSeries,
 	LineSeries,
 	AreaSeries,
+	HistogramSeries,
 	PriceScaleMode,
 	createSeriesMarkers,
 } from "lightweight-charts";
 import {
-	TrendingUp,
 	ShieldAlert,
 	CheckCircle2,
 	AlertTriangle,
@@ -31,8 +30,10 @@ import {
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useStudioBacktest, type StudioDailyRecord } from "../../lib/studioBacktest";
+import { LttdOnchainPanel } from "./LttdOnchainPanel";
+import { LttdControlCenter } from "./LttdControlCenter";
 
-type MaximizedPanel = null | "btc" | "hmm" | "vol" | "eq";
+type MaximizedPanel = null | "btc" | "score" | "exposure" | "regime" | "eq";
 
 const BG_CHART = "#0B1220";
 const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
@@ -46,7 +47,7 @@ function getChartYAxisWidth(): number {
 	return Number(raw) || 85;
 }
 
-function makeCommonOptions(yAxisWidth: number) {
+function makeCommonOptions(_yAxisWidth: number) {
 	return {
 		layout: {
 			background: { type: ColorType.Solid, color: BG_CHART },
@@ -81,32 +82,43 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 	const available = isMobile ? full - MOBILE_BOTTOM_TAB_HEIGHT : full;
 	switch (maximized) {
 		case "btc":
-			return { btc: available, hmm: 0, vol: 0, eq: 0 };
-		case "hmm":
+			return { btc: available, score: 0, exposure: 0, regime: 0, eq: 0 };
+		case "score":
 			return {
 				btc: Math.floor(available * 0.50),
-				hmm: Math.floor(available * 0.50),
-				vol: 0,
+				score: Math.floor(available * 0.50),
+				exposure: 0,
+				regime: 0,
 				eq: 0,
 			};
-		case "vol":
+		case "exposure":
 			return {
 				btc: Math.floor(available * 0.50),
-				hmm: 0,
-				vol: Math.floor(available * 0.50),
+				score: 0,
+				exposure: Math.floor(available * 0.50),
+				regime: 0,
+				eq: 0,
+			};
+		case "regime":
+			return {
+				btc: Math.floor(available * 0.50),
+				score: 0,
+				exposure: 0,
+				regime: Math.floor(available * 0.50),
 				eq: 0,
 			};
 		case "eq":
 			return {
 				btc: Math.floor(available * 0.50),
-				hmm: 0,
-				vol: 0,
+				score: 0,
+				exposure: 0,
+				regime: 0,
 				eq: Math.floor(available * 0.50),
 			};
 		default:
 			return isMobile
-				? { btc: 140, hmm: 100, vol: 100, eq: 100 }
-				: { btc: 260, hmm: 150, vol: 150, eq: 150 };
+				? { btc: 140, score: 60, exposure: 60, regime: 60, eq: 100 }
+				: { btc: 260, score: 90, exposure: 90, regime: 90, eq: 150 };
 	}
 }
 
@@ -147,7 +159,7 @@ const LTTD_COMPONENT_METADATA: Record<
 export const LttdLab: React.FC = () => {
 	const { dailyData, circuitBreakers } = useTerminal();
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
-	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+	const [_hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [startDate, setStartDate] = useState("2020-01-01");
@@ -158,20 +170,25 @@ export const LttdLab: React.FC = () => {
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const studioContainerRef = useRef<HTMLDivElement>(null);
 	const btcContainerRef = useRef<HTMLDivElement>(null);
-	const hmmContainerRef = useRef<HTMLDivElement>(null);
-	const volContainerRef = useRef<HTMLDivElement>(null);
+	const scoreContainerRef = useRef<HTMLDivElement>(null);
+	const exposureContainerRef = useRef<HTMLDivElement>(null);
+	const regimeContainerRef = useRef<HTMLDivElement>(null);
 	const eqContainerRef = useRef<HTMLDivElement>(null);
 	const chartsRef = useRef<{
 		btc: IChartApi | null;
-		hmm: IChartApi | null;
-		vol: IChartApi | null;
+		score: IChartApi | null;
+		exposure: IChartApi | null;
+		regime: IChartApi | null;
 		eq: IChartApi | null;
-	}>({ btc: null, hmm: null, vol: null, eq: null });
+	}>({ btc: null, score: null, exposure: null, regime: null, eq: null });
 	const seriesRef = useRef<{
 		candle: any;
+		score: any;
+		exposure: any;
+		regime: any;
 		cumStrat: any;
 		cumMarket: any;
-	}>({ candle: null, cumStrat: null, cumMarket: null });
+	}>({ candle: null, score: null, exposure: null, regime: null, cumStrat: null, cumMarket: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
@@ -244,101 +261,73 @@ export const LttdLab: React.FC = () => {
 
 	// Handle maximize: resize charts and update time axis visibility
 	useEffect(() => {
-		const { btc, hmm, vol, eq } = chartsRef.current;
+		const { btc, score, exposure, regime, eq } = chartsRef.current;
 		if (!btc) return;
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		const allNonBtcCharts: Array<{ chart: IChartApi | null; key: string; h: number }> = [
+			{ chart: score, key: "score", h: heights.score },
+			{ chart: exposure, key: "exposure", h: heights.exposure },
+			{ chart: regime, key: "regime", h: heights.regime },
+			{ chart: eq, key: "eq", h: heights.eq },
+		];
+
+		const resizeFn = (containerH?: number) => {
+			const total = heights.btc + heights.score + heights.exposure + heights.regime + heights.eq;
+			const effectiveH = containerH && total > 0
+				? (h: number) => Math.round(containerH * (h / total))
+				: (h: number) => h;
+
+			const yWidth = getChartYAxisWidth();
+			btc.resize(w, effectiveH(heights.btc));
+			btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+
+			allNonBtcCharts.forEach(({ chart, h }) => {
+				if (!chart) return;
+				chart.resize(w, effectiveH(h));
+				chart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			});
+
+			const visiblePanels = allNonBtcCharts.filter((p) => p.h > 0);
+			const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].key : null;
+
+			btc.timeScale().applyOptions({
+				visible: visiblePanels.length === 0,
+			});
+			allNonBtcCharts.forEach(({ chart, h, key }) => {
+				if (!chart) return;
+				chart.timeScale().applyOptions({ visible: h > 0 && key === bottomId });
+			});
+
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btc, score, exposure, regime, eq].filter(Boolean),
+					yWidth,
+				);
+			});
+		};
+
 		if (isMobile && maximized !== null) {
 			const containerH = wrapperRef.current?.clientHeight;
 			if (containerH && containerH > 0) {
-				const total = heights.btc + heights.hmm + heights.vol + heights.eq;
-				if (total > 0) {
-					const yWidth = getChartYAxisWidth();
-					btc.resize(w, Math.round(containerH * (heights.btc / total)));
-					btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					if (hmm) {
-						hmm.resize(w, Math.round(containerH * (heights.hmm / total)));
-						hmm.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					if (vol) {
-						vol.resize(w, Math.round(containerH * (heights.vol / total)));
-						vol.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					if (eq) {
-						eq.resize(w, Math.round(containerH * (heights.eq / total)));
-						eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
-						{ chart: hmm, h: heights.hmm, id: "hmm" },
-						{ chart: vol, h: heights.vol, id: "vol" },
-						{ chart: eq, h: heights.eq, id: "eq" },
-					];
-					const visiblePanels = panels.filter((p) => p.h > 0);
-					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
-					btc.timeScale().applyOptions({ visible: heights.hmm === 0 && heights.vol === 0 && heights.eq === 0 });
-					panels.forEach(({ chart, h, id }) => {
-						if (!chart) return;
-						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
-					});
-					requestAnimationFrame(() => {
-						syncYAxisWidth(
-							btcContainerRef.current,
-							[btc, hmm, vol, eq].filter(Boolean),
-							getChartYAxisWidth(),
-						);
-					});
-					return;
-				}
+				resizeFn(containerH);
+				return;
 			}
 		}
 
-		const yWidth = getChartYAxisWidth();
-		btc.resize(w, heights.btc);
-		btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		if (hmm) {
-			hmm.resize(w, heights.hmm);
-			hmm.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-		if (vol) {
-			vol.resize(w, heights.vol);
-			vol.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-		if (eq) {
-			eq.resize(w, heights.eq);
-			eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-
-		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
-			{ chart: hmm, h: heights.hmm, id: "hmm" },
-			{ chart: vol, h: heights.vol, id: "vol" },
-			{ chart: eq, h: heights.eq, id: "eq" },
-		];
-		const visiblePanels = panels.filter((p) => p.h > 0);
-		const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
-
-		btc.timeScale().applyOptions({ visible: heights.hmm === 0 && heights.vol === 0 && heights.eq === 0 });
-		panels.forEach(({ chart, h, id }) => {
-			if (!chart) return;
-			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
-		});
-		requestAnimationFrame(() => {
-			syncYAxisWidth(
-				btcContainerRef.current,
-				[btc, hmm, vol, eq].filter(Boolean),
-				yWidth,
-			);
-		});
+		resizeFn();
 	}, [maximized, isMobile]);
 
-	// Initialize 4-pane charts
+	// Initialize 5-pane charts: BTC | Score | Exposure | Regime | Equity
 	useEffect(() => {
 		if (
 			!dailyData.length ||
 			!btcContainerRef.current ||
-			!hmmContainerRef.current ||
-			!volContainerRef.current ||
+			!scoreContainerRef.current ||
+			!exposureContainerRef.current ||
+			!regimeContainerRef.current ||
 			!eqContainerRef.current
 		)
 			return;
@@ -347,16 +336,14 @@ export const LttdLab: React.FC = () => {
 		const w = wrapperRef.current?.clientWidth || 900;
 		const heights = getPanelHeights(null, isMobile);
 
-		// BTC Candlestick Pane (top, no time axis)
+		// 1. BTC Candlestick Pane
 		const btcChart = createChart(btcContainerRef.current, {
 			...common,
 			width: w,
 			height: heights.btc,
 			timeScale: { ...common.timeScale, visible: false },
 		});
-		btcChart
-			.priceScale("right")
-			.applyOptions({ mode: PriceScaleMode.Logarithmic });
+		btcChart.priceScale("right").applyOptions({ mode: PriceScaleMode.Logarithmic });
 
 		const candleSeries = btcChart.addSeries(CandlestickSeries, {
 			upColor: "#22C55E",
@@ -364,70 +351,62 @@ export const LttdLab: React.FC = () => {
 			borderVisible: false,
 			wickUpColor: "#22C55E",
 			wickDownColor: "#EF4444",
-			priceFormat: {
-				type: "price",
-				precision: 0,
-				minMove: 1,
-			},
+			priceFormat: { type: "price", precision: 0, minMove: 1 },
 		});
 
-		// HMM Probabilities Pane (middle, no time axis)
-		const hmmChart = createChart(hmmContainerRef.current, {
+		// 2. Final Score Pane
+		const scoreChart = createChart(scoreContainerRef.current, {
 			...common,
 			width: w,
-			height: heights.hmm,
+			height: heights.score,
 			timeScale: { ...common.timeScale, visible: false },
 		});
-
-		const bullSeries = hmmChart.addSeries(LineSeries, {
-			color: "#22C55E",
+		const scoreSeries = scoreChart.addSeries(AreaSeries, {
+			topColor: "rgba(99,102,241,0.3)",
+			bottomColor: "rgba(99,102,241,0.02)",
+			lineColor: "#818CF8",
 			lineWidth: 2,
-			title: "P(Bull)",
-		});
-		const bearSeries = hmmChart.addSeries(LineSeries, {
-			color: "#EF4444",
-			lineWidth: 2,
-			title: "P(Bear)",
-		});
-		const sidewaysSeries = hmmChart.addSeries(LineSeries, {
-			color: "#F59E0B",
-			lineWidth: 2,
-			title: "P(Sideways)",
+			title: "LTTD Score",
 		});
 
-		sidewaysSeries.createPriceLine({
-			price: 0.6,
-			color: "#F59E0B",
-			lineWidth: 1,
-			lineStyle: LineStyle.Dashed,
-			axisLabelVisible: true,
-			title: "Sideways Override ≥0.60",
-		});
-
-		// Volatility Pane (middle, no time axis when eq visible)
-		const volChart = createChart(volContainerRef.current, {
+		// 3. Target Exposure Pane
+		const exposureChart = createChart(exposureContainerRef.current, {
 			...common,
 			width: w,
-			height: heights.vol,
+			height: heights.exposure,
 			timeScale: { ...common.timeScale, visible: false },
 		});
-
-		const volSeries = volChart.addSeries(AreaSeries, {
-			topColor: "rgba(168,85,247,0.4)",
-			bottomColor: "rgba(168,85,247,0.02)",
-			lineColor: "#A78BFA",
-			lineWidth: 2,
-			title: "20d Realized Volatility",
+		const exposureSeries = exposureChart.addSeries(HistogramSeries, {
+			color: "rgba(34,197,94,0.4)",
+			priceFormat: { type: "volume" },
+			title: "Target Exposure",
 		});
 
-		// ── Pane 4: Equity Curve (Cum_Strat vs Cum_Market) ──
+		// 4. Regime State Pane (step line: BULL=+1, BEAR=-1, SIDEWAYS=0)
+		const regimeChart = createChart(regimeContainerRef.current, {
+			...common,
+			width: w,
+			height: heights.regime,
+			timeScale: { ...common.timeScale, visible: false },
+		});
+		const regimeSeries = regimeChart.addSeries(LineSeries, {
+			color: "#F59E0B",
+			lineWidth: 2,
+			lineType: 2 as any, // WithSteps
+			title: "Regime State",
+		});
+		// Reference lines
+		regimeSeries.createPriceLine({ price: 1, color: "rgba(34,197,94,0.3)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+		regimeSeries.createPriceLine({ price: 0, color: "rgba(255,255,255,0.2)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+		regimeSeries.createPriceLine({ price: -1, color: "rgba(239,68,68,0.3)", lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false });
+
+		// 5. Equity Curve Pane
 		const eqChart = createChart(eqContainerRef.current, {
 			...common,
 			width: w,
 			height: heights.eq,
 			timeScale: { ...common.timeScale, visible: true },
 		});
-
 		const cumStratSeries = eqChart.addSeries(LineSeries, {
 			color: "#22C55E",
 			lineWidth: 2,
@@ -439,10 +418,11 @@ export const LttdLab: React.FC = () => {
 			title: "Cum_Market (BTC)",
 		});
 
-		chartsRef.current = { btc: btcChart, hmm: hmmChart, vol: volChart, eq: eqChart };
-		seriesRef.current = { candle: candleSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
+		chartsRef.current = { btc: btcChart, score: scoreChart, exposure: exposureChart, regime: regimeChart, eq: eqChart };
+		seriesRef.current = { candle: candleSeries, score: scoreSeries, exposure: exposureSeries, regime: regimeSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
 
-		// Populate BTC data with regime-colored wicks
+		// ── Populate Data ───────────────────────────────────────────────────
+
 		candleSeries.setData(
 			dailyData.map((p) => ({
 				time: p.date as Time,
@@ -453,61 +433,37 @@ export const LttdLab: React.FC = () => {
 			})),
 		);
 
-		// HMM probability data
-		bullSeries.setData(
+		scoreSeries.setData(
 			dailyData.map((p) => ({
 				time: p.date as Time,
-				value:
-					p.lttd_prob_bull !== undefined
-						? p.lttd_prob_bull
-						: p.lttd_regime === "BULL"
-							? 0.85
-							: 0.05,
-			})),
-		);
-		bearSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
-				value:
-					p.lttd_prob_bear !== undefined
-						? p.lttd_prob_bear
-						: p.lttd_regime === "BEAR"
-							? 0.85
-							: 0.05,
-			})),
-		);
-		sidewaysSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
-				value:
-					p.lttd_prob_sideways !== undefined
-						? p.lttd_prob_sideways
-						: p.lttd_regime === "SIDEWAYS"
-							? 0.8
-							: 0.1,
+				value: (p as any).lttd_score ?? (p as any).valuation_composite ?? 0,
 			})),
 		);
 
-		// Volatility data
-		const volData = dailyData.map((p, i, arr) => {
-			let vol = 0.02;
-			if (i >= 20) {
-				let sumSq = 0;
-				for (let j = i - 19; j <= i; j++) {
-					const ret = Math.log(arr[j].close / arr[j - 1].close);
-					sumSq += ret * ret;
-				}
-				vol = Math.sqrt(sumSq / 20) * Math.sqrt(365);
-			}
-			return { time: p.date as Time, value: vol };
-		});
-		volSeries.setData(volData);
+		const exposureArr = dailyData.map((p) => ({
+			time: p.date as Time,
+			value: ((p as any).target_exposure ?? (p.lttd_regime === "BULL" ? 100 : 0)) * 100,
+		}));
+		exposureSeries.setData(exposureArr as any);
 
-		// Crosshair sync — 4 charts
+		regimeSeries.setData(
+			dailyData.map((p) => {
+				const regime = typeof p.lttd_regime === "object" && p.lttd_regime !== null
+					? (p.lttd_regime as any).regime
+					: p.lttd_regime || "SIDEWAYS";
+				let val = 0;
+				if (regime === "BULL") val = 1;
+				else if (regime === "BEAR") val = -1;
+				return { time: p.date as Time, value: val };
+			}),
+		);
+
+		// Crosshair sync — 5 charts
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
-			{ chart: hmmChart, series: bullSeries },
-			{ chart: volChart, series: volSeries },
+			{ chart: scoreChart, series: scoreSeries },
+			{ chart: exposureChart, series: exposureSeries },
+			{ chart: regimeChart, series: regimeSeries },
 			{ chart: eqChart, series: cumStratSeries },
 		];
 
@@ -546,12 +502,12 @@ export const LttdLab: React.FC = () => {
 
 		btcChart.timeScale().fitContent();
 
-		// Sync Y-axis widths after initial render
+		// Sync Y-axis widths
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
 				syncYAxisWidth(
 					btcContainerRef.current,
-					[btcChart, hmmChart, volChart, eqChart],
+					[btcChart, scoreChart, exposureChart, regimeChart, eqChart],
 					getChartYAxisWidth(),
 				);
 			});
@@ -565,15 +521,17 @@ export const LttdLab: React.FC = () => {
 			const yWidth = getChartYAxisWidth();
 			btcChart.applyOptions({ width: nw });
 			btcChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
-			hmmChart.applyOptions({ width: nw });
-			hmmChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
-			volChart.applyOptions({ width: nw });
-			volChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			scoreChart.applyOptions({ width: nw });
+			scoreChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			exposureChart.applyOptions({ width: nw });
+			exposureChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			regimeChart.applyOptions({ width: nw });
+			regimeChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			eqChart.applyOptions({ width: nw });
 			eqChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			syncYAxisWidth(
 				btcContainerRef.current,
-				[btcChart, hmmChart, volChart, eqChart],
+				[btcChart, scoreChart, exposureChart, regimeChart, eqChart],
 				yWidth,
 			);
 		});
@@ -582,11 +540,12 @@ export const LttdLab: React.FC = () => {
 		return () => {
 			ro.disconnect();
 			btcChart.remove();
-			hmmChart.remove();
-			volChart.remove();
+			scoreChart.remove();
+			exposureChart.remove();
+			regimeChart.remove();
 			eqChart.remove();
-			chartsRef.current = { btc: null, hmm: null, vol: null, eq: null };
-			seriesRef.current = { candle: null, cumStrat: null, cumMarket: null };
+			chartsRef.current = { btc: null, score: null, exposure: null, regime: null, eq: null };
+			seriesRef.current = { candle: null, score: null, exposure: null, regime: null, cumStrat: null, cumMarket: null };
 		};
 	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -594,9 +553,6 @@ export const LttdLab: React.FC = () => {
 		typeof val === "object" && val !== null
 			? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0)
 			: Number(val ?? 0);
-	const displayPoint =
-		hoveredPoint ||
-		(dailyData.length > 0 ? dailyData[dailyData.length - 1] : null);
 	const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
 	const currentRegime =
 		typeof latestPoint?.lttd_regime === "object" &&
@@ -868,22 +824,22 @@ export const LttdLab: React.FC = () => {
 					/>
 				</div>
 
-				{/* HMM Probabilities Pane */}
+				{/* Final Score Pane */}
 				<div
-					className={`chart-subplot ${heights.hmm === 0 ? "chart-subplot-hidden" : ""}`}
+					className={`chart-subplot ${heights.score === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
 						<div className="subplot-title">
-							<span className="subplot-badge">GAUSSIAN HMM</span>
-							<span>State Probability Distribution</span>
+							<span className="subplot-badge">ENSEMBLE</span>
+							<span>LTTD Ensemble Score</span>
 						</div>
 						<div className="subplot-controls">
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "hmm" ? null : "hmm")}
-								title={maximized === "hmm" ? "Restore" : "Maximize HMM pane"}
+								onClick={() => setMaximized(maximized === "score" ? null : "score")}
+								title={maximized === "score" ? "Restore" : "Maximize Score pane"}
 							>
-								{maximized === "hmm" ? (
+								{maximized === "score" ? (
 									<Minimize2 size={14} />
 								) : (
 									<Maximize2 size={14} />
@@ -892,27 +848,27 @@ export const LttdLab: React.FC = () => {
 						</div>
 					</div>
 					<div
-						ref={hmmContainerRef}
-						style={{ width: "100%", height: `${heights.hmm}px` }}
+						ref={scoreContainerRef}
+						style={{ width: "100%", height: `${heights.score}px` }}
 					/>
 				</div>
 
-				{/* Volatility Pane (bottom — shows time axis) */}
+				{/* Target Exposure Pane */}
 				<div
-					className={`chart-subplot ${heights.vol === 0 ? "chart-subplot-hidden" : ""}`}
+					className={`chart-subplot ${heights.exposure === 0 ? "chart-subplot-hidden" : ""}`}
 				>
 					<div className="chart-subplot-header">
 						<div className="subplot-title">
-							<span className="subplot-badge">FEATURE VECTOR</span>
-							<span>20-Day Realized Volatility</span>
+							<span className="subplot-badge">EXPOSURE</span>
+							<span>Target Exposure (Conviction)</span>
 						</div>
 						<div className="subplot-controls">
 							<button
 								className="icon-btn"
-								onClick={() => setMaximized(maximized === "vol" ? null : "vol")}
-								title={maximized === "vol" ? "Restore" : "Maximize Vol pane"}
+								onClick={() => setMaximized(maximized === "exposure" ? null : "exposure")}
+								title={maximized === "exposure" ? "Restore" : "Maximize Exposure pane"}
 							>
-								{maximized === "vol" ? (
+								{maximized === "exposure" ? (
 									<Minimize2 size={14} />
 								) : (
 									<Maximize2 size={14} />
@@ -921,8 +877,37 @@ export const LttdLab: React.FC = () => {
 						</div>
 					</div>
 					<div
-						ref={volContainerRef}
-						style={{ width: "100%", height: `${heights.vol}px` }}
+						ref={exposureContainerRef}
+						style={{ width: "100%", height: `${heights.exposure}px` }}
+					/>
+				</div>
+
+				{/* Regime State Pane */}
+				<div
+					className={`chart-subplot ${heights.regime === 0 ? "chart-subplot-hidden" : ""}`}
+				>
+					<div className="chart-subplot-header">
+						<div className="subplot-title">
+							<span className="subplot-badge">REGIME STATE</span>
+							<span>HMM Regime (-1 Bear, 0 Sideways, +1 Bull)</span>
+						</div>
+						<div className="subplot-controls">
+							<button
+								className="icon-btn"
+								onClick={() => setMaximized(maximized === "regime" ? null : "regime")}
+								title={maximized === "regime" ? "Restore" : "Maximize Regime pane"}
+							>
+								{maximized === "regime" ? (
+									<Minimize2 size={14} />
+								) : (
+									<Maximize2 size={14} />
+								)}
+							</button>
+						</div>
+					</div>
+					<div
+						ref={regimeContainerRef}
+						style={{ width: "100%", height: `${heights.regime}px` }}
 					/>
 				</div>
 				{/* Pane 4: Equity Curve Subplot (Cum_Strat vs Cum_Market) */}
@@ -1314,6 +1299,12 @@ export const LttdLab: React.FC = () => {
 				</div>
 			</div>
 
+			{/* Pipeline Control Center */}
+			<LttdControlCenter />
+
+			{/* On-Chain Metrics Panel */}
+			<LttdOnchainPanel />
+
 			{/* Execution Log Table */}
 			<div className="glass-card" style={{ padding: "14px" }}>
 				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
@@ -1366,6 +1357,91 @@ export const LttdLab: React.FC = () => {
 										</td>
 									</tr>
 								))
+							)}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			{/* Regime Transition Audit Table */}
+			<div className="glass-card" style={{ padding: "14px" }}>
+				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+					<div className="card-header-left">
+						<span className="card-header-tag">REGIME TRANSITION AUDIT</span>
+						<h3 className="card-header-title">Historical Regime Change Events</h3>
+					</div>
+				</div>
+
+				<div style={{ overflowX: "auto", maxHeight: "300px" }}>
+					<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+						<thead>
+							<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+								<th style={{ padding: "8px" }}>DATE</th>
+								<th style={{ padding: "8px" }}>PREVIOUS REGIME</th>
+								<th style={{ padding: "8px" }}>NEW REGIME</th>
+								<th style={{ padding: "8px", textAlign: "right" }}>SCORE</th>
+							</tr>
+						</thead>
+						<tbody>
+							{(dailyData.length >= 2 ? (() => {
+								const transitions: any[] = [];
+								const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
+								for (let i = 1; i < sorted.length; i++) {
+									const prev = typeof sorted[i - 1].lttd_regime === "object" && sorted[i - 1].lttd_regime !== null
+										? (sorted[i - 1].lttd_regime as any).regime
+										: sorted[i - 1].lttd_regime || "SIDEWAYS";
+									const curr = typeof sorted[i].lttd_regime === "object" && sorted[i].lttd_regime !== null
+										? (sorted[i].lttd_regime as any).regime
+										: sorted[i].lttd_regime || "SIDEWAYS";
+									if (prev !== curr) {
+										transitions.push({
+											date: sorted[i].date,
+											prev,
+											curr,
+											score: (sorted[i] as any).lttd_score ?? 0,
+										});
+									}
+								}
+								return transitions.reverse();
+							})() : []).length === 0 ? (
+								<tr>
+									<td colSpan={4} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+										No regime transitions detected.
+									</td>
+								</tr>
+							) : (
+								(() => {
+									const transitions: any[] = [];
+									const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
+									for (let i = 1; i < sorted.length; i++) {
+										const prev = typeof sorted[i - 1].lttd_regime === "object" && sorted[i - 1].lttd_regime !== null
+											? (sorted[i - 1].lttd_regime as any).regime
+											: sorted[i - 1].lttd_regime || "SIDEWAYS";
+										const curr = typeof sorted[i].lttd_regime === "object" && sorted[i].lttd_regime !== null
+											? (sorted[i].lttd_regime as any).regime
+											: sorted[i].lttd_regime || "SIDEWAYS";
+										if (prev !== curr) {
+											transitions.push({
+												date: sorted[i].date,
+												prev,
+												curr,
+												score: (sorted[i] as any).lttd_score ?? 0,
+											});
+										}
+									}
+									return transitions.reverse().map((t: any) => (
+										<tr key={t.date} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+											<td style={{ padding: "8px" }}>{t.date}</td>
+											<td style={{ padding: "8px" }}>
+												<span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: 700, background: t.prev === "BULL" ? "rgba(34,197,94,0.15)" : t.prev === "BEAR" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: t.prev === "BULL" ? "#22C55E" : t.prev === "BEAR" ? "#EF4444" : "#F59E0B" }}>{t.prev}</span>
+											</td>
+											<td style={{ padding: "8px" }}>
+												<span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: 700, background: t.curr === "BULL" ? "rgba(34,197,94,0.15)" : t.curr === "BEAR" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)", color: t.curr === "BULL" ? "#22C55E" : t.curr === "BEAR" ? "#EF4444" : "#F59E0B" }}>{t.curr}</span>
+											</td>
+											<td style={{ padding: "8px", textAlign: "right", fontFamily: "Geist Mono, monospace", fontWeight: 700 }}>{t.score > 0 ? `+${t.score.toFixed(4)}` : t.score.toFixed(4)}</td>
+										</tr>
+									));
+								})()
 							)}
 						</tbody>
 					</table>

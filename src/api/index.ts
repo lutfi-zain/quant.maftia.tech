@@ -6,6 +6,7 @@ import { dailyRouter } from './routes/daily.js'
 import { componentsRouter } from './routes/components.js'
 import { circuitBreakersRouter } from './routes/circuit-breakers.js'
 import { metricsRouter } from './routes/metrics.js'
+import { lttdRouter } from './routes/lttd.js'
 
 export const app = new Hono()
 
@@ -20,6 +21,7 @@ app.route('/api/v1/quant/components', componentsRouter)
 app.route('/api/v1/analytics/metric', metricsRouter)
 app.route('/api/v1/quant/metric', metricsRouter)
 app.route('/api/v1/system/circuit-breakers', circuitBreakersRouter)
+app.route('/api/v1/lttd', lttdRouter)
 
 app.get('/', (c) => {
   return c.json({

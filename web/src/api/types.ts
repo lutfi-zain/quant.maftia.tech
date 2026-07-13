@@ -113,6 +113,104 @@ export interface MetricThresholdSaveResponse {
 	};
 }
 
+// ── LTTD-Specific Types ──────────────────────────────────────────────
+
+export interface LttdLatestRecord {
+	date: string;
+	open: number;
+	high: number;
+	low: number;
+	close: number;
+	volume: number;
+	lttd_regime: 'BULL' | 'BEAR' | 'SIDEWAYS';
+	lttd_score: number;
+	lttd_prob_bull: number | null;
+	lttd_prob_bear: number | null;
+	lttd_prob_sideways: number | null;
+	target_exposure: number | null;
+}
+
+export interface LttdRegimeRecord {
+	date: string;
+	regime: 'BULL' | 'BEAR' | 'SIDEWAYS';
+	p_bull: number;
+	p_bear: number;
+	p_sideways: number;
+}
+
+export interface LttdChartRecord {
+	date: string;
+	open: number;
+	high: number;
+	low: number;
+	close: number;
+	volume: number;
+	lttd_score: number;
+	target_exposure: number;
+}
+
+export interface LttdDiagnosticsRecord {
+	date: string;
+	indicator_scores: Record<string, number>;
+	raw_values: Record<string, number>;
+	signal_directions: Record<string, number>;
+	pca_components: Record<string, number>;
+	vif: Record<string, number>;
+	pca_variance_explained: number;
+}
+
+export interface LttdOnchainRecord {
+	date: string;
+	sth_mvrv: number | null;
+	sth_nupl: number | null;
+	sth_sopr_24h: number | null;
+}
+
+export interface LttdBacktestMetrics {
+	winRate: number;
+	profitFactor: number;
+	totalTrades: number;
+	sharpeRatio: number;
+	sharpeRatioMarket: number;
+	annReturnStrat: number;
+	annReturnMarket: number;
+	annVolatilityStrat: number;
+	annVolatilityMarket: number;
+	maxDrawdown: number;
+	maxDrawdownMarket: number;
+	totalReturnStrat: number;
+	totalReturnMarket: number;
+	sortinoRatio: number;
+	cagrStrat: number;
+	cagrMarket: number;
+}
+
+export interface LttdTradeLogEntry {
+	id: number;
+	entryDate: string;
+	entryPrice: number;
+	exitDate: string;
+	exitPrice: number;
+	holdDays: number;
+	exitReason: string;
+	returnPct: number;
+}
+
+export interface LttdBacktestResponse {
+	date_range: { start: string; end: string };
+	config: { fee_bps: number };
+	metrics: LttdBacktestMetrics;
+	trade_log: LttdTradeLogEntry[];
+	equity_curve: { date: string; strat: number; market: number }[];
+}
+
+export interface LttdActionResponse {
+	success: boolean;
+	action: string;
+	output: string;
+	error_output: string;
+}
+
 export interface HealthResponse {
 	status: "healthy" | "degraded" | "error";
 	service: string;
