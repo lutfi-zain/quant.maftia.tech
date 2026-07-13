@@ -233,11 +233,47 @@ export const LttdLab: React.FC = () => {
 	);
 
 	useEffect(() => {
-		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
-			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
-		}
-		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
-			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+		if (seriesRef.current.cumStrat && seriesRef.current.cumMarket) {
+			// Build full-range equity curve: pad with flat values outside backtest window
+			const stratMap = new Map<string, number>()
+			const marketMap = new Map<string, number>()
+			for (const pt of backtestResult.cumStrat) {
+				stratMap.set(pt.time, pt.value)
+			}
+			for (const pt of backtestResult.cumMarket) {
+				marketMap.set(pt.time, pt.value)
+			}
+
+			const lastStratVal = backtestResult.cumStrat.length > 0
+				? backtestResult.cumStrat[backtestResult.cumStrat.length - 1].value
+				: 1.0
+			const lastMarketVal = backtestResult.cumMarket.length > 0
+				? backtestResult.cumMarket[backtestResult.cumMarket.length - 1].value
+				: 1.0
+
+			const fullStrat: { time: string; value: number }[] = []
+			const fullMarket: { time: string; value: number }[] = []
+
+			for (const d of dailyData) {
+				if (d.date < startDate || d.date > endDate) {
+					// Outside backtest window — flat value
+					fullStrat.push({ time: d.date, value: 1.0 })
+					fullMarket.push({ time: d.date, value: 1.0 })
+				} else {
+					// Inside backtest window — actual value or last known
+					fullStrat.push({
+						time: d.date,
+						value: stratMap.get(d.date) ?? 1.0,
+					})
+					fullMarket.push({
+						time: d.date,
+						value: marketMap.get(d.date) ?? 1.0,
+					})
+				}
+			}
+
+			seriesRef.current.cumStrat.setData(fullStrat as any)
+			seriesRef.current.cumMarket.setData(fullMarket as any)
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
 			createSeriesMarkers(
@@ -247,7 +283,7 @@ export const LttdLab: React.FC = () => {
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
-	}, [backtestResult]);
+	}, [backtestResult, dailyData, startDate, endDate]);
 
 	useGSAP(
 		() => {
