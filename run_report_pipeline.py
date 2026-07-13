@@ -175,9 +175,17 @@ def main():
   ichi_entropy           REAL,
   ichi_er                REAL,
   ichi_imo_std           REAL,
+  ichi_ref_pos           REAL,
+  ichi_cum_strat         REAL,
+  ichi_cum_market        REAL,
   FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 )"""
         )
+        for col in ["ichi_s_tk", "ichi_s_cloud", "ichi_s_future", "ichi_s_chikou", "ichi_tenkan", "ichi_kijun", "ichi_senkou_a", "ichi_senkou_b", "ichi_chikou", "ichi_entropy", "ichi_er", "ichi_imo_std", "ichi_ref_pos", "ichi_cum_strat", "ichi_cum_market"]:
+            try:
+                master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col} REAL")
+            except Exception:
+                pass
         execute_parameterized(
             master_conn,
             """CREATE TABLE IF NOT EXISTS unified_component_signals (
@@ -303,10 +311,12 @@ def main():
         from src.ichimoku_quant.data import fetch_btc_data
         from src.ichimoku_quant.features import generate_ichimoku_features
         from src.ichimoku_quant.strategy import generate_signals
+        from src.ichimoku_quant.backtest import run_backtest
         
         df_ich = fetch_btc_data()
         df_ich = generate_ichimoku_features(df_ich)
         df_ich = generate_signals(df_ich)
+        df_ich = run_backtest(df_ich, transaction_cost=0.001)
         df_ich.index = pd.to_datetime(df_ich.index)
         
         for idx, r in df_ich[(df_ich.index >= dates_str[0]) & (df_ich.index <= dates_str[-1])].iterrows():
@@ -388,6 +398,9 @@ def main():
                 "imo": float(r["IMO"]) if pd.notnull(r["IMO"]) else None,
                 "regime": str(r["Regime"]).upper() if pd.notnull(r["Regime"]) else "NEUTRAL",
                 "pos": float(r["Pos"]) if pd.notnull(r["Pos"]) else 0.0,
+                "ref_pos": float(r["Pos"]) if pd.notnull(r["Pos"]) else 0.0,
+                "cum_strat": float(r["Cum_Strat"]) if "Cum_Strat" in r and pd.notnull(r["Cum_Strat"]) else None,
+                "cum_market": float(r["Cum_Market"]) if "Cum_Market" in r and pd.notnull(r["Cum_Market"]) else None,
                 # S-component values (tanh-normalized oscillators)
                 "s_tk": float(r["S_TK"]) if "S_TK" in r and pd.notnull(r["S_TK"]) else None,
                 "s_cloud": float(r["S_Cloud"]) if "S_Cloud" in r and pd.notnull(r["S_Cloud"]) else None,
@@ -468,6 +481,9 @@ def main():
         ich_entropy = ich_rec.get("entropy")
         ich_er = ich_rec.get("er")
         ich_imo_std = ich_rec.get("imo_std")
+        ich_ref_pos = ich_rec.get("ref_pos", 0.0)
+        ich_cum_strat = ich_rec.get("cum_strat")
+        ich_cum_market = ich_rec.get("cum_market")
 
         execute_parameterized(
             master_conn,
@@ -478,8 +494,9 @@ def main():
                 ichimoku_imo, ichimoku_regime, ichimoku_position,
                 ichi_s_tk, ichi_s_cloud, ichi_s_future, ichi_s_chikou,
                 ichi_tenkan, ichi_kijun, ichi_senkou_a, ichi_senkou_b, ichi_chikou,
-                ichi_entropy, ichi_er, ichi_imo_std
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ichi_entropy, ichi_er, ichi_imo_std,
+                ichi_ref_pos, ichi_cum_strat, ichi_cum_market
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 dt, btc_p, val_comp,
                 lttd_reg, lttd_score, p_bull, p_bear, p_side,
@@ -487,7 +504,8 @@ def main():
                 ich_imo, ich_reg, ich_pos_val,
                 ich_s_tk, ich_s_cloud, ich_s_future, ich_s_chikou,
                 ich_tenkan, ich_kijun, ich_senkou_a, ich_senkou_b, ich_chikou,
-                ich_entropy, ich_er, ich_imo_std
+                ich_entropy, ich_er, ich_imo_std,
+                ich_ref_pos, ich_cum_strat, ich_cum_market
             ),
             commit=False
         )

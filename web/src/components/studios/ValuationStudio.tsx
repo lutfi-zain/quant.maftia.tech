@@ -245,6 +245,7 @@ export const ValuationStudio: React.FC = () => {
 			date: d.date,
 			close: d.close || d.btc_price || 0,
 			position: pos,
+			valuation_composite: score,
 		};
 	});
 
@@ -1046,43 +1047,312 @@ export const ValuationStudio: React.FC = () => {
 							</div>
 						</div>
 
-						<div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)", gap: "10px" }}>
-							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>WIN RATE</div>
-								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.winRate >= 50 ? "var(--signal-bull)" : "var(--text-main)" }}>
+						<div
+							style={{
+								display: "grid",
+								gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+								gap: "10px",
+							}}
+						>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									WIN RATE
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color:
+											backtestResult.metrics.winRate >= 50
+												? "var(--signal-bull)"
+												: "var(--text-main)",
+									}}
+								>
 									{backtestResult.metrics.winRate.toFixed(1)}%
 								</div>
 							</div>
-							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>PROFIT FACTOR</div>
-								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.profitFactor >= 1.5 ? "var(--signal-bull)" : backtestResult.metrics.profitFactor >= 1.0 ? "var(--text-main)" : "var(--signal-bear)" }}>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									PROFIT FACTOR
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color:
+											backtestResult.metrics.profitFactor >= 1.5
+												? "var(--signal-bull)"
+												: backtestResult.metrics.profitFactor >= 1.0
+													? "var(--text-main)"
+													: "var(--signal-bear)",
+									}}
+								>
 									{backtestResult.metrics.profitFactor.toFixed(2)}
 								</div>
 							</div>
-							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>TOTAL TRADES</div>
-								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--text-main)" }}>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									TOTAL TRADES
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color: "var(--text-main)",
+									}}
+								>
 									{backtestResult.metrics.totalTrades}
 								</div>
 							</div>
-							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>SHARPE RATIO</div>
-								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.sharpeRatio >= 1.0 ? "var(--signal-bull)" : "var(--text-main)" }}>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									SHARPE vs MARKET
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color:
+											backtestResult.metrics.sharpeRatio >= backtestResult.metrics.sharpeRatioMarket
+												? "var(--signal-bull)"
+												: "var(--text-main)",
+									}}
+								>
 									{backtestResult.metrics.sharpeRatio.toFixed(2)}
+									<span
+										style={{
+											fontSize: "11px",
+											fontWeight: 400,
+											color: "var(--text-muted)",
+											marginLeft: "4px",
+										}}
+									>
+										(vs {backtestResult.metrics.sharpeRatioMarket.toFixed(2)})
+									</span>
 								</div>
 							</div>
-							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>MAX DRAWDOWN</div>
-								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--signal-bear)" }}>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									ANN. RETURN vs MARKET
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color:
+											backtestResult.metrics.annReturnStrat >= backtestResult.metrics.annReturnMarket
+												? "var(--signal-bull)"
+												: "var(--signal-bear)",
+									}}
+								>
+									{backtestResult.metrics.annReturnStrat >= 0
+										? `+${backtestResult.metrics.annReturnStrat.toFixed(1)}%`
+										: `${backtestResult.metrics.annReturnStrat.toFixed(1)}%`}
+									<span
+										style={{
+											fontSize: "11px",
+											fontWeight: 400,
+											color: "var(--text-muted)",
+											marginLeft: "4px",
+										}}
+									>
+										(vs {backtestResult.metrics.annReturnMarket >= 0
+											? `+${backtestResult.metrics.annReturnMarket.toFixed(1)}%`
+											: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`})
+									</span>
+								</div>
+							</div>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									ANN. VOLATILITY vs MARKET
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color: "var(--text-main)",
+									}}
+								>
+									{backtestResult.metrics.annVolatilityStrat.toFixed(1)}%
+									<span
+										style={{
+											fontSize: "11px",
+											fontWeight: 400,
+											color: "var(--text-muted)",
+											marginLeft: "4px",
+										}}
+									>
+										(vs {backtestResult.metrics.annVolatilityMarket.toFixed(1)}%)
+									</span>
+								</div>
+							</div>
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									MAX DRAWDOWN vs MARKET
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color: "var(--signal-bear)",
+									}}
+								>
 									-{backtestResult.metrics.maxDrawdown.toFixed(1)}%
+									<span
+										style={{
+											fontSize: "11px",
+											fontWeight: 400,
+											color: "var(--text-muted)",
+											marginLeft: "4px",
+										}}
+									>
+										(vs -{backtestResult.metrics.maxDrawdownMarket.toFixed(1)}%)
+									</span>
 								</div>
 							</div>
-							<div style={{ background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)" }}>
-								<div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>STRATEGY vs BTC HOLD</div>
-								<div style={{ fontSize: "15px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: backtestResult.metrics.totalReturnStrat >= backtestResult.metrics.totalReturnMarket ? "var(--signal-bull)" : "var(--signal-bear)" }}>
-									{backtestResult.metrics.totalReturnStrat >= 0 ? `+${backtestResult.metrics.totalReturnStrat.toFixed(1)}%` : `${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`}
-									<span style={{ fontSize: "11px", fontWeight: 400, color: "var(--text-muted)", marginLeft: "4px" }}>
-										(vs {backtestResult.metrics.totalReturnMarket >= 0 ? `+${backtestResult.metrics.totalReturnMarket.toFixed(1)}%` : `${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`})
+							<div
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									padding: "10px",
+									borderRadius: "6px",
+									border: "1px solid rgba(255,255,255,0.05)",
+								}}
+							>
+								<div
+									style={{
+										fontSize: "10px",
+										color: "var(--text-muted)",
+										marginBottom: "4px",
+									}}
+								>
+									TOTAL RETURN vs MARKET
+								</div>
+								<div
+									style={{
+										fontSize: "15px",
+										fontWeight: 700,
+										fontFamily: "Geist Mono, monospace",
+										color:
+											backtestResult.metrics.totalReturnStrat >=
+											backtestResult.metrics.totalReturnMarket
+												? "var(--signal-bull)"
+												: "var(--signal-bear)",
+									}}
+								>
+									{backtestResult.metrics.totalReturnStrat >= 0
+										? `+${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`
+										: `${backtestResult.metrics.totalReturnStrat.toFixed(1)}%`}
+									<span
+										style={{
+											fontSize: "11px",
+											fontWeight: 400,
+											color: "var(--text-muted)",
+											marginLeft: "4px",
+										}}
+									>
+										(vs{" "}
+										{backtestResult.metrics.totalReturnMarket >= 0
+											? `+${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`
+											: `${backtestResult.metrics.totalReturnMarket.toFixed(1)}%`}
+										)
 									</span>
 								</div>
 							</div>

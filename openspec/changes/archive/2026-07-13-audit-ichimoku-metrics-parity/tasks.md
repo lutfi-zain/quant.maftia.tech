@@ -37,5 +37,5 @@
 - [x] 6.3 Query `unified_component_signals` to confirm ICHIMOKU source entries exist for S_TK, S_Cloud, S_Future, S_Chikou, IMO
 - [x] 6.4 Start the API Gateway (`bun run dev`) and verify `/api/v1/quant/daily` returns the new 12-field `ichimoku_imo` object with all S-component and Ichimoku line fields
 - [x] 6.5 Query `/api/v1/quant/components?system=quant-lttd-ichimoku` and confirm it returns 5+ ICHIMOKU-sourced signal records per date
-- [ ] 6.6 Start the frontend and visually verify IchimokuTerminal displays correct Ichimoku lines and S-component values matching the prior system's expectations — no synthetic data, no wrong-period lines
+- [x] 6.6 Start the frontend and visually verify IchimokuTerminal displays correct Ichimoku lines and S-component values matching the prior system's expectations — no synthetic data, no wrong-period lines
 - [x] 6.7 Update `verify_pipeline_api_parity.py` with Ichimoku-specific S-component and Ichimoku line numeric precision checks, including a cross-validation that runs `generate_ichimoku_features()` directly and compares against `unified_daily_analytics`

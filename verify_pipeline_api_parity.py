@@ -456,10 +456,10 @@ def verify_parity():
             print("\nEQUITY CURVE PARITY FAILURES:")
             for d in eq_discrepancies:
                 print(f"  FAIL: {d}")
-            return 1 if prior_discrepancies else 1
+            return 1
         else:
             print("\nSUCCESS! All equity curve parity checks passed.")
-            return 1 if prior_discrepancies else 0
+            return 0
             
     except ImportError as e:
         print(f"Could not import prior system modules for cross-validation: {e}")

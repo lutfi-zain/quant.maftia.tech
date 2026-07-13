@@ -52,10 +52,22 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       mttd_er_ratio: newPoint.mttd_imo?.efficiency_ratio ?? 0,
       mttd_shannon_entropy: newPoint.mttd_imo?.shannon_entropy ?? 0,
       ichimoku_imo: newPoint.ichimoku_imo?.oscillator ?? (typeof newPoint.ichimoku_imo === 'number' ? newPoint.ichimoku_imo : 0),
+      ichimoku_s_tk: newPoint.ichimoku_imo?.s_tk ?? undefined,
+      ichimoku_s_cloud: newPoint.ichimoku_imo?.s_cloud ?? undefined,
+      ichimoku_s_future: newPoint.ichimoku_imo?.s_future ?? undefined,
+      ichimoku_s_chikou: newPoint.ichimoku_imo?.s_chikou ?? undefined,
+      ichimoku_tenkan: newPoint.ichimoku_imo?.tenkan ?? undefined,
+      ichimoku_kijun: newPoint.ichimoku_imo?.kijun ?? undefined,
+      ichimoku_senkou_a: newPoint.ichimoku_imo?.senkou_a ?? undefined,
+      ichimoku_senkou_b: newPoint.ichimoku_imo?.senkou_b ?? undefined,
+      ichimoku_chikou: newPoint.ichimoku_imo?.chikou ?? undefined,
       ichimoku_entropy: newPoint.ichimoku_imo?.entropy ?? undefined,
       ichimoku_er: newPoint.ichimoku_imo?.er ?? undefined,
       ichimoku_imo_std: newPoint.ichimoku_imo?.imo_std ?? undefined,
       ichimoku_position: newPoint.ichimoku_imo?.position ?? undefined,
+      ichimoku_ref_pos: newPoint.ichimoku_imo?.ref_pos ?? undefined,
+      ichimoku_cum_strat: newPoint.ichimoku_imo?.cum_strat ?? undefined,
+      ichimoku_cum_market: newPoint.ichimoku_imo?.cum_market ?? undefined,
     };
     setDailyData(prev => {
       const idx = prev.findIndex(item => item.date === mappedPoint.date);

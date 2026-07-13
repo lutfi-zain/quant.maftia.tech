@@ -143,8 +143,8 @@ export const IchimokuTerminal: React.FC = () => {
 	const [, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
-	const [startDate, setStartDate] = useState("2020-01-01");
-	const [endDate, setEndDate] = useState("2026-12-31");
+	const [startDate, setStartDate] = useState("2018-01-01");
+	const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
 	const [feeBps, setFeeBps] = useState(10);
 	const [showInteractive, setShowInteractive] = useState(false);
 	const isMobile = useIsMobile();
@@ -395,6 +395,11 @@ export const IchimokuTerminal: React.FC = () => {
 		)
 			return;
 
+		const filteredDailyData = dailyData.filter(
+			(p) => (!startDate || p.date >= startDate) && (!endDate || p.date <= endDate),
+		);
+		if (!filteredDailyData.length) return;
+
 		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
 		const heights = getPanelHeights(null, isMobile);
@@ -577,7 +582,18 @@ export const IchimokuTerminal: React.FC = () => {
 			priceLineVisible: false,
 		});
 
-		// ── Invisible anchor series for crosshair sync (covers ALL dates) ──
+		// ── Invisible anchor series for crosshair sync (covers ALL dates in window) ──
+		const imoSyncAnchorSeries = imoChart.addSeries(LineSeries, {
+			color: "transparent",
+			lineWidth: 1,
+			priceLineVisible: false,
+			lastValueVisible: false,
+			crosshairMarkerVisible: false,
+		});
+		imoSyncAnchorSeries.setData(
+			filteredDailyData.map((p) => ({ time: p.date as Time, value: 0 })),
+		);
+
 		const syncAnchorSeries = scompChart.addSeries(LineSeries, {
 			color: "transparent",
 			lineWidth: 1,
@@ -586,7 +602,18 @@ export const IchimokuTerminal: React.FC = () => {
 			crosshairMarkerVisible: false,
 		});
 		syncAnchorSeries.setData(
-			dailyData.map((p) => ({ time: p.date as Time, value: 0 })),
+			filteredDailyData.map((p) => ({ time: p.date as Time, value: 0 })),
+		);
+
+		const eqSyncAnchorSeries = eqChart.addSeries(LineSeries, {
+			color: "transparent",
+			lineWidth: 1,
+			priceLineVisible: false,
+			lastValueVisible: false,
+			crosshairMarkerVisible: false,
+		});
+		eqSyncAnchorSeries.setData(
+			filteredDailyData.map((p) => ({ time: p.date as Time, value: 0 })),
 		);
 
 		chartsRef.current = {
@@ -605,7 +632,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// ── Populate BTC + Ichimoku data ──
 		candleSeries.setData(
-			dailyData.map((p) => ({
+			filteredDailyData.map((p) => ({
 				time: p.date as Time,
 				open: p.open,
 				high: p.high,
@@ -616,7 +643,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// Tenkan data from API (skip null warmup)
 		tenkanSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_tenkan,
@@ -626,7 +653,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// Kijun data from API
 		kijunSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_kijun,
@@ -636,7 +663,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// Span A data from API
 		spanASeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_senkou_a,
@@ -646,7 +673,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// Span B data from API
 		spanBSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_senkou_b,
@@ -656,7 +683,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// Chikou data from API (60-bar displacement from prior system)
 		chikouSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_chikou,
@@ -666,7 +693,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// ── Populate IMO data + Entropy/ER/imo_std ──
 		imoSeries.setData(
-			dailyData.map((p) => ({
+			filteredDailyData.map((p) => ({
 				time: p.date as Time,
 				value:
 					typeof p.ichimoku_imo === "number"
@@ -706,7 +733,7 @@ export const IchimokuTerminal: React.FC = () => {
 		});
 
 		entropySeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_entropy,
@@ -714,7 +741,7 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 		erSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_er,
@@ -722,7 +749,7 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 		imoStdSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => {
 					const val = p.ichimoku_imo_std;
 					return {
@@ -735,7 +762,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// ── Populate S-component data from API (no synthetic fallback) ──
 		sTkSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_s_tk,
@@ -743,7 +770,7 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 		sCloudSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_s_cloud,
@@ -751,7 +778,7 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 		sFutureSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_s_future,
@@ -759,7 +786,7 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 		sChikouSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_s_chikou,
@@ -769,7 +796,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// ── Populate reference equity from API data ──
 		refStratSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_cum_strat,
@@ -777,7 +804,7 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 		refMarketSeries.setData(
-			dailyData
+			filteredDailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_cum_market,
@@ -785,12 +812,12 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// ── Crosshair sync — 4 charts (use refStratSeries for eqChart) ──
+		// ── Crosshair sync — 4 charts ──
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
-			{ chart: imoChart, series: imoSeries },
+			{ chart: imoChart, series: imoSyncAnchorSeries },
 			{ chart: scompChart, series: syncAnchorSeries },
-			{ chart: eqChart, series: refStratSeries },
+			{ chart: eqChart, series: eqSyncAnchorSeries },
 		];
 
 		allCharts.forEach(({ chart }, idx) => {
@@ -799,7 +826,7 @@ export const IchimokuTerminal: React.FC = () => {
 				isSyncingRef.current = true;
 				if (param.time) {
 					const timeStr = param.time as string;
-					setHoveredPoint(dailyData.find((p) => p.date === timeStr) || null);
+					setHoveredPoint(filteredDailyData.find((p) => p.date === timeStr) || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
 						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
@@ -876,7 +903,7 @@ export const IchimokuTerminal: React.FC = () => {
 				interactiveMarket: null,
 			};
 		};
-	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dailyData, startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
 	const latestImo = toNum(latestPoint?.ichimoku_imo);
@@ -1254,7 +1281,7 @@ export const IchimokuTerminal: React.FC = () => {
 				<div
 					style={{
 						display: "grid",
-						gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)",
+						gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)",
 						gap: "10px",
 					}}
 				>
@@ -1365,7 +1392,7 @@ export const IchimokuTerminal: React.FC = () => {
 								marginBottom: "4px",
 							}}
 						>
-							SHARPE RATIO
+							SHARPE vs MARKET
 						</div>
 						<div
 							style={{
@@ -1373,12 +1400,22 @@ export const IchimokuTerminal: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.sharpeRatio >= 1.0
+									backtestResult.metrics.sharpeRatio >= backtestResult.metrics.sharpeRatioMarket
 										? "var(--signal-bull)"
 										: "var(--text-main)",
 							}}
 						>
 							{backtestResult.metrics.sharpeRatio.toFixed(2)}
+							<span
+								style={{
+									fontSize: "11px",
+									fontWeight: 400,
+									color: "var(--text-muted)",
+									marginLeft: "4px",
+								}}
+							>
+								(vs {backtestResult.metrics.sharpeRatioMarket.toFixed(2)})
+							</span>
 						</div>
 					</div>
 					<div
@@ -1396,7 +1433,90 @@ export const IchimokuTerminal: React.FC = () => {
 								marginBottom: "4px",
 							}}
 						>
-							MAX DRAWDOWN
+							ANN. RETURN vs MARKET
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color:
+									backtestResult.metrics.annReturnStrat >= backtestResult.metrics.annReturnMarket
+										? "var(--signal-bull)"
+										: "var(--signal-bear)",
+							}}
+						>
+							{backtestResult.metrics.annReturnStrat >= 0
+								? `+${backtestResult.metrics.annReturnStrat.toFixed(1)}%`
+								: `${backtestResult.metrics.annReturnStrat.toFixed(1)}%`}
+							<span
+								style={{
+									fontSize: "11px",
+									fontWeight: 400,
+									color: "var(--text-muted)",
+									marginLeft: "4px",
+								}}
+							>
+								(vs {backtestResult.metrics.annReturnMarket >= 0
+									? `+${backtestResult.metrics.annReturnMarket.toFixed(1)}%`
+									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`})
+							</span>
+						</div>
+					</div>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							ANN. VOLATILITY vs MARKET
+						</div>
+						<div
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color: "var(--text-main)",
+							}}
+						>
+							{backtestResult.metrics.annVolatilityStrat.toFixed(1)}%
+							<span
+								style={{
+									fontSize: "11px",
+									fontWeight: 400,
+									color: "var(--text-muted)",
+									marginLeft: "4px",
+								}}
+							>
+								(vs {backtestResult.metrics.annVolatilityMarket.toFixed(1)}%)
+							</span>
+						</div>
+					</div>
+					<div
+						style={{
+							background: "rgba(255,255,255,0.02)",
+							padding: "10px",
+							borderRadius: "6px",
+							border: "1px solid rgba(255,255,255,0.05)",
+						}}
+					>
+						<div
+							style={{
+								fontSize: "10px",
+								color: "var(--text-muted)",
+								marginBottom: "4px",
+							}}
+						>
+							MAX DRAWDOWN vs MARKET
 						</div>
 						<div
 							style={{
@@ -1407,6 +1527,16 @@ export const IchimokuTerminal: React.FC = () => {
 							}}
 						>
 							-{backtestResult.metrics.maxDrawdown.toFixed(1)}%
+							<span
+								style={{
+									fontSize: "11px",
+									fontWeight: 400,
+									color: "var(--text-muted)",
+									marginLeft: "4px",
+								}}
+							>
+								(vs -{backtestResult.metrics.maxDrawdownMarket.toFixed(1)}%)
+							</span>
 						</div>
 					</div>
 					<div
@@ -1424,7 +1554,7 @@ export const IchimokuTerminal: React.FC = () => {
 								marginBottom: "4px",
 							}}
 						>
-							STRATEGY vs BTC HOLD
+							TOTAL RETURN vs MARKET
 						</div>
 						<div
 							style={{
