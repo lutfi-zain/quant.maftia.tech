@@ -234,30 +234,14 @@ export const LttdLab: React.FC = () => {
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && seriesRef.current.cumMarket) {
-			// Use backtest equity data directly (already filtered to window) —
-			// this naturally creates empty-bar gaps before/after the window
+			// Both Cum_Strat and Cum_Market from backtestResult —
+			// same backtest window, same target_exposure rules
 			if (backtestResult.cumStrat.length > 0) {
-				seriesRef.current.cumStrat.setData(
-					backtestResult.cumStrat as any,
-				);
+				seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
 			}
-
-			// Compute full-range market equity (real BTC buy & hold across ALL data)
-			const fullMarket: { time: string; value: number }[] = [];
-			let marketEq = 1.0;
-			let prevClose = 0;
-			for (const d of dailyData) {
-				const close = d.close || (d as any).btc_price || 0;
-				if (prevClose > 0 && close > 0) {
-					marketEq *= 1.0 + (close - prevClose) / prevClose;
-				}
-				prevClose = close;
-				fullMarket.push({
-					time: d.date,
-					value: Number(marketEq.toFixed(4)),
-				});
+			if (backtestResult.cumMarket.length > 0) {
+				seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 			}
-			seriesRef.current.cumMarket.setData(fullMarket as any);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
 			createSeriesMarkers(
@@ -267,7 +251,7 @@ export const LttdLab: React.FC = () => {
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
-	}, [backtestResult, dailyData, startDate, endDate]);
+	}, [backtestResult]);
 
 	useGSAP(
 		() => {
