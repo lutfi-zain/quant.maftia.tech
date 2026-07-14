@@ -7,7 +7,7 @@
 - [x] Update `/home/ubuntu/projects/run_report_pipeline.py` to create `timeseries_metrics` and `metric_config` tables in `maftia_quant.db`.
 - [x] Add parameterized SQL (`?-style`) sync logic for `timeseries_metrics` using SQLite WAL mode connection.
 - [x] Add parameterized SQL (`?-style`) sync logic for `metric_config` using SQLite WAL mode connection.
-- [ ] Test the pipeline script manually to verify tables are populated in `data/maftia_quant.db`.
+- [x] Test the pipeline script manually to verify tables are populated in `data/maftia_quant.db`.
 
 ## 2. API Database Connector (Platform Boundary)
 
@@ -41,4 +41,4 @@
 
 - [x] Run automated pipeline verification: `python3 /home/ubuntu/projects/run_report_pipeline.py`.
 - [x] Verify API health and endpoints: `bun run src/api/index.ts` and fetch metrics data.
-- [ ] Commit changes adhering to Conventional Commits specification (e.g., `refactor: decouple API from external filesystem dependencies`).
+- [x] Commit changes adhering to Conventional Commits specification (e.g., `refactor: decouple API from external filesystem dependencies`).

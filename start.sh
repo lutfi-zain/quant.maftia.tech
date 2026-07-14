@@ -9,6 +9,7 @@ sleep 1
 
 # Start API backend on port 8910
 echo "🚀 Starting API backend on port 8910..."
+cd /home/ubuntu/projects/quant.maftia.tech
 nohup /home/ubuntu/.bun/bin/bun run src/api/index.ts >/home/ubuntu/projects/quant.maftia.tech/api.log 2>&1 &
 sleep 2
 
