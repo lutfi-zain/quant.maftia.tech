@@ -257,6 +257,9 @@ def main():
     cache_file = os.path.join(ICHIMOKU_DIR, "tmp/btc_cache.csv")
     if os.path.exists(cache_file):
         os.remove(cache_file)
+    local_cache = "tmp/btc_cache.csv"
+    if os.path.exists(local_cache):
+        os.remove(local_cache)
     run_cmd(["python3", "main.py"], ICHIMOKU_DIR)
 
     # 7. Query and compile last 7 days report
