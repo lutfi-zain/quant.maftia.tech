@@ -55,7 +55,7 @@ graph TD
 
     subgraph Layer5 [Layer 5: Local & Consolidated Database]
         DB_Val["metrics.db (timeseries_metrics)"]
-        DB_Master["maftia_quant.db (unified_daily_analytics)"]
+        DB_Master["maftia_quant.db (unified_daily_analytics, timeseries_metrics, metric_config)"]
         CB_Active & CB_Inactive --> DB_Val
         DB_Val --> DB_Master
     end

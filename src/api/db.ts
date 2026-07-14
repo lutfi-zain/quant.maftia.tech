@@ -5,11 +5,12 @@ import BetterSqlite3 from 'better-sqlite3'
 
 const require = createRequire(import.meta.url)
 
-export const DB_PATH = path.resolve('/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db')
+export const DB_PATH = process.env.MAFTIA_DB_PATH || path.resolve(import.meta.dir, '../../data/maftia_quant.db')
 
 export interface QueryResult<T = any> {
   all(...params: any[]): T[]
   get(...params: any[]): T | undefined
+  run(...params: any[]): void
 }
 
 export interface DatabaseConnection {
@@ -30,15 +31,15 @@ export function getDb(): DatabaseConnection {
   if (typeof (globalThis as any).Bun !== 'undefined') {
     // Running under Bun runtime (native bun:sqlite)
     const { Database } = require('bun:sqlite')
-    const bunDb = new Database(DB_PATH, { readonly: true })
+    const bunDb = new Database(DB_PATH)
     bunDb.exec('PRAGMA journal_mode=WAL;')
-    bunDb.exec('PRAGMA query_only=true;')
     dbInstance = {
       prepare: <T = any>(sql: string) => {
         const stmt = bunDb.prepare(sql)
         return {
           all: (...params: any[]) => stmt.all(...params) as T[],
           get: (...params: any[]) => stmt.get(...params) as T | undefined,
+          run: (...params: any[]) => stmt.run(...params),
         }
       },
       exec: (sql: string) => bunDb.exec(sql),
@@ -46,15 +47,15 @@ export function getDb(): DatabaseConnection {
     }
   } else {
     // Running under Node/tsx runtime (better-sqlite3)
-    const nodeDb = new BetterSqlite3(DB_PATH, { readonly: true })
+    const nodeDb = new BetterSqlite3(DB_PATH)
     nodeDb.exec('PRAGMA journal_mode=WAL;')
-    nodeDb.exec('PRAGMA query_only=true;')
     dbInstance = {
       prepare: <T = any>(sql: string) => {
         const stmt = nodeDb.prepare(sql)
         return {
           all: (...params: any[]) => stmt.all(...params) as T[],
           get: (...params: any[]) => stmt.get(...params) as T | undefined,
+          run: (...params: any[]) => stmt.run(...params),
         }
       },
       exec: (sql: string) => nodeDb.exec(sql),
@@ -75,4 +76,10 @@ export function executeQuerySingle<T = any>(sql: string, params: any[] = []): T 
   const db = getDb()
   const stmt = db.prepare<T>(sql)
   return stmt.get(...params)
+}
+
+export function executeRun(sql: string, params: any[] = []): void {
+  const db = getDb()
+  const stmt = db.prepare(sql)
+  stmt.run(...params)
 }

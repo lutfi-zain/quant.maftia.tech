@@ -1,58 +1,8 @@
 import { Hono } from "hono";
-import fs from "node:fs";
-import { createRequire } from "node:module";
-import BetterSqlite3 from "better-sqlite3";
-import { executeQuery } from "../db.js";
+import { executeQuery, executeQuerySingle, executeRun } from "../db.js";
 import { mapToOscillator } from "../../lib/oscillator.js";
 
-const require = createRequire(import.meta.url);
 export const metricsRouter = new Hono();
-
-const METRICS_DB_PATH =
-	"/home/ubuntu/projects/quant-btc-valuation-system/database/metrics.db";
-
-let metricsDbInstance: any = null;
-
-function getMetricsDb() {
-	if (metricsDbInstance) return metricsDbInstance;
-
-	if (!fs.existsSync(METRICS_DB_PATH)) {
-		throw new Error(`Metrics database not found at ${METRICS_DB_PATH}`);
-	}
-
-	if (typeof (globalThis as any).Bun !== "undefined") {
-		const { Database } = require("bun:sqlite");
-		const db = new Database(METRICS_DB_PATH);
-		db.exec("PRAGMA journal_mode=WAL;");
-		metricsDbInstance = {
-			prepare: (sql: string) => {
-				const stmt = db.prepare(sql);
-				return {
-					all: (...params: any[]) => stmt.all(...params),
-					get: (...params: any[]) => stmt.get(...params),
-					run: (...params: any[]) => stmt.run(...params),
-				};
-			},
-			exec: (sql: string) => db.exec(sql),
-		};
-	} else {
-		const db = new BetterSqlite3(METRICS_DB_PATH);
-		db.exec("PRAGMA journal_mode=WAL;");
-		metricsDbInstance = {
-			prepare: (sql: string) => {
-				const stmt = db.prepare(sql);
-				return {
-					all: (...params: any[]) => stmt.all(...params),
-					get: (...params: any[]) => stmt.get(...params),
-					run: (...params: any[]) => stmt.run(...params),
-				};
-			},
-			exec: (sql: string) => db.exec(sql),
-		};
-	}
-
-	return metricsDbInstance;
-}
 
 const DEFAULT_THRESHOLDS: Record<
 	string,
@@ -219,13 +169,11 @@ metricsRouter.get("/:metric_name", (c) => {
 		const endParamRaw = `${effectiveEndDate}T23:59:59`;
 		const endParamOhlc = `${effectiveEndDate}`;
 
-		// 1. Fetch raw metric values from subsystem metrics.db
-		const subsystemDb = getMetricsDb();
-		const rawRows = subsystemDb
-			.prepare(
-				"SELECT date, raw_value FROM timeseries_metrics WHERE metric_name = ? AND date >= ? AND date <= ? ORDER BY date ASC",
-			)
-			.all(metricName, startParam, endParamRaw) as any[];
+		// 1. Fetch raw metric values from maftia_quant.db
+		const rawRows = executeQuery(
+			"SELECT date, raw_value FROM timeseries_metrics WHERE metric_name = ? AND date >= ? AND date <= ? ORDER BY date ASC",
+			[metricName, startParam, endParamRaw]
+		);
 
 		// 2. Fetch BTC OHLC from master_ohlcv in master database
 		const ohlcRows = executeQuery(
@@ -317,12 +265,10 @@ metricsRouter.get("/:metric_name", (c) => {
 metricsRouter.get("/:metric_name/config", (c) => {
 	try {
 		const metricName = c.req.param("metric_name").toLowerCase();
-		const subsystemDb = getMetricsDb();
-		const row = subsystemDb
-			.prepare(
-				"SELECT t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2 FROM metric_config WHERE metric_name = ?",
-			)
-			.get(metricName) as any;
+		const row = executeQuerySingle(
+			"SELECT t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2 FROM metric_config WHERE metric_name = ?",
+			[metricName]
+		);
 
 		if (row) {
 			return c.json({
@@ -374,19 +320,17 @@ metricsRouter.post("/:metric_name/config", async (c) => {
 		const body = await c.req.json();
 		const { t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2 } = body;
 
-		const subsystemDb = getMetricsDb();
-		subsystemDb
-			.prepare(
-				"INSERT OR REPLACE INTO metric_config (metric_name, t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2) VALUES (?, ?, ?, ?, ?, ?)",
-			)
-			.run(
+		executeRun(
+			"INSERT OR REPLACE INTO metric_config (metric_name, t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2) VALUES (?, ?, ?, ?, ?, ?)",
+			[
 				metricName,
 				t_minus_2 !== undefined ? t_minus_2 : null,
 				t_minus_1 !== undefined ? t_minus_1 : null,
 				t_zero !== undefined ? t_zero : null,
 				t_plus_1 !== undefined ? t_plus_1 : null,
 				t_plus_2 !== undefined ? t_plus_2 : null,
-			);
+			]
+		);
 
 		return c.json({
 			status: "saved",
@@ -408,61 +352,3 @@ metricsRouter.post("/:metric_name/config", async (c) => {
 	}
 });
 
-// POST /api/v1/analytics/metric/:metric_name/renormalize — recalculate normalized values using python subprocess
-metricsRouter.post("/:metric_name/renormalize", async (c) => {
-	try {
-		const metricName = c.req.param("metric_name").toLowerCase();
-		const pythonScript = "/home/ubuntu/projects/quant-btc-valuation-system/scripts/renormalize_metric.py";
-
-		if (!fs.existsSync(pythonScript)) {
-			return c.json({ status: "error", message: `Renormalize script not found at ${pythonScript}` }, 500);
-		}
-
-		// Spawn the python process using Bun.spawn
-		const proc = (globalThis as any).Bun.spawn(["python3", pythonScript, metricName]);
-
-		// Setup timeout mechanism
-		const timeoutPromise = new Promise<never>((_, reject) =>
-			setTimeout(() => reject(new Error("Timeout")), 30000)
-		);
-
-		const exitCode = await Promise.race([
-			proc.exited,
-			timeoutPromise
-		]).catch(async (err) => {
-			proc.kill();
-			throw err;
-		});
-
-		if (exitCode !== 0) {
-			const errText = await new Response(proc.stderr).text();
-			return c.json({ status: "error", message: `Subprocess exited with code ${exitCode}: ${errText}` }, 500);
-		}
-
-		const stdoutText = await new Response(proc.stdout).text();
-		
-		// Parse rows updated from output or just match it
-		let rowsUpdated = 0;
-		const match = stdoutText.match(/(\d+) rows updated/i);
-		if (match) {
-			rowsUpdated = parseInt(match[1], 10);
-		}
-
-		return c.json({
-			status: "success",
-			metric_name: metricName,
-			rows_updated: rowsUpdated,
-			message: "Renormalization completed successfully via python subprocess"
-		});
-
-	} catch (err: any) {
-		console.error("Error renormalizing metric:", err);
-		if (err.message === "Timeout") {
-			return c.json({ status: "error", message: "Renormalize timed out after 30 seconds" }, 504);
-		}
-		return c.json(
-			{ status: "error", message: err.message || "Internal server error" },
-			500,
-		);
-	}
-});
