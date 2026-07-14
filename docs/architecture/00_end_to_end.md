@@ -38,14 +38,11 @@ graph TD
 
     subgraph Layer3 ["Layer 3: Consolidated Storage Engine (SQLite WAL)"]
         DB_Master["maftia_quant.db (Master Storage)"]
-        DB_Val["metrics.db (Valuation Cache)"]
-        DB_LTTD["lttd.db (LTTD Cache)"]
         
-        Sys1 --> DB_Val
-        Sys2 --> DB_LTTD
+        Sys1 --> DB_Master
+        Sys2 --> DB_Master
         Sys3 --> DB_Master
         Sys4 --> DB_Master
-        DB_Val & DB_LTTD --> DB_Master
     end
 
     subgraph Layer4 ["Layer 4: Single API Gateway (Hono v4 + Bun)"]
@@ -135,17 +132,21 @@ sequenceDiagram
 
 ## 4. Consolidated Storage Engine
 
-The unified database `maftia_quant.db` stores historical and current analytical metrics.
+The unified database `maftia_quant.db` stores all historical and current analytical metrics. It acts as the single source of truth for the API Gateway and frontend dashboard:
 
 *   `master_ohlcv`: Canonical table for daily Bitcoin prices (`open`, `high`, `low`, `close`, `volume`).
 *   `unified_daily_analytics`: Daily outputs from all 4 quantitative systems.
 *   `unified_component_signals`: Daily individual indicator components (17 valuation, 12 LTTD, 10 MTTD, 4 Ichimoku).
+*   `timeseries_metrics`: Synchronized raw and normalized metric timeseries from the Valuation system.
+*   `metric_config`: Threshold configuration parameters for Valuation indicators.
 
 ---
 
 ## 5. Single API Gateway & WebSocket Server
 
-All client queries route through a **Hono v4 Gateway on port `:8910`**, bound to `0.0.0.0` for container and external visibility.
+All client queries route through a **Hono v4 Gateway on port `:8910`**, bound to `0.0.0.0` for container and external visibility. 
+
+To maintain clean operational boundaries, the API Gateway is strictly a read-only viewer. It queries only the local `maftia_quant.db` database using parameterised SQL and SQLite WAL concurrency. The API Gateway does not query subsystem databases directly, nor does it spawn external Python scripts or subprocesses (e.g. for metrics renormalization or pipeline execution).
 
 *   `GET /api/v1/executive-summary`: Fetches the latest day's status across all 4 systems.
 *   `GET /api/v1/timeseries/master`: Returns full historical time series.

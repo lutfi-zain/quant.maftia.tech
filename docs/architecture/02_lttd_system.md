@@ -144,6 +144,9 @@ CREATE TABLE pca_components (
 | **GET** | `/api/v1/system/lttd/details` | Returns daily model details including PCA variances. |
 | **GET** | `/api/v1/timeseries/master` | Returns timeline variables including `lttd_regime` and `lttd_target_exposure`. |
 
+> [!NOTE]
+> **Operational Boundary Safeguard:** The API Gateway acts as a strictly read-only interface querying `maftia_quant.db`. The legacy `POST /api/v1/lttd/actions/run` endpoint and any script spawning/subprocess orchestration triggers for `quant-btc-lttd-system` have been completely removed. Executing and running LTTD engines or backfills is restricted strictly to CLI operation.
+
 ### Frontend Integration (`LttdLab.tsx`)
 The **LTTD Lab** panel visualizes long-term states:
 *   **Regime Background Bands:** Colors chart zones by state (`BULL` = Green, `BEAR` = Red, `SIDEWAYS` = Yellow).

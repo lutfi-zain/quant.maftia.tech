@@ -147,6 +147,9 @@ CREATE TABLE btc_ohlc (
 | **GET** | `/api/v1/system/valuation/details` | Fetches details and metadata of the 17 indicators. | List of components with daily stats |
 | **GET** | `/api/v1/timeseries/master` | Returns timeseries history including `valuation_composite`. | Object array with keys `date`, `valuation_composite`, etc. |
 
+> [!NOTE]
+> **Operational Boundary Safeguard:** The API Gateway functions strictly as a read-only viewer querying the consolidated local `maftia_quant.db` (utilizing parameters and WAL concurrency). The legacy `POST /api/v1/analytics/metric/:metric_name/renormalize` endpoint and related Python subprocess triggers have been removed. Indicator renormalization is decoupled from the API and executed solely within the ETL pipeline.
+
 ---
 
 ## 7. Frontend Integration (`ValuationStudio.tsx`)
