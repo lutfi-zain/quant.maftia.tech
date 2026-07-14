@@ -32,6 +32,8 @@ export interface DailyAnalyticsPoint {
 	ichimoku_ref_pos?: number;
 	ichimoku_cum_strat?: number;
 	ichimoku_cum_market?: number;
+	ichimoku_active_pos?: number;
+	ichimoku_strat_net_ret?: number;
 }
 
 export interface CircuitBreakersResponse {

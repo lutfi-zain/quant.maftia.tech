@@ -144,7 +144,9 @@ export const IchimokuTerminal: React.FC = () => {
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [startDate, setStartDate] = useState("2018-01-01");
-	const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+	const [endDate, setEndDate] = useState(
+		() => new Date().toISOString().split("T")[0],
+	);
 	const [feeBps, setFeeBps] = useState(10);
 	const [showInteractive, setShowInteractive] = useState(false);
 	const isMobile = useIsMobile();
@@ -189,6 +191,8 @@ export const IchimokuTerminal: React.FC = () => {
 		ichimoku_chikou: d.ichimoku_chikou ?? null,
 		ichimoku_entropy: d.ichimoku_entropy ?? null,
 		ichimoku_er: d.ichimoku_er ?? null,
+		ichimoku_active_pos: d.ichimoku_active_pos ?? undefined,
+		ichimoku_strat_net_ret: d.ichimoku_strat_net_ret ?? undefined,
 	}));
 
 	const backtestResult = useStudioBacktest(
@@ -196,7 +200,22 @@ export const IchimokuTerminal: React.FC = () => {
 		startDate,
 		endDate,
 		feeBps,
+		true, // referenceMode: use authoritative Python backend returns
 	);
+
+	// Interactive (what-if) metrics for toggle overlay
+	const interactiveResult = useStudioBacktest(
+		backtestData,
+		startDate,
+		endDate,
+		feeBps,
+		false, // interactive mode: recompute from position x close
+	);
+
+	// Determine which metrics to display based on showInteractive toggle
+	const displayMetrics = showInteractive
+		? interactiveResult.metrics
+		: backtestResult.metrics;
 
 	useEffect(() => {
 		if (seriesRef.current.interactiveStrat && backtestResult.cumStrat.length) {
@@ -366,11 +385,9 @@ export const IchimokuTerminal: React.FC = () => {
 				? visiblePanels[visiblePanels.length - 1].id
 				: null;
 
-		btc
-			.timeScale()
-			.applyOptions({
-				visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0,
-			});
+		btc.timeScale().applyOptions({
+			visible: heights.imo === 0 && heights.scomp === 0 && heights.eq === 0,
+		});
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
@@ -396,7 +413,8 @@ export const IchimokuTerminal: React.FC = () => {
 			return;
 
 		const filteredDailyData = dailyData.filter(
-			(p) => (!startDate || p.date >= startDate) && (!endDate || p.date <= endDate),
+			(p) =>
+				(!startDate || p.date >= startDate) && (!endDate || p.date <= endDate),
 		);
 		if (!filteredDailyData.length) return;
 
@@ -826,7 +844,9 @@ export const IchimokuTerminal: React.FC = () => {
 				isSyncingRef.current = true;
 				if (param.time) {
 					const timeStr = param.time as string;
-					setHoveredPoint(filteredDailyData.find((p) => p.date === timeStr) || null);
+					setHoveredPoint(
+						filteredDailyData.find((p) => p.date === timeStr) || null,
+					);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
 						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
@@ -1278,6 +1298,51 @@ export const IchimokuTerminal: React.FC = () => {
 					</div>
 				</div>
 
+				{/* Metrics Source Indicator */}
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: "8px",
+						marginBottom: "8px",
+						fontSize: "11px",
+						fontFamily: "Geist Mono, monospace",
+						color: "var(--text-muted)",
+					}}
+				>
+					<span>METRICS SOURCE:</span>
+					<span
+						style={{
+							color:
+								backtestResult.metrics.source === "reference"
+									? "var(--signal-bull)"
+									: "var(--text-main)",
+							fontWeight: 600,
+						}}
+					>
+						{backtestResult.metrics.source === "reference"
+							? "REFERENCE (Python backend)"
+							: "COMPUTED (client-side)"}
+					</span>
+					<span
+						style={{
+							padding: "2px 8px",
+							borderRadius: "4px",
+							fontSize: "10px",
+							background:
+								backtestResult.metrics.source === "reference"
+									? "rgba(34,197,94,0.15)"
+									: "rgba(255,255,255,0.05)",
+							color:
+								backtestResult.metrics.source === "reference"
+									? "var(--signal-bull)"
+									: "var(--text-dim)",
+						}}
+					>
+						{backtestResult.metrics.source}
+					</span>
+				</div>
+
 				<div
 					style={{
 						display: "grid",
@@ -1400,7 +1465,8 @@ export const IchimokuTerminal: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.sharpeRatio >= backtestResult.metrics.sharpeRatioMarket
+									backtestResult.metrics.sharpeRatio >=
+									backtestResult.metrics.sharpeRatioMarket
 										? "var(--signal-bull)"
 										: "var(--text-main)",
 							}}
@@ -1441,7 +1507,8 @@ export const IchimokuTerminal: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.annReturnStrat >= backtestResult.metrics.annReturnMarket
+									backtestResult.metrics.annReturnStrat >=
+									backtestResult.metrics.annReturnMarket
 										? "var(--signal-bull)"
 										: "var(--signal-bear)",
 							}}
@@ -1457,9 +1524,11 @@ export const IchimokuTerminal: React.FC = () => {
 									marginLeft: "4px",
 								}}
 							>
-								(vs {backtestResult.metrics.annReturnMarket >= 0
+								(vs{" "}
+								{backtestResult.metrics.annReturnMarket >= 0
 									? `+${backtestResult.metrics.annReturnMarket.toFixed(1)}%`
-									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`})
+									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`}
+								)
 							</span>
 						</div>
 					</div>

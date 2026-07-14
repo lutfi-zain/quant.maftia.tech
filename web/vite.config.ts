@@ -7,6 +7,11 @@ export default defineConfig({
 		port: 8911,
 		host: "0.0.0.0",
 		allowedHosts: true,
+		hmr: {
+			host: "quant.membran.app",
+			port: 443,
+			protocol: "wss",
+		},
 		proxy: {
 			"/api": {
 				target: "http://127.0.0.1:8910",

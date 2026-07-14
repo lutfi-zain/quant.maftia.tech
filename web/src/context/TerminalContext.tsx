@@ -114,6 +114,8 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 			ichimoku_ref_pos: newPoint.ichimoku_imo?.ref_pos ?? undefined,
 			ichimoku_cum_strat: newPoint.ichimoku_imo?.cum_strat ?? undefined,
 			ichimoku_cum_market: newPoint.ichimoku_imo?.cum_market ?? undefined,
+			ichimoku_active_pos: newPoint.ichimoku_imo?.active_pos ?? undefined,
+			ichimoku_strat_net_ret: newPoint.ichimoku_imo?.strat_net_ret ?? undefined,
 		};
 		setDailyData((prev) => {
 			const idx = prev.findIndex((item) => item.date === mappedPoint.date);

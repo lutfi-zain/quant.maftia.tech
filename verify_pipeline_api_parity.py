@@ -49,7 +49,7 @@ def count_trades(pos_series):
     return entries
 
 DB_PATH = "/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db"
-API_URL = "http://127.0.0.1:8765/api/v1/analytics/daily?limit=365"
+API_URL = "http://127.0.0.1:8910/api/v1/analytics/daily?limit=365"
 
 def to_num(val):
     if val is None:
@@ -89,7 +89,7 @@ def check_string_match(name, date_str, db_val, api_val):
     return True, ""
 
 def verify_parity():
-    print("=== STARTING 1:1 METRIC PARITY VERIFICATION (maftia_quant.db vs API Gateway :8765) ===")
+    print("=== STARTING 1:1 METRIC PARITY VERIFICATION (maftia_quant.db vs API Gateway :8910) ===")
     
     # 1. Fetch from API Gateway
     print(f"Fetching API JSON from {API_URL} ...")
@@ -98,7 +98,7 @@ def verify_parity():
             api_json = json.loads(response.read().decode('utf-8'))
     except Exception as e:
         print(f"FAILED to query API Gateway: {e}")
-        print("Please ensure API Gateway is running on port 8765.")
+        print("Please ensure API Gateway is running on port 8910.")
         sys.exit(1)
         
     if api_json.get("status") != "success":
@@ -248,7 +248,7 @@ def verify_parity():
             print(f"  ... and {len(discrepancies) - 30} more.")
         sys.exit(1)
     else:
-        print("\nSUCCESS! 100% 1:1 Parity verified between maftia_quant.db and API Gateway :8765 across all metrics!")
+        print("\nSUCCESS! 100% 1:1 Parity verified between maftia_quant.db and API Gateway :8910 across all metrics!")
         
     # Cross-validation: compare against prior system's raw output
     print("\n=== Cross-validation: prior system output vs DB ===")

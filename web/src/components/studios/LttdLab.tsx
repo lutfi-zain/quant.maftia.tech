@@ -210,12 +210,10 @@ export const LttdLab: React.FC = () => {
 		const rawExposure = d.lttd_target_exposure;
 		const pos =
 			rawExposure !== undefined && rawExposure !== null
-				? rawExposure > 0
-					? 1
-					: 0
+				? rawExposure
 				: regime === "BULL"
-					? 1
-					: 0;
+					? 1.0
+					: 0.0;
 		return {
 			date: d.date,
 			close: d.close || d.btc_price || 0,
@@ -233,43 +231,11 @@ export const LttdLab: React.FC = () => {
 	);
 
 	useEffect(() => {
-		if (seriesRef.current.cumStrat && seriesRef.current.cumMarket) {
-			// Build strat map from backtest result (only has data within window)
-			const stratMap = new Map<string, number>();
-			for (const pt of backtestResult.cumStrat) {
-				stratMap.set(pt.time, pt.value);
-			}
-
-			// Forward-fill: track last known strat value within window
-			let lastKnownStrat = 1.0;
-			const fullStrat: { time: string; value: number }[] = [];
-			const fullMarket: { time: string; value: number }[] = [];
-			let mkt = 1.0;
-			let prevC = 0;
-
-			for (const d of dailyData) {
-				const s = stratMap.get(d.date);
-				if (s !== undefined) {
-					// Inside backtest window — use actual value
-					lastKnownStrat = s;
-					fullStrat.push({ time: d.date, value: s });
-				} else {
-					// Outside backtest window OR before first backtest data
-					// Use 1.0 (flat/cash) instead of lastStrat to avoid jumps
-					fullStrat.push({ time: d.date, value: 1.0 });
-				}
-
-				// Market: real BTC return across full range
-				const c = d.close || (d as any).btc_price || 0;
-				if (prevC > 0 && c > 0) {
-					mkt *= 1.0 + (c - prevC) / prevC;
-				}
-				prevC = c;
-				fullMarket.push({ time: d.date, value: Number(mkt.toFixed(4)) });
-			}
-
-			seriesRef.current.cumStrat.setData(fullStrat as any);
-			seriesRef.current.cumMarket.setData(fullMarket as any);
+		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
+			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+		}
+		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
+			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
 			createSeriesMarkers(
@@ -279,7 +245,7 @@ export const LttdLab: React.FC = () => {
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
-	}, [backtestResult, dailyData]);
+	}, [backtestResult]);
 
 	useGSAP(
 		() => {

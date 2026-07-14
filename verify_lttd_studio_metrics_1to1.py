@@ -166,7 +166,7 @@ def main():
     with get_wal_connection(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT date, btc_price, lttd_regime, lttd_prob_sideways
+            SELECT date, btc_price, lttd_regime, lttd_prob_sideways, lttd_exposure
             FROM unified_daily_analytics
             WHERE btc_price IS NOT NULL AND btc_price > 0
             ORDER BY date ASC
@@ -177,7 +177,7 @@ def main():
     for r in rows:
         regime = r[2]
         prob_sw = float(r[3]) if r[3] is not None else 0.0
-        pos = 1 if (regime == "BULL" and prob_sw <= 0.60) else 0
+        pos = float(r[4]) if r[4] is not None else 0.0
         data_rows.append({
             'date': r[0],
             'close': float(r[1]),

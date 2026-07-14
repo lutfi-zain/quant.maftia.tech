@@ -23,6 +23,7 @@ export interface BacktestMetrics {
 	sharpeRatioMarket: number;
 	annReturnMarket: number;
 	annVolatilityMarket: number;
+	source: "reference" | "computed";
 }
 
 export interface ChartSeriesPoint {
@@ -56,6 +57,8 @@ export interface StudioDailyRecord {
 	ichimoku_chikou?: number | null;
 	ichimoku_entropy?: number | null;
 	ichimoku_er?: number | null;
+	ichimoku_active_pos?: number;
+	ichimoku_strat_net_ret?: number;
 }
 
 /**
@@ -69,7 +72,10 @@ export function useStudioBacktest(
 	startDate: string,
 	endDate: string,
 	feeBps: number = 10,
+	referenceMode: boolean = false,
 ): BacktestResult {
+	let usedReference = false;
+
 	if (!data || data.length === 0) {
 		return {
 			cumStrat: [],
@@ -89,6 +95,7 @@ export function useStudioBacktest(
 				sharpeRatioMarket: 0,
 				annReturnMarket: 0,
 				annVolatilityMarket: 0,
+				source: "computed" as const,
 			},
 			markers: [],
 		};
@@ -97,7 +104,7 @@ export function useStudioBacktest(
 	// Sort data ascending by date
 	const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
 
-	// Filter by window
+	// Filter by window to ensure we have data inside the requested date range
 	const filtered = sorted.filter(
 		(r) => r.date >= startDate && r.date <= endDate,
 	);
@@ -121,6 +128,7 @@ export function useStudioBacktest(
 				sharpeRatioMarket: 0,
 				annReturnMarket: 0,
 				annVolatilityMarket: 0,
+				source: "computed" as const,
 			},
 			markers: [],
 		};
@@ -150,143 +158,178 @@ export function useStudioBacktest(
 	let peakMarket = 1.0;
 	let maxDdMarket = 0.0;
 
-	// Build map from date to index in sorted for exact O(1) causal lookup
-	const dateToIndex = new Map<string, number>();
-	sorted.forEach((r, idx) => dateToIndex.set(r.date, idx));
+	for (let i = 0; i < sorted.length; i++) {
+		const row = sorted[i];
+		const date = row.date;
 
-	for (let i = 0; i < filtered.length; i++) {
-		const row = filtered[i];
-		const sortedIdx = dateToIndex.get(row.date) ?? 0;
-		const prevRow = sortedIdx > 0 ? sorted[sortedIdx - 1] : null;
+		if (date < startDate) {
+			// Prior to backtest startDate: curves are flat at 1.0
+			cumStrat.push({ time: date, value: 1.0 });
+			cumMarket.push({ time: date, value: 1.0 });
+		} else if (date >= startDate && date <= endDate) {
+			// Inside backtest window: compound and calculate returns/metrics/trades
+			const prevRow = i > 0 ? sorted[i - 1] : null;
 
-		// Causal t-1 execution: Active_Pos[t] = Pos[t-1]
-		const activePos = prevRow ? prevRow.position || 0 : 0;
-		const prevActivePos =
-			sortedIdx > 1 ? sorted[sortedIdx - 2].position || 0 : 0;
+			// Check if we can use reference mode: referenceMode flag is true AND reference fields are non-null
+			const useReference =
+				referenceMode &&
+				typeof row.ichimoku_strat_net_ret === "number" &&
+				typeof row.ichimoku_active_pos === "number";
 
-		// Calculate daily market return: Market_Ret[t] = (Close[t] - Close[t-1]) / Close[t-1]
-		const marketRet =
-			prevRow && prevRow.close > 0
-				? (row.close - prevRow.close) / prevRow.close
-				: 0;
+			let activePos: number;
+			let prevActivePos: number;
+			let marketRet: number;
+			let stratRet: number;
+			let tc: number;
 
-		// Transaction cost when Active_Pos changes: TC = abs(Active_Pos[t] - Active_Pos[t-1]) * transaction_cost
-		const tc = Math.abs(activePos - prevActivePos) * feeRate;
+			if (useReference) {
+				usedReference = true;
+				// REFERENCE MODE: use authoritative daily returns and active position from Python backend
+				activePos = row.ichimoku_active_pos!;
+				prevActivePos =
+					prevRow && typeof prevRow.ichimoku_active_pos === "number"
+						? prevRow.ichimoku_active_pos!
+						: 0;
+				marketRet =
+					prevRow && prevRow.close > 0
+						? (row.close - prevRow.close) / prevRow.close
+						: 0;
+				stratRet = row.ichimoku_strat_net_ret!; // Already includes fees (10 bps from pipeline)
+				tc = 0; // Fee already baked into strat_net_ret
+			} else {
+				// COMPUTED MODE: recompute from position x close (existing logic)
+				activePos = prevRow ? prevRow.position || 0 : 0;
+				prevActivePos = i > 1 ? sorted[i - 2].position || 0 : 0;
+				marketRet =
+					prevRow && prevRow.close > 0
+						? (row.close - prevRow.close) / prevRow.close
+						: 0;
+				tc = Math.abs(activePos - prevActivePos) * feeRate;
+				stratRet = activePos * marketRet - tc;
+			}
 
-		// Strategy Net Return: Strat_Net_Ret = Active_Pos * Market_Ret - TC
-		const stratRet = activePos * marketRet - tc;
+			// Track position transitions and trade compounding matching backtest.py
+			if (activePos !== currentPos) {
+				if (currentPos === 1) {
+					// Trade exited (or flipped)
+					const exitPrice = row.close;
+					const holdDays = Math.max(
+						1,
+						Math.round(
+							(new Date(row.date).getTime() - new Date(entryDate).getTime()) /
+								(1000 * 3600 * 24),
+						),
+					);
+					const netRet = tradeCompoundedReturn - 1.0;
 
-		// Track position transitions and trade compounding matching backtest.py
-		if (activePos !== currentPos) {
-			if (currentPos === 1) {
-				// Trade exited (or flipped)
-				const exitPrice = row.close;
-				const holdDays = Math.max(
-					1,
-					Math.round(
-						(new Date(row.date).getTime() - new Date(entryDate).getTime()) /
-							(1000 * 3600 * 24),
-					),
-				);
-				const netRet = tradeCompoundedReturn - 1.0;
+					let exitReason = "Signal Exit / Neutral";
+					if (
+						prevRow &&
+						prevRow.lttd_regime === "SIDEWAYS" &&
+						(prevRow.lttd_prob_sideways || 0) > 0.6
+					) {
+						exitReason = "Circuit Breaker: LTTD Sideways";
+					} else if (prevRow && (prevRow.valuation_composite || 0) >= 1.5) {
+						exitReason = "Circuit Breaker: Valuation Bubble";
+					} else if (
+						prevRow &&
+						prevRow.ichimoku_er !== undefined &&
+						prevRow.ichimoku_er !== null &&
+						prevRow.ichimoku_er < 0.2
+					) {
+						exitReason = "Gate Exit: Efficiency Ratio (< 0.20)";
+					} else if (
+						prevRow &&
+						prevRow.ichimoku_entropy !== undefined &&
+						prevRow.ichimoku_entropy !== null &&
+						prevRow.ichimoku_entropy > 2.3
+					) {
+						exitReason = "Gate Exit: Shannon Entropy (> 2.30)";
+					} else if (
+						prevRow &&
+						prevRow.ichimoku_chikou !== undefined &&
+						prevRow.ichimoku_chikou !== null &&
+						prevRow.ichimoku_chikou < prevRow.close
+					) {
+						exitReason = "Chikou Momentum Exit (< Price)";
+					}
 
-				let exitReason = "Signal Exit / Neutral";
-				if (
-					prevRow &&
-					prevRow.lttd_regime === "SIDEWAYS" &&
-					(prevRow.lttd_prob_sideways || 0) > 0.6
-				) {
-					exitReason = "Circuit Breaker: LTTD Sideways";
-				} else if (prevRow && (prevRow.valuation_composite || 0) >= 1.5) {
-					exitReason = "Circuit Breaker: Valuation Bubble";
-				} else if (
-					prevRow &&
-					prevRow.ichimoku_er !== undefined &&
-					prevRow.ichimoku_er !== null &&
-					prevRow.ichimoku_er < 0.20
-				) {
-					exitReason = "Gate Exit: Efficiency Ratio (< 0.20)";
-				} else if (
-					prevRow &&
-					prevRow.ichimoku_entropy !== undefined &&
-					prevRow.ichimoku_entropy !== null &&
-					prevRow.ichimoku_entropy > 2.30
-				) {
-					exitReason = "Gate Exit: Shannon Entropy (> 2.30)";
-				} else if (
-					prevRow &&
-					prevRow.ichimoku_chikou !== undefined &&
-					prevRow.ichimoku_chikou !== null &&
-					prevRow.ichimoku_chikou < prevRow.close
-				) {
-					exitReason = "Chikou Momentum Exit (< Price)";
+					tradeCount++;
+					trades.push({
+						id: `trade-${tradeCount}`,
+						entryDate,
+						entryPrice,
+						exitDate: row.date,
+						exitPrice,
+						returnPct: netRet * 100,
+						holdDays,
+						exitReason,
+					});
+
+					markers.push({
+						time: row.date,
+						position: "aboveBar",
+						color: "#ef4444",
+						shape: "arrowDown",
+						text: "SELL (Exit)",
+					});
 				}
 
-				tradeCount++;
-				trades.push({
-					id: `trade-${tradeCount}`,
-					entryDate,
-					entryPrice,
-					exitDate: row.date,
-					exitPrice,
-					returnPct: netRet * 100,
-					holdDays,
-					exitReason,
-				});
+				if (activePos === 1) {
+					// Trade entered
+					entryDate = row.date;
+					entryPrice = row.close;
+					tradeCompoundedReturn = 1.0;
+					markers.push({
+						time: row.date,
+						position: "belowBar",
+						color: "#22c55e",
+						shape: "arrowUp",
+						text: "BUY (Long)",
+					});
+				}
 
-				markers.push({
-					time: row.date,
-					position: "aboveBar",
-					color: "#ef4444",
-					shape: "arrowDown",
-					text: "SELL (Exit)",
-				});
+				currentPos = activePos;
 			}
 
 			if (activePos === 1) {
-				// Trade entered
-				entryDate = row.date;
-				entryPrice = row.close;
-				tradeCompoundedReturn = 1.0;
-				markers.push({
-					time: row.date,
-					position: "belowBar",
-					color: "#22c55e",
-					shape: "arrowUp",
-					text: "BUY (Long)",
-				});
+				tradeCompoundedReturn *= 1.0 + stratRet;
 			}
 
-			currentPos = activePos;
-		}
+			stratEquity *= 1.0 + stratRet;
+			marketEquity *= 1.0 + marketRet;
 
-		if (activePos === 1) {
-			tradeCompoundedReturn *= 1.0 + stratRet;
-		}
+			dailyReturns.push(stratRet);
+			marketReturns.push(marketRet);
 
-		stratEquity *= 1.0 + stratRet;
-		marketEquity *= 1.0 + marketRet;
+			if (stratEquity > peakStrat) {
+				peakStrat = stratEquity;
+			}
+			const dd = (peakStrat - stratEquity) / peakStrat;
+			if (dd > maxDd) {
+				maxDd = dd;
+			}
+			if (marketEquity > peakMarket) {
+				peakMarket = marketEquity;
+			}
+			const ddMarket = (peakMarket - marketEquity) / peakMarket;
+			if (ddMarket > maxDdMarket) {
+				maxDdMarket = ddMarket;
+			}
 
-		dailyReturns.push(stratRet);
-		marketReturns.push(marketRet);
-
-		if (stratEquity > peakStrat) {
-			peakStrat = stratEquity;
+			cumStrat.push({ time: row.date, value: Number(stratEquity.toFixed(4)) });
+			cumMarket.push({
+				time: row.date,
+				value: Number(marketEquity.toFixed(4)),
+			});
+		} else {
+			// After backtest endDate: curves remain flat at final values
+			cumStrat.push({ time: row.date, value: Number(stratEquity.toFixed(4)) });
+			cumMarket.push({
+				time: row.date,
+				value: Number(marketEquity.toFixed(4)),
+			});
 		}
-		const dd = (peakStrat - stratEquity) / peakStrat;
-		if (dd > maxDd) {
-			maxDd = dd;
-		}
-		if (marketEquity > peakMarket) {
-			peakMarket = marketEquity;
-		}
-		const ddMarket = (peakMarket - marketEquity) / peakMarket;
-		if (ddMarket > maxDdMarket) {
-			maxDdMarket = ddMarket;
-		}
-
-		cumStrat.push({ time: row.date, value: Number(stratEquity.toFixed(4)) });
-		cumMarket.push({ time: row.date, value: Number(marketEquity.toFixed(4)) });
 	}
 
 	// Calculate metrics
@@ -331,7 +374,9 @@ export function useStudioBacktest(
 		annReturnStrat = meanRet * annFactor * 100;
 		annVolatilityStrat = stdDev * Math.sqrt(annFactor) * 100;
 		if (stdDev > 0) {
-			sharpeRatio = Number(((meanRet / stdDev) * Math.sqrt(annFactor)).toFixed(2));
+			sharpeRatio = Number(
+				((meanRet / stdDev) * Math.sqrt(annFactor)).toFixed(2),
+			);
 		}
 
 		const meanMkt =
@@ -343,7 +388,9 @@ export function useStudioBacktest(
 		annReturnMarket = meanMkt * annFactor * 100;
 		annVolatilityMarket = stdMkt * Math.sqrt(annFactor) * 100;
 		if (stdMkt > 0) {
-			sharpeRatioMarket = Number(((meanMkt / stdMkt) * Math.sqrt(annFactor)).toFixed(2));
+			sharpeRatioMarket = Number(
+				((meanMkt / stdMkt) * Math.sqrt(annFactor)).toFixed(2),
+			);
 		}
 	}
 
@@ -365,6 +412,7 @@ export function useStudioBacktest(
 			sharpeRatioMarket,
 			annReturnMarket: Number(annReturnMarket.toFixed(1)),
 			annVolatilityMarket: Number(annVolatilityMarket.toFixed(1)),
+			source: usedReference ? ("reference" as const) : ("computed" as const),
 		},
 		markers,
 	};

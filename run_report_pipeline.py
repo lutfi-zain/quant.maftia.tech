@@ -178,10 +178,12 @@ def main():
   ichi_ref_pos           REAL,
   ichi_cum_strat         REAL,
   ichi_cum_market        REAL,
+  ichi_active_pos        REAL,
+  ichi_strat_net_ret     REAL,
   FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 )"""
         )
-        for col in ["ichi_s_tk", "ichi_s_cloud", "ichi_s_future", "ichi_s_chikou", "ichi_tenkan", "ichi_kijun", "ichi_senkou_a", "ichi_senkou_b", "ichi_chikou", "ichi_entropy", "ichi_er", "ichi_imo_std", "ichi_ref_pos", "ichi_cum_strat", "ichi_cum_market"]:
+        for col in ["ichi_s_tk", "ichi_s_cloud", "ichi_s_future", "ichi_s_chikou", "ichi_tenkan", "ichi_kijun", "ichi_senkou_a", "ichi_senkou_b", "ichi_chikou", "ichi_entropy", "ichi_er", "ichi_imo_std", "ichi_ref_pos", "ichi_cum_strat", "ichi_cum_market", "ichi_active_pos", "ichi_strat_net_ret"]:
             try:
                 master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col} REAL")
             except Exception:
@@ -202,7 +204,7 @@ def main():
         existing_cols = [r[1] for r in master_conn.execute("PRAGMA table_info(unified_daily_analytics)").fetchall()]
         ichi_new_cols = ['ichi_s_tk', 'ichi_s_cloud', 'ichi_s_future', 'ichi_s_chikou',
                          'ichi_tenkan', 'ichi_kijun', 'ichi_senkou_a', 'ichi_senkou_b', 'ichi_chikou',
-                         'ichi_entropy', 'ichi_er', 'ichi_imo_std']
+                         'ichi_entropy', 'ichi_er', 'ichi_imo_std', 'ichi_active_pos', 'ichi_strat_net_ret']
         for col_name in ichi_new_cols:
             if col_name not in existing_cols:
                 try:
@@ -345,7 +347,7 @@ def main():
     try:
         conn = get_wal_connection(db_path)
         df_lttd_all = pd.read_sql_query(
-            "SELECT date, regime, final_score, posterior_prob FROM daily_lttd WHERE date <= ? ORDER BY date ASC",
+            "SELECT date, regime, final_score, target_exposure, posterior_prob FROM daily_lttd WHERE date <= ? ORDER BY date ASC",
             conn, params=(current_utc_date_str,)
         )
         conn.close()
@@ -366,7 +368,8 @@ def main():
                 "score": float(r["final_score"]) if pd.notnull(r["final_score"]) else None,
                 "p_bull": p_bull,
                 "p_bear": p_bear,
-                "p_side": p_side
+                "p_side": p_side,
+                "target_exposure": float(r["target_exposure"]) if pd.notnull(r["target_exposure"]) else 0.0
             }
     except Exception as e:
         print(f"Error fetching full LTTD data: {e}")
@@ -415,7 +418,10 @@ def main():
                 # Ichimoku gating limits (Entropy, ER, Adaptive Threshold)
                 "entropy": float(r["Entropy"]) if "Entropy" in r and pd.notnull(r["Entropy"]) else None,
                 "er": float(r["ER"]) if "ER" in r and pd.notnull(r["ER"]) else None,
-                "imo_std": float(r["IMO_Std"]) if "IMO_Std" in r and pd.notnull(r["IMO_Std"]) else None
+                "imo_std": float(r["IMO_Std"]) if "IMO_Std" in r and pd.notnull(r["IMO_Std"]) else None,
+                # Causal execution position & daily net returns (from run_backtest)
+                "active_pos": float(r["Active_Pos"]) if "Active_Pos" in r and pd.notnull(r["Active_Pos"]) else None,
+                "strat_net_ret": float(r["Strat_Net_Ret"]) if "Strat_Net_Ret" in r and pd.notnull(r["Strat_Net_Ret"]) else None
             }
     except Exception as e:
         print(f"Error fetching full Ichimoku signals: {e}")
@@ -434,6 +440,7 @@ def main():
         p_bull = lttd_rec.get("p_bull")
         p_bear = lttd_rec.get("p_bear")
         p_side = lttd_rec.get("p_side")
+        lttd_exposure = lttd_rec.get("target_exposure")
 
         mttd_rec = mttd_data_all.get(dt, {})
         mttd_imo = mttd_rec.get("imo")
@@ -484,28 +491,32 @@ def main():
         ich_ref_pos = ich_rec.get("ref_pos", 0.0)
         ich_cum_strat = ich_rec.get("cum_strat")
         ich_cum_market = ich_rec.get("cum_market")
+        ich_active_pos = ich_rec.get("active_pos")
+        ich_strat_net_ret = ich_rec.get("strat_net_ret")
 
         execute_parameterized(
             master_conn,
             """INSERT OR REPLACE INTO unified_daily_analytics (
                 date, btc_price, valuation_composite,
-                lttd_regime, lttd_score, lttd_prob_bull, lttd_prob_bear, lttd_prob_sideways,
+                lttd_regime, lttd_score, lttd_prob_bull, lttd_prob_bear, lttd_prob_sideways, lttd_exposure,
                 mttd_imo, mttd_er, mttd_entropy, mttd_position, mttd_immunity_active,
                 ichimoku_imo, ichimoku_regime, ichimoku_position,
                 ichi_s_tk, ichi_s_cloud, ichi_s_future, ichi_s_chikou,
                 ichi_tenkan, ichi_kijun, ichi_senkou_a, ichi_senkou_b, ichi_chikou,
                 ichi_entropy, ichi_er, ichi_imo_std,
-                ichi_ref_pos, ichi_cum_strat, ichi_cum_market
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ichi_ref_pos, ichi_cum_strat, ichi_cum_market,
+                ichi_active_pos, ichi_strat_net_ret
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 dt, btc_p, val_comp,
-                lttd_reg, lttd_score, p_bull, p_bear, p_side,
+                lttd_reg, lttd_score, p_bull, p_bear, p_side, lttd_exposure,
                 mttd_imo, mttd_er, mttd_ent, mttd_pos_val, mttd_imm,
                 ich_imo, ich_reg, ich_pos_val,
                 ich_s_tk, ich_s_cloud, ich_s_future, ich_s_chikou,
                 ich_tenkan, ich_kijun, ich_senkou_a, ich_senkou_b, ich_chikou,
                 ich_entropy, ich_er, ich_imo_std,
-                ich_ref_pos, ich_cum_strat, ich_cum_market
+                ich_ref_pos, ich_cum_strat, ich_cum_market,
+                ich_active_pos, ich_strat_net_ret
             ),
             commit=False
         )
