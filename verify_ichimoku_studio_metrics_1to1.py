@@ -6,13 +6,13 @@ import sqlite3
 import numpy as np
 import pandas as pd
 
-PROJECTS_DIR = "/home/ubuntu/projects"
-if PROJECTS_DIR not in sys.path:
-    sys.path.insert(0, PROJECTS_DIR)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from db_connector import get_wal_connection
 
 # Import canonical backtest from quant-lttd-ichimoku
-ICHIMOKU_DIR = "/home/ubuntu/projects/quant-lttd-ichimoku/src"
+ICHIMOKU_DIR = os.path.join(BASE_DIR, "engines/ichimoku/src")
 if ICHIMOKU_DIR not in sys.path:
     sys.path.insert(0, ICHIMOKU_DIR)
 from ichimoku_quant import backtest

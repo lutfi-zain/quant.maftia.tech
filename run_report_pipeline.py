@@ -644,7 +644,7 @@ This report details the execution status, gap synchronization, and final scores 
 
 The table below aggregates the daily final scores and positions for all four projects over the last 1-week period:
 
-| Date | BTC Price ($) | [quant-btc-valuation-system](file:///home/ubuntu/projects/quant-btc-valuation-system) Score | [quant-btc-lttd-system](file:///home/ubuntu/projects/quant-btc-lttd-system) Score | [quant-btc-mttd-system](file:///home/ubuntu/projects/quant-btc-mttd-system) Score (IMO) | [quant-lttd-ichimoku](file:///home/ubuntu/projects/quant-lttd-ichimoku) Score (IMO) |
+| Date | BTC Price ($) | [Valuation](file:///home/ubuntu/projects/quant.maftia.tech/engines/valuation) Score | [LTTD](file:///home/ubuntu/projects/quant.maftia.tech/engines/lttd) Score | [MTTD](file:///home/ubuntu/projects/quant.maftia.tech/engines/mttd) Score (IMO) | [Ichimoku](file:///home/ubuntu/projects/quant.maftia.tech/engines/ichimoku) Score (IMO) |
 |---|---|---|---|---|---|
 {chr(10).join(table_lines)}
 

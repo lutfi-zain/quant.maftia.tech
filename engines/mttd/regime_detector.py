@@ -25,7 +25,7 @@ from pathlib import Path
 # ================================================================
 # Configuration
 # ================================================================
-VALUATION_DB_PATH = '/home/ubuntu/projects/quant-btc-valuation-system/database/metrics.db'
+VALUATION_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'valuation/database/metrics.db')
 MTTD_OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mttd')
 OUTPUT_FILE = os.path.join(MTTD_OUTPUT_DIR, 'regime_data.csv')
 

@@ -8,9 +8,9 @@ import datetime
 import numpy as np
 import pandas as pd
 
-PROJECTS_DIR = "/home/ubuntu/projects"
-if PROJECTS_DIR not in sys.path:
-    sys.path.insert(0, PROJECTS_DIR)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from db_connector import get_wal_connection
 
 def compute_sharpe(daily_returns):
@@ -253,7 +253,7 @@ def verify_parity():
     # Cross-validation: compare against prior system's raw output
     print("\n=== Cross-validation: prior system output vs DB ===")
     try:
-        ichimoku_dir = "/home/ubuntu/projects/quant-lttd-ichimoku"
+        ichimoku_dir = os.path.join(BASE_DIR, "engines/ichimoku")
         if ichimoku_dir not in sys.path:
             sys.path.insert(0, ichimoku_dir)
         from src.ichimoku_quant.data import fetch_btc_data
