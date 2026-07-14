@@ -11,7 +11,7 @@
 
 ## 1. System Role
 
-The **Long-Term Trend Detection System** (LTTD, `quant-btc-lttd-system`) classifies daily market conditions into three major structural states (`BULL`, `BEAR`, or `SIDEWAYS`) and computes an ensemble quantitative score (`[-1.0, +1.0]`) to direct target investment exposures.
+The **Long-Term Trend Detection System** (LTTD, located under [engines/lttd](file:///home/ubuntu/projects/quant.maftia.tech/engines/lttd)) classifies daily market conditions into three major structural states (`BULL`, `BEAR`, or `SIDEWAYS`) and computes an ensemble quantitative score (`[-1.0, +1.0]`) to direct target investment exposures.
 
 Its primary architectural role is serving as the **Regime Override Gate** for the medium-term systems. When LTTD classifies the market as `SIDEWAYS` ($P_{\text{Sideways}} > 0.60$), it forces mid-term exposures (MTTD and Ichimoku) to `0.0` to avoid whipsaw fee churn.
 
@@ -145,7 +145,7 @@ CREATE TABLE pca_components (
 | **GET** | `/api/v1/timeseries/master` | Returns timeline variables including `lttd_regime` and `lttd_target_exposure`. |
 
 > [!NOTE]
-> **Operational Boundary Safeguard:** The API Gateway acts as a strictly read-only interface querying `maftia_quant.db`. The legacy `POST /api/v1/lttd/actions/run` endpoint and any script spawning/subprocess orchestration triggers for `quant-btc-lttd-system` have been completely removed. Executing and running LTTD engines or backfills is restricted strictly to CLI operation.
+> **Operational Boundary Safeguard:** The API Gateway acts as a strictly read-only interface querying `maftia_quant.db`. The legacy `POST /api/v1/lttd/actions/run` endpoint and any script spawning/subprocess orchestration triggers for the `engines/lttd` subsystem have been completely removed. Executing and running LTTD engines or backfills is restricted strictly to CLI operation.
 
 ### Frontend Integration (`LttdLab.tsx`)
 The **LTTD Lab** panel visualizes long-term states:

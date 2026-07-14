@@ -11,7 +11,7 @@
 
 ## 1. System Role
 
-The **Medium-Term Trend Detection System** (MTTD v2, `quant-btc-mttd-system`) is a quantitative consensus engine. It combines indicators from **10 statistical families** into a single stationary oscillator, the `MTTDIntegratedOscillator` (scaled between `[-1.0, +1.0]`).
+The **Medium-Term Trend Detection System** (MTTD v2, located under [engines/mttd](file:///home/ubuntu/projects/quant.maftia.tech/engines/mttd)) is a quantitative consensus engine. It combines indicators from **10 statistical families** into a single stationary oscillator, the `MTTDIntegratedOscillator` (scaled between `[-1.0, +1.0]`).
 
 Its calculations are governed by three strict gating mechanisms: the **Efficiency Ratio Gate** (`ER >= 0.20`), the **Shannon Entropy Gate** (`Entropy <= 2.30`), and the **Chikou Momentum Exit** (`< -0.30`). These gates check for trend structural strength, information entropy, and momentum breakdowns to optimize trade execution.
 

@@ -25,10 +25,10 @@ graph TD
 
     subgraph Layer2 ["Layer 2: Core Orchestration Engine (Python 3.11+)"]
         Orch["run_report_pipeline.py Orchestrator"]
-        Sys1["quant-btc-valuation-system (Valuation Composite)"]
-        Sys2["quant-btc-lttd-system (Gaussian HMM Regime & Ensemble)"]
-        Sys3["quant-btc-mttd-system (MTTD Multi-Principle v2)"]
-        Sys4["quant-lttd-ichimoku (Denoised Tanh Oscillator)"]
+        Sys1["engines/valuation (Valuation Composite)"]
+        Sys2["engines/lttd (Gaussian HMM Regime & Ensemble)"]
+        Sys3["engines/mttd (MTTD Multi-Principle v2)"]
+        Sys4["engines/ichimoku (Denoised Tanh Oscillator)"]
         
         Orch --> Sys1
         Orch --> Sys2
@@ -101,10 +101,10 @@ sequenceDiagram
     autonumber
     participant Exec as run_report_pipeline.py
     participant DB as maftia_quant.db (WAL)
-    participant VAL as quant-btc-valuation-system
-    participant LTTD as quant-btc-lttd-system
-    participant MTTD as quant-btc-mttd-system
-    participant ICH as quant-lttd-ichimoku
+    participant VAL as engines/valuation
+    participant LTTD as engines/lttd
+    participant MTTD as engines/mttd
+    participant ICH as engines/ichimoku
 
     Exec->>DB: Open SQLite WAL connection
     Exec->>VAL: Trigger Valuation Engine calculation

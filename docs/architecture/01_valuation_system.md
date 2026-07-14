@@ -11,7 +11,7 @@
 
 ## 1. System Role
 
-The **Valuation System** (`quant-btc-valuation-system`) measures Bitcoin's macro-economic cycle positioning. It ingests 17 indicators spanning fundamental, technical, and sentiment metrics, scaling them into a unified piecewise linear range of `[-2.0, +2.0]` to form the `ValuationComposite`.
+The **Valuation System** (located under [engines/valuation](file:///home/ubuntu/projects/quant.maftia.tech/engines/valuation)) measures Bitcoin's macro-economic cycle positioning. It ingests 17 indicators spanning fundamental, technical, and sentiment metrics, scaling them into a unified piecewise linear range of `[-2.0, +2.0]` to form the `ValuationComposite`.
 
 Its primary architectural role is serving as the **Macro Circuit Breaker** for the LTTD execution engine when valuations enter extreme bubbles (`score >= +1.50`) or deep discounts (`score <= -1.00`).
 

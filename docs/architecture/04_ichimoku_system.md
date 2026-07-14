@@ -11,7 +11,7 @@
 
 ## 1. System Role
 
-The **Ichimoku Quant System** (`quant-lttd-ichimoku`) decomposes standard non-stationary Ichimoku cloud indicator values into stationary, bounded $\tanh$ oscillators (`[-1.0, +1.0]`) denoised with an Ehlers 2-pole `SuperSmoother` filter.
+The **Ichimoku Quant System** (located under [engines/ichimoku](file:///home/ubuntu/projects/quant.maftia.tech/engines/ichimoku)) decomposes standard non-stationary Ichimoku cloud indicator values into stationary, bounded $\tanh$ oscillators (`[-1.0, +1.0]`) denoised with an Ehlers 2-pole `SuperSmoother` filter.
 
 It operates as a medium-term trend execution platform. Sinyal output (`ichimoku_position`) is subject to **5 sequential confirmation gates** checking fractal efficiency, information theory entropy boundaries, cloud support thresholds, and multi-day persistence.
 
