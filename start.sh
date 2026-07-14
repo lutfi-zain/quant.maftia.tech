@@ -6,10 +6,6 @@ kill $(lsof -t -i:8911) 2>/dev/null
 kill $(lsof -t -i:5173) 2>/dev/null
 sleep 1
 
-# Run Python pipeline
-echo "📊 Running Python pipeline..."
-cd /home/ubuntu/projects/quant.maftia.tech
-python3 run_report_pipeline.py 2>&1 | tail -3
 
 # Start API backend on port 8910
 echo "🚀 Starting API backend on port 8910..."
