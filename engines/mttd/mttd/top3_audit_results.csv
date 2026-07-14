@@ -1,0 +1,4 @@
+system,best_min_hold,best_max_hold,best_regime_threshold,wf_n_folds,wf_avg_oos_sharpe,wf_avg_oos_winrate,avg_degradation_pct,bull_sharpe,bear_sharpe,neutral_sharpe,sharpe_at_0p1tc,sharpe_at_0p5tc,sharpe_t_stat,sharpe_p_value,winrate_binom_p,overfitting_score,robustness_score,statistical_score,antipattern_score,total_audit_score
+Ichimoku_bull_only,15,45,0.3,5,1.26,40.0,50.7,0.78,0.0,0.85,0.67,0.67,2.968,0.0031,1.0,40.1,68.3,40.0,95.0,65.8
+Keltner_bull_with_filters,25,45,0.0,5,0.16,42.8,11700.0,0.38,0.0,0.42,0.1,0.1,0.017,0.9862,0.8145,100.0,68.0,20.0,95.0,45.8
+Supertrend_bull_with_filters,15,45,0.3,5,0.3,46.7,293.7,0.5,0.0,0.4,0.17,0.17,0.867,0.3863,1.0,0.0,65.6,10.0,95.0,67.6

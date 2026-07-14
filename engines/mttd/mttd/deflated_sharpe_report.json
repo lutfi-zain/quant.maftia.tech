@@ -1,0 +1,21 @@
+{
+  "n_trials_explored": 171,
+  "oos_evaluation_bars": 2204,
+  "oos_evaluation_years": 6.038,
+  "stitched_oos_metrics": {
+    "sharpe": 1.32,
+    "cagr_pct": 58.11,
+    "max_dd_pct": -34.04
+  },
+  "hlz_2016_hurdle": {
+    "expected_max_null_t_stat": 2.5212,
+    "annualized_sharpe_hurdle": 1.026,
+    "haircut_sharpe": 1.307,
+    "passed_hurdle": true
+  },
+  "blp_2014_deflated_sharpe": {
+    "standard_error": 0.0393,
+    "z_score": 7.4828,
+    "confidence_pct": 100.0
+  }
+}

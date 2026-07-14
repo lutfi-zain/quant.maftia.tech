@@ -1,0 +1,13 @@
+strategy,combination,filters,gate_threshold,ichimoku_mode,train_sharpe,train_win_rate,train_trades,train_cagr,train_max_dd,test_sharpe,test_win_rate,test_trades,test_cagr,test_max_dd,sharpe_degradation,combined_score
+MAJORITY_4,msvr_direction+smooth_direction+cycle_direction+entropy_gate_strict,msvr_direction+smooth_direction+cycle_direction+entropy_gate_strict,3,standard,1.18,38.6,88,57.76,-64.15,1.46,53.7,41,52.46,-23.88,23.7,1.9122439024390245
+MAJORITY_4,msvr_direction+smooth_direction+cycle_direction+entropy_gate,msvr_direction+smooth_direction+cycle_direction+entropy_gate,3,standard,1.23,39.3,84,61.66,-61.26,1.26,54.1,37,43.7,-26.0,2.4,1.8423243243243241
+MAJORITY_4,msvr_direction+cycle_direction+entropy_gate+smooth_direction,msvr_direction+cycle_direction+entropy_gate+smooth_direction,3,standard,1.23,39.3,84,61.66,-61.26,1.26,54.1,37,43.7,-26.0,2.4,1.8423243243243241
+MAJORITY_3,msvr_direction+cycle_direction+entropy_gate,msvr_direction+cycle_direction+entropy_gate,2,relaxed,0.86,41.8,67,39.7,-64.35,1.16,53.6,28,48.2,-33.32,34.9,2.220571428571428
+MAJORITY_3,msvr_direction+smooth_direction+cycle_direction,msvr_direction+smooth_direction+cycle_direction,2,standard,1.23,39.3,84,61.66,-61.26,1.15,52.6,38,39.07,-26.0,-6.5,1.5918421052631577
+MAJORITY_4,msvr_direction+smooth_direction+cycle_direction+low_volatility,msvr_direction+smooth_direction+cycle_direction+low_volatility,3,standard,1.24,43.7,87,58.05,-52.6,1.12,50.0,30,32.56,-20.68,-9.7,1.866666666666667
+MAJORITY_5,msvr_direction+smooth_direction+cycle_direction+entropy_gate+trend_filter,msvr_direction+smooth_direction+cycle_direction+entropy_gate+trend_filter,3,standard,0.98,35.1,74,45.34,-71.09,1.11,50.0,22,43.85,-28.43,13.3,2.522727272727273
+MAJORITY_4,msvr_direction+smooth_direction+cycle_direction_short+lr_direction,msvr_direction+smooth_direction+cycle_direction_short+lr_direction,3,standard,1.31,45.0,60,61.44,-49.64,1.1,54.8,31,33.49,-30.46,-16.0,1.9445161290322581
+MAJORITY_3,msvr_direction+smooth_direction+cycle_direction,msvr_direction+smooth_direction+cycle_direction,2,strict,1.04,36.9,84,47.24,-71.38,1.1,54.1,37,36.46,-33.06,5.8,1.6083783783783785
+MAJORITY_3,msvr_direction+cycle_direction+entropy_gate,msvr_direction+cycle_direction+entropy_gate,2,strict,0.85,44.6,74,38.7,-66.88,1.1,59.3,27,43.69,-34.66,29.4,2.415925925925926
+MAJORITY_4,msvr_direction+smooth_direction+cycle_direction+vol_direction,msvr_direction+smooth_direction+cycle_direction+vol_direction,3,standard,1.15,42.9,84,52.41,-60.07,1.05,54.8,31,28.98,-19.53,-8.7,1.8561290322580648
+MAJORITY_4,msvr_direction+cycle_direction+trend_filter+er_gate,msvr_direction+cycle_direction+trend_filter+er_gate,2,standard,0.97,53.2,94,48.21,-60.1,1.04,54.5,33,42.26,-37.2,7.2,1.7175757575757573

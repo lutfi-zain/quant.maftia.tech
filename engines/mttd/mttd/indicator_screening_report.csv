@@ -1,0 +1,33 @@
+rank,indicator,display_name,signal_type,family,full_sharpe,full_cagr,full_win_rate,full_trades,full_max_dd,train_sharpe,train_win_rate,train_trades,test_sharpe,test_win_rate,test_trades,corr_with_ichimoku,signal_coverage,composite_score
+1,lsma_viresearch,Lsma Viresearch,vii,,1.27,56.03,38.1,42,-53.14,1.36,40.7,27,1.02,33.3,15,0.315,97.5,0.6485563427907312
+2,median_standard_deviation_viresearch,Median Standard Deviation Viresearch,vii,,1.59,73.16,37.7,53,-32.28,1.71,41.9,31,1.18,27.3,22,0.499,100.0,0.6206830856130778
+3,adaptive_volatility_controlled_lsma_quantalgo,Adaptive Volatility Controlled Lsma Quantalgo,dir,,0.85,31.07,59.1,44,-68.87,0.83,59.4,32,0.97,58.3,12,0.117,98.4,0.6079285510327104
+4,lsma_atr_viresearch,Lsma Atr Viresearch,vii,,0.89,33.15,41.7,48,-52.56,1.03,51.5,33,0.46,20.0,15,0.025,97.2,0.6031340494705784
+5,quantile_dema_trend_quantedgeb,Quantile Dema Trend Quantedgeb,qb,,1.12,48.49,44.4,36,-68.18,1.24,41.7,24,0.7,41.7,12,0.348,99.9,0.5873880249339998
+6,volume_trend_swing_points_viresearch,Volume Trend Swing Points Viresearch,vii,,1.15,50.42,48.1,27,-47.25,1.33,52.9,17,0.56,30.0,10,0.426,100.0,0.5824003678093358
+7,p_motion_trend_quantedgeb,P Motion Trend Quantedgeb,qb,,1.1,46.48,53.1,32,-60.6,1.23,52.6,19,0.67,46.2,13,0.418,100.0,0.5799626290574942
+8,polynomial_deviation_bands,Polynomial Deviation Bands,trend,,1.02,40.84,52.3,44,-50.81,1.03,46.7,30,1.01,57.1,14,0.366,99.6,0.5612287102794583
+9,linear_st_quantedgeb,Linear St Quantedgeb,qb,,1.05,42.81,43.5,46,-59.28,1.14,45.2,31,0.75,33.3,15,0.349,100.0,0.5512627137182085
+10,gaussian_smooth_trend_quantedgeb,Gaussian Smooth Trend Quantedgeb,qb,,1.19,49.6,45.7,35,-51.06,1.28,45.5,22,0.89,38.5,13,0.539,100.0,0.5463356716611478
+11,dema_dmi_viresearch,Dema Dmi Viresearch,vii,,1.13,43.8,48.4,31,-46.44,1.32,52.9,17,0.49,35.7,14,0.576,99.5,0.5127591321970651
+12,hilo_interpolation_quantedgeb,Hilo Interpolation Quantedgeb,qb,,1.03,39.36,44.2,43,-49.37,1.13,44.4,27,0.7,37.5,16,0.439,98.8,0.5075816035217966
+13,alma_lag_viresearch,Alma Lag Viresearch,vii,,1.11,45.46,39.0,41,-55.73,1.2,37.0,27,0.81,35.7,14,0.491,97.5,0.5052628907208851
+14,madtrend_investorunknown,Madtrend Investorunknown,dir,,1.0,40.42,37.8,45,-62.62,1.1,33.3,30,0.7,40.0,15,0.401,100.0,0.4867244986733148
+15,irs_elder_force_volume_index,Irs Elder Force Volume Index,vii,,1.32,58.38,36.4,77,-34.55,1.45,35.6,45,0.88,34.4,32,0.543,99.0,0.4725321012165873
+16,inverted_sd_dema_rsi_viresearch,Inverted Sd Dema Rsi Viresearch,vii,,1.02,38.85,46.4,28,-53.59,1.12,41.2,17,0.68,45.5,11,0.533,100.0,0.47217770623455746
+17,dema_rsi_overlay,Dema Rsi Overlay,back_quant,,1.02,38.85,46.4,28,-53.59,1.12,41.2,17,0.68,45.5,11,0.533,100.0,0.47217770623455746
+18,median_supertrend_viresearch,Median Supertrend Viresearch,vii,,0.87,32.3,43.5,46,-63.27,0.97,45.2,31,0.49,33.3,15,0.364,99.9,0.46140262932466797
+19,root_mean_square_deviation_trend,Root Mean Square Deviation Trend,dir,,1.0,39.32,42.9,35,-59.35,1.1,40.9,22,0.66,38.5,13,0.54,100.0,0.4477297402903178
+20,dema_sma_standard_deviation_viresearch,Dema Sma Standard Deviation Viresearch,vii,,1.3,54.35,30.6,62,-38.34,1.44,30.8,39,0.81,26.1,23,0.557,100.0,0.43714902122529264
+21,ts_aggregated_median_absolute_deviation_tobbysimard,Ts Aggregated Median Absolute Deviation Tobbysimard,long_short,,1.12,38.86,43.8,16,-36.24,1.29,40.0,10,0.59,33.3,6,0.733,29.5,0.4277111383108936
+22,double_src_sma_standard_deviation_viresearch,Double Src Sma Standard Deviation Viresearch,vii,,1.28,53.73,31.1,61,-40.19,1.44,32.4,37,0.79,25.0,24,0.563,100.0,0.4271454199444167
+23,dema_ema_crossover_viresearch,Dema Ema Crossover Viresearch,vii,,0.9,34.46,43.2,37,-64.77,1.03,41.7,24,0.45,38.5,13,0.483,100.0,0.42559952977402105
+24,dega_rma_quantedgeb,Dega Rma Quantedgeb,qb,,0.94,36.55,39.3,61,-62.54,1.0,41.5,41,0.76,35.0,20,0.251,99.9,0.4254722214336883
+25,vii_stop,Vii Stop,vii,,0.87,31.62,40.3,72,-47.49,1.04,40.8,49,0.34,39.1,23,0.214,100.0,0.41156610075905203
+26,dema_vstop_viresearch,Dema Vstop Viresearch,vii,,0.81,30.44,45.2,31,-71.32,0.9,42.9,21,0.52,40.0,10,0.434,100.0,0.41081117877659984
+27,median_deviation_suite_investorunknown,Median Deviation Suite Investorunknown,sig,,0.98,36.87,40.7,54,-52.04,1.2,47.1,34,0.26,30.0,20,0.374,100.0,0.39864808917817873
+28,dsma_viresearch,Dsma Viresearch,vii,,1.18,47.92,32.8,58,-47.34,1.31,37.1,35,0.76,21.7,23,0.558,100.0,0.38864508903846906
+29,ewma_viresearch,Ewma Viresearch,vii,,0.86,31.66,42.9,35,-54.44,1.0,40.9,22,0.37,38.5,13,0.531,99.2,0.38629695371713973
+30,enhanced_kijun_sen_base,Enhanced Kijun Sen Base,long_short_c,,0.93,36.06,35.7,70,-50.6,1.08,37.8,45,0.42,28.0,25,0.328,51.6,0.37667515500258
+31,dema_supertrend_viresearch,Dema Supertrend Viresearch,vii,,0.73,24.38,44.6,65,-44.4,0.89,46.7,45,0.19,40.0,20,0.218,98.5,0.35990043321126824
+32,adaptive_regime_cloud,Adaptive Regime Cloud,long_short,,0.84,31.0,36.5,52,-65.17,0.93,35.3,34,0.52,33.3,18,0.364,50.3,0.322887737443803

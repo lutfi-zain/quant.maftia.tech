@@ -1,0 +1,21 @@
+{
+  "config": {
+    "trend_fast": 75,
+    "trend_slow": 250,
+    "bb_period": 25,
+    "bb_std": 2.0,
+    "min_hold": 45,
+    "cycle_lookback": 40
+  },
+  "performance": {
+    "sharpe": 0.62,
+    "cagr": 16.4,
+    "sortino": 0.56,
+    "calmar": 0.29,
+    "max_dd": -56.97,
+    "n_trades": 24,
+    "win_rate": 50.0,
+    "avg_hold": 47.0
+  },
+  "generated_at": "2026-06-24T09:21:51.716685"
+}

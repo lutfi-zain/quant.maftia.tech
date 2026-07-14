@@ -9,16 +9,16 @@ import socket
 import pandas as pd
 import requests
 
-PROJECTS_DIR = "/home/ubuntu/projects"
-if PROJECTS_DIR not in sys.path:
-    sys.path.insert(0, PROJECTS_DIR)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from db_connector import get_wal_connection, execute_parameterized
 
-VALUATION_DIR = os.path.join(PROJECTS_DIR, "quant-btc-valuation-system")
-LTTD_DIR = os.path.join(PROJECTS_DIR, "quant-btc-lttd-system")
-MTTD_DIR = os.path.join(PROJECTS_DIR, "quant-btc-mttd-system")
-ICHIMOKU_DIR = os.path.join(PROJECTS_DIR, "quant-lttd-ichimoku")
-REPORT_PATH = os.path.join(PROJECTS_DIR, "latest_week_scores_report.md")
+VALUATION_DIR = os.path.join(BASE_DIR, "engines/valuation")
+LTTD_DIR = os.path.join(BASE_DIR, "engines/lttd")
+MTTD_DIR = os.path.join(BASE_DIR, "engines/mttd")
+ICHIMOKU_DIR = os.path.join(BASE_DIR, "engines/ichimoku")
+REPORT_PATH = os.path.join(BASE_DIR, "latest_week_scores_report.md")
 
 def is_port_open(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

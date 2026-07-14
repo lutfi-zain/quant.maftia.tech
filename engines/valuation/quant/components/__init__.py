@@ -1,0 +1,1 @@
+# quant/components package initialization

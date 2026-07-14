@@ -1,0 +1,41 @@
+{
+  "config": {
+    "min_hold_days": 10,
+    "max_hold_days": 99999,
+    "er_entry": 0.25,
+    "t_entry": 0.4,
+    "chikou_thresh": -0.3,
+    "immunity_thresh": 0.5,
+    "entropy_thresh": 2.3,
+    "imo_exit_thresh": -0.3,
+    "cooldown": 0
+  },
+  "train": {
+    "trades": 9,
+    "win_rate": 55.6,
+    "sharpe": 1.39,
+    "cagr": 66.8,
+    "max_dd": -35.6,
+    "avg_hold": 127,
+    "avg_return": 78.47
+  },
+  "test": {
+    "trades": 2,
+    "win_rate": 50.0,
+    "sharpe": 0.26,
+    "cagr": 3.0,
+    "max_dd": -17.9,
+    "avg_hold": 77,
+    "avg_return": 3.13
+  },
+  "full": {
+    "trades": 12,
+    "win_rate": 58.3,
+    "sharpe": 1.26,
+    "cagr": 53.2,
+    "max_dd": -35.6,
+    "avg_hold": 119,
+    "avg_return": 62.69
+  },
+  "degradation": -81.3
+}
