@@ -1,6 +1,6 @@
 import argparse
 import sys
-from ichimoku_quant import fetch_btc_data, generate_ichimoku_features, generate_signals, run_backtest, calculate_metrics
+from ichimoku_quant import fetch_btc_ohlcv_from_bitview, generate_ichimoku_features, generate_signals, run_backtest, calculate_metrics
 from ichimoku_quant.visuals import generate_dashboard_html
 
 def main():
@@ -12,7 +12,7 @@ def main():
     args = parser.parse_args()
     
     print("Fetching data...")
-    df = fetch_btc_data(start_date=args.start)
+    df = fetch_btc_ohlcv_from_bitview(start_date=args.start)
     
     print("Generating features...")
     df = generate_ichimoku_features(df)

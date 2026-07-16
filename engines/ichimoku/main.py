@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 
-from src.ichimoku_quant.data import fetch_btc_data
+from src.ichimoku_quant.data import fetch_btc_ohlcv_from_bitview
 from src.ichimoku_quant.features import generate_ichimoku_features
 from src.ichimoku_quant.strategy import generate_signals
 from src.ichimoku_quant.backtest import run_backtest, calculate_metrics
@@ -12,8 +12,8 @@ def main():
     print("=== STARTING ICHIMOKU QUANT PIPELINE ===")
     
     # 1. Fetch data
-    print("1. Fetching historical BTC data from yfinance...")
-    df = fetch_btc_data()
+    print("1. Fetching historical BTC data from bitview.space...")
+    df = fetch_btc_ohlcv_from_bitview()
     
     # 2. Generate features
     print("2. Generating technical indicators & denoising features...")

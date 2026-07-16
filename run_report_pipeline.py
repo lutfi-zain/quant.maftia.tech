@@ -136,7 +136,7 @@ def main():
         master_conn = get_wal_connection("/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db")
         execute_parameterized(
             master_conn,
-            "CREATE TABLE IF NOT EXISTS master_ohlcv (date TEXT PRIMARY KEY, open REAL, high REAL, low REAL, close REAL, volume REAL, source TEXT DEFAULT 'binance', fetched_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            "CREATE TABLE IF NOT EXISTS master_ohlcv (date TEXT PRIMARY KEY, open REAL, high REAL, low REAL, close REAL, volume REAL, source TEXT DEFAULT 'bitview', fetched_at TEXT DEFAULT CURRENT_TIMESTAMP)"
         )
         cols_uda = [c[1] for c in master_conn.execute("PRAGMA table_info(unified_daily_analytics)").fetchall()]
         if cols_uda and "btc_price" not in cols_uda:
@@ -313,16 +313,16 @@ def main():
     ich_scores, ich_regimes, ich_pos = {}, {}, {}
     try:
         sys.path.insert(0, ICHIMOKU_DIR)
-        from src.ichimoku_quant.data import fetch_btc_data
+        from src.ichimoku_quant.data import fetch_btc_ohlcv_from_bitview
         from src.ichimoku_quant.features import generate_ichimoku_features
         from src.ichimoku_quant.strategy import generate_signals
         from src.ichimoku_quant.backtest import run_backtest
         
-        df_ich = fetch_btc_data()
+        df_ich = fetch_btc_ohlcv_from_bitview()
         df_ich = generate_ichimoku_features(df_ich)
         df_ich = generate_signals(df_ich)
         df_ich = run_backtest(df_ich, transaction_cost=0.001)
-        df_ich.index = pd.to_datetime(df_ich.index)
+        df_ich.index = pd.to_datetime(df_ich.index).tz_localize(None)
         
         for idx, r in df_ich[(df_ich.index >= dates_str[0]) & (df_ich.index <= dates_str[-1])].iterrows():
             dt = idx.strftime("%Y-%m-%d")

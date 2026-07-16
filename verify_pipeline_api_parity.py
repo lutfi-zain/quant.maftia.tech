@@ -256,11 +256,11 @@ def verify_parity():
         ichimoku_dir = os.path.join(BASE_DIR, "engines/ichimoku")
         if ichimoku_dir not in sys.path:
             sys.path.insert(0, ichimoku_dir)
-        from src.ichimoku_quant.data import fetch_btc_data
+        from src.ichimoku_quant.data import fetch_btc_ohlcv_from_bitview
         from src.ichimoku_quant.features import generate_ichimoku_features
         from src.ichimoku_quant.strategy import generate_signals
         
-        df_prior = fetch_btc_data()
+        df_prior = fetch_btc_ohlcv_from_bitview()
         df_prior = generate_ichimoku_features(df_prior)
         df_prior = generate_signals(df_prior)
         df_prior.index = pd.to_datetime(df_prior.index)

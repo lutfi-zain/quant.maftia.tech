@@ -7,7 +7,7 @@ import os
 import uvicorn
 from typing import Dict, Any, List
 
-from ichimoku_quant.data import fetch_btc_data
+from ichimoku_quant.data import fetch_btc_ohlcv_from_bitview
 from ichimoku_quant.features import generate_ichimoku_features
 from ichimoku_quant.strategy import generate_signals
 from ichimoku_quant.backtest import run_backtest, calculate_metrics
@@ -129,7 +129,7 @@ def get_status():
 def api_backtest(req: BacktestRequest):
     try:
         # 1. Fetch data
-        df = fetch_btc_data()
+        df = fetch_btc_ohlcv_from_bitview()
         
         # 2. Generate features (recomputed if lengths differ)
         df_feat = generate_ichimoku_features(

@@ -2,8 +2,8 @@ import pandas as pd
 import logging
 from typing import Optional
 from datetime import datetime, timezone
-from src.config import BTC_DATA_SOURCE, DB_PATH
-from src.data.exchange_adapter import ExchangeAdapter, BinanceAdapter, BRKExchangeAdapter
+from src.config import DB_PATH
+from src.data.exchange_adapter import ExchangeAdapter, BRKExchangeAdapter
 from src.data.db import SQLiteCache
 
 logger = logging.getLogger(__name__)
@@ -53,8 +53,6 @@ def standardize_and_validate(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_exchange_adapter() -> ExchangeAdapter:
-    if BTC_DATA_SOURCE.lower() == "binance":
-        return BinanceAdapter()
     return BRKExchangeAdapter()
 
 
