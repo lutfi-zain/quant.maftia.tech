@@ -1048,7 +1048,7 @@ export const IchimokuTerminal: React.FC = () => {
 							color: latestImo > 0 ? "var(--accent)" : "var(--signal-bear)",
 						}}
 					>
-						{latestImo > 0 ? `+${latestImo.toFixed(4)}` : latestImo.toFixed(4)}
+						{latestImo > 0 ? `+${latestImo.toFixed(2)}` : latestImo.toFixed(2)}
 					</span>
 				</div>
 
