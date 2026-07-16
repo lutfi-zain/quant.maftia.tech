@@ -78,17 +78,9 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 		case "btc":
 			return { btc: available, imo: 0, eq: 0 };
 		case "imo":
-			return {
-				btc: Math.floor(available * 0.55),
-				imo: Math.floor(available * 0.45),
-				eq: 0,
-			};
+			return { btc: 0, imo: available, eq: 0 };
 		case "eq":
-			return {
-				btc: Math.floor(available * 0.55),
-				imo: 0,
-				eq: Math.floor(available * 0.45),
-			};
+			return { btc: 0, imo: 0, eq: available };
 		default:
 			return isMobile
 				? { btc: 250, imo: 150, eq: 160 }
@@ -176,6 +168,9 @@ export const IchimokuTerminal: React.FC = () => {
 		thresh: any;
 		entropy: any;
 		chikou: any;
+		s_tk: any;
+		s_cloud: any;
+		s_future: any;
 		refStrat: any;
 		refMarket: any;
 		interactiveStrat: any;
@@ -191,6 +186,9 @@ export const IchimokuTerminal: React.FC = () => {
 		thresh: null,
 		entropy: null,
 		chikou: null,
+		s_tk: null,
+		s_cloud: null,
+		s_future: null,
 		refStrat: null,
 		refMarket: null,
 		interactiveStrat: null,
@@ -548,6 +546,24 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "S_Chikou",
 		});
 
+		const sTkSeries = imoChart.addSeries(LineSeries, {
+			color: "rgba(248, 113, 113, 0.45)", // light red
+			lineWidth: 1,
+			title: "S_TK",
+		});
+
+		const sCloudSeries = imoChart.addSeries(LineSeries, {
+			color: "rgba(34, 197, 94, 0.45)", // light green
+			lineWidth: 1,
+			title: "S_Cloud",
+		});
+
+		const sFutureSeries = imoChart.addSeries(LineSeries, {
+			color: "rgba(96, 165, 250, 0.45)", // light blue
+			lineWidth: 1,
+			title: "S_Future",
+		});
+
 		// ── Pane 3: Cumulative Equity Growth (Reference vs Interactive) ──
 		const eqChart = createChart(eqContainerRef.current, {
 			...common,
@@ -635,6 +651,9 @@ export const IchimokuTerminal: React.FC = () => {
 			thresh: threshSeries,
 			entropy: entropySeries,
 			chikou: chikouSeries,
+			s_tk: sTkSeries,
+			s_cloud: sCloudSeries,
+			s_future: sFutureSeries,
 			refStrat: refStratSeries,
 			refMarket: refMarketSeries,
 			interactiveStrat: interactiveStratSeries,
@@ -708,6 +727,36 @@ export const IchimokuTerminal: React.FC = () => {
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_s_chikou,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
+		// S_TK data from API (normalized score [-1, +1])
+		sTkSeries.setData(
+			filteredDailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_tk,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
+		// S_Cloud data from API (normalized score [-1, +1])
+		sCloudSeries.setData(
+			filteredDailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_cloud,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
+		// S_Future data from API (normalized score [-1, +1])
+		sFutureSeries.setData(
+			filteredDailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_future,
 				}))
 				.filter((d) => d.value != null) as any,
 		);
@@ -844,6 +893,9 @@ export const IchimokuTerminal: React.FC = () => {
 				thresh: null,
 				entropy: null,
 				chikou: null,
+				s_tk: null,
+				s_cloud: null,
+				s_future: null,
 				refStrat: null,
 				refMarket: null,
 				interactiveStrat: null,
