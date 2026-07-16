@@ -732,20 +732,22 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// ── Populate reference equity from API data ──
+		// ── Populate reference equity from backtestResult (rebased to start_date) ──
 		refStratSeries.setData(
-			filteredDailyData
-				.map((p) => ({
-					time: p.date as Time,
-					value: p.ichimoku_cum_strat != null ? parseFloat((p.ichimoku_cum_strat * 100).toFixed(2)) : null,
+			backtestResult.cumStrat
+				.filter((d) => d.time >= startDate && d.time <= endDate)
+				.map((d) => ({
+					time: d.time,
+					value: d.value != null ? parseFloat((d.value * 100).toFixed(2)) : null,
 				}))
 				.filter((d) => d.value != null) as any,
 		);
 		refMarketSeries.setData(
-			filteredDailyData
-				.map((p) => ({
-					time: p.date as Time,
-					value: p.ichimoku_cum_market != null ? parseFloat((p.ichimoku_cum_market * 100).toFixed(2)) : null,
+			backtestResult.cumMarket
+				.filter((d) => d.time >= startDate && d.time <= endDate)
+				.map((d) => ({
+					time: d.time,
+					value: d.value != null ? parseFloat((d.value * 100).toFixed(2)) : null,
 				}))
 				.filter((d) => d.value != null) as any,
 		);
@@ -848,7 +850,7 @@ export const IchimokuTerminal: React.FC = () => {
 				interactiveMarket: null,
 			};
 		};
-	}, [dailyData, startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dailyData, startDate, endDate, backtestResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Dynamically update parameters, threshold lines, and displacement data
 	useEffect(() => {
@@ -920,6 +922,9 @@ export const IchimokuTerminal: React.FC = () => {
 
 	const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
 	const latestImo = toNum(latestPoint?.ichimoku_imo);
+	if (typeof window !== "undefined" && (window as any).process?.env?.NODE_ENV === "development") {
+		console.assert(typeof latestImo === "number" && !isNaN(latestImo), "latestImo must be a valid number");
+	}
 	const cloudState =
 		latestImo > 0.15
 			? "BULL CLOUD"
@@ -984,7 +989,7 @@ export const IchimokuTerminal: React.FC = () => {
 				</div>
 
 				<div className="studio-banner-metric">
-					<span className="studio-metric-label">STATIONARY BOUNDED TANH</span>
+					<span className="studio-metric-label" title="tanh(S_TK + S_Cloud + S_Future + S_Chikou) / 4 → SuperSmoother (l=7) → [-1.0, +1.0]">IMO DENOISED OSCILLATOR</span>
 					<span
 						className="studio-metric-value"
 						style={{
@@ -1128,6 +1133,7 @@ export const IchimokuTerminal: React.FC = () => {
 					<div className="chart-subplot-header">
 						<div className="subplot-title">
 							<span className="subplot-badge">CAUSAL COMP</span>
+							<span className="subplot-badge" style={{ background: "rgba(34, 197, 94, 0.1)", color: "#22c55e", borderColor: "rgba(34, 197, 94, 0.25)" }}>PY ENGINE</span>
 							<span>Cumulative Equity Growth</span>
 						</div>
 						<div className="subplot-controls">
