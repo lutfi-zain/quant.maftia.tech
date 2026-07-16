@@ -7,6 +7,7 @@ import { ValuationStudio } from "./components/studios/ValuationStudio";
 import { LttdLab } from "./components/studios/LttdLab";
 import { MttdConsole } from "./components/studios/MttdConsole";
 import { IchimokuTerminal } from "./components/studios/IchimokuTerminal";
+import { ConfigurationPanel } from "./components/studios/ConfigurationPanel";
 
 const TerminalContent: React.FC = () => {
 	const {
@@ -265,6 +266,8 @@ const TerminalContent: React.FC = () => {
 						return <MttdConsole />;
 					case "ichimoku":
 						return <IchimokuTerminal />;
+					case "configuration":
+						return <ConfigurationPanel />;
 					default:
 						return null;
 				}

@@ -63,6 +63,27 @@ export function getDb(): DatabaseConnection {
     }
   }
 
+  // Initialize system_config table if not exists and seed default values
+  try {
+    dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `);
+    
+    const checkSchedule = dbInstance.prepare("SELECT value FROM system_config WHERE key = ?").get("sync_schedule");
+    if (!checkSchedule) {
+      dbInstance.prepare("INSERT INTO system_config (key, value) VALUES (?, ?)").run("sync_schedule", "0 2 * * *");
+    }
+    const checkActive = dbInstance.prepare("SELECT value FROM system_config WHERE key = ?").get("scheduler_active");
+    if (!checkActive) {
+      dbInstance.prepare("INSERT INTO system_config (key, value) VALUES (?, ?)").run("scheduler_active", "true");
+    }
+  } catch (err) {
+    console.error("Failed to initialize system_config table:", err);
+  }
+
   return dbInstance
 }
 

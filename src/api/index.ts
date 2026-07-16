@@ -7,6 +7,11 @@ import { componentsRouter } from "./routes/components.js";
 import { circuitBreakersRouter } from "./routes/circuit-breakers.js";
 import { metricsRouter } from "./routes/metrics.js";
 import { lttdRouter } from "./routes/lttd.js";
+import { startScheduler } from "./lib/scheduler.js";
+import { configRouter } from "./routes/config.js";
+
+// Start background cron scheduler
+startScheduler();
 
 export const app = new Hono();
 
@@ -22,6 +27,7 @@ app.route("/api/v1/analytics/metric", metricsRouter);
 app.route("/api/v1/quant/metric", metricsRouter);
 app.route("/api/v1/system/circuit-breakers", circuitBreakersRouter);
 app.route("/api/v1/lttd", lttdRouter);
+app.route("/api/v1/config", configRouter);
 
 app.get("/", (c) => {
 	return c.json({

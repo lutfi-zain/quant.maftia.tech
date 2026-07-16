@@ -393,4 +393,36 @@ export const quantClient = {
 			json.equity_curve = verifyCausalData(json.equity_curve);
 		return json;
 	},
+
+	// ── Scheduler & Configuration Endpoints ───────────────────────────
+
+	async getSchedulerStatus(): Promise<any> {
+		const res = await fetch(`${API_BASE}/api/v1/config/scheduler`);
+		if (!res.ok)
+			throw new Error(`Failed to fetch scheduler status: ${res.statusText}`);
+		return res.json();
+	},
+
+	async saveSchedulerConfig(config: {
+		cronString?: string;
+		isActive?: boolean;
+	}): Promise<any> {
+		const res = await fetch(`${API_BASE}/api/v1/config/scheduler`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(config),
+		});
+		if (!res.ok)
+			throw new Error(`Failed to save scheduler config: ${res.statusText}`);
+		return res.json();
+	},
+
+	async triggerSyncRun(): Promise<any> {
+		const res = await fetch(`${API_BASE}/api/v1/config/sync/run`, {
+			method: "POST",
+		});
+		if (!res.ok)
+			throw new Error(`Failed to trigger manual sync: ${res.statusText}`);
+		return res.json();
+	},
 };

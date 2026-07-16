@@ -6,6 +6,7 @@ import {
 	Activity,
 	Layers,
 	Radio,
+	Settings,
 } from "lucide-react";
 import { useTerminal } from "../../context/TerminalContext";
 
@@ -14,7 +15,8 @@ export type ActiveTab =
 	| "valuation"
 	| "lttd"
 	| "mttd"
-	| "ichimoku";
+	| "ichimoku"
+	| "configuration";
 
 interface SidebarProps {
 	activeTab: ActiveTab;
@@ -35,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 		{ id: "lttd", label: "LTTD Lab (HMM)", icon: TrendingUp },
 		{ id: "mttd", label: "MTTD Console", icon: Activity },
 		{ id: "ichimoku", label: "Ichimoku Terminal", icon: Layers },
+		{ id: "configuration", label: "Configuration", icon: Settings },
 	] as const;
 
 	const getStatusColor = () => {

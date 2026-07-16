@@ -21,6 +21,7 @@ const PAGE_TITLES: Record<ActiveTab, string> = {
 	lttd: "LTTD Lab (3-State Gaussian HMM)",
 	mttd: "MTTD Console (10 Statistical Families)",
 	ichimoku: "Ichimoku Terminal (SuperSmoother IIR)",
+	configuration: "System Configuration Terminal",
 };
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
@@ -54,6 +55,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, wsStatus }) => {
 			{isMobile && (
 				<MobileHeader
 					activeTab={activeTab}
+					onTabChange={setActiveTab}
 					wsStatus={wsStatus}
 					pageTitles={PAGE_TITLES}
 				/>

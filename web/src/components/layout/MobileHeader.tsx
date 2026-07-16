@@ -1,11 +1,12 @@
 import type React from "react";
 import { useState } from "react";
-import { RefreshCw, Radio, Menu, X } from "lucide-react";
+import { RefreshCw, Radio, Menu, X, Settings } from "lucide-react";
 import type { ActiveTab } from "./Sidebar";
 import { useTerminal } from "../../context/TerminalContext";
 
 interface MobileHeaderProps {
 	activeTab: ActiveTab;
+	onTabChange: (tab: ActiveTab) => void;
 	wsStatus: "Connected" | "Reconnecting" | "Disconnected";
 	pageTitles: Record<ActiveTab, string>;
 }
@@ -16,10 +17,12 @@ const SHORT_TITLES: Record<ActiveTab, string> = {
 	lttd: "LTTD Lab",
 	mttd: "MTTD Console",
 	ichimoku: "Ichimoku Terminal",
+	configuration: "Configuration",
 };
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
 	activeTab,
+	onTabChange,
 	wsStatus,
 }) => {
 	const [drawerOpen, setDrawerOpen] = useState(false);
@@ -89,6 +92,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 									: undefined
 							}
 						/>
+					</button>
+					<button
+						className={`sync-btn ${activeTab === 'configuration' ? 'active' : ''}`}
+						onClick={() => onTabChange("configuration")}
+						title="Configuration"
+						style={{ marginLeft: "4px" }}
+					>
+						<Settings size={12} />
 					</button>
 				</div>
 			</header>
@@ -170,6 +181,58 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 								<X size={20} />
 							</button>
 						</div>
+
+						{/* Mobile Navigation Links inside Drawer */}
+						<nav style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-subtle)" }}>
+							<div
+								style={{
+									fontSize: "10px",
+									fontWeight: 600,
+									color: "var(--text-dim)",
+									textTransform: "uppercase",
+									letterSpacing: "0.8px",
+									marginBottom: "8px",
+								}}
+							>
+								Navigation
+							</div>
+							<ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "6px", padding: 0, margin: 0 }}>
+								{[
+									{ id: "dashboard", label: "Executive Dashboard" },
+									{ id: "valuation", label: "Valuation Studio" },
+									{ id: "lttd", label: "LTTD Lab" },
+									{ id: "mttd", label: "MTTD Console" },
+									{ id: "ichimoku", label: "Ichimoku Terminal" },
+									{ id: "configuration", label: "Configuration" }
+								].map((item) => {
+									const isActive = activeTab === item.id;
+									return (
+										<li key={item.id}>
+											<button
+												onClick={() => {
+													onTabChange(item.id as any);
+													setDrawerOpen(false);
+												}}
+												style={{
+													width: "100%",
+													textAlign: "left",
+													padding: "8px 12px",
+													borderRadius: "4px",
+													border: "none",
+													backgroundColor: isActive ? "rgba(245,158,11,0.08)" : "transparent",
+													color: isActive ? "var(--accent)" : "var(--text-muted)",
+													fontWeight: isActive ? 600 : 400,
+													cursor: "pointer",
+													fontSize: "13px"
+												}}
+											>
+												{item.label}
+											</button>
+										</li>
+									);
+								})}
+							</ul>
+						</nav>
 
 						{/* Data Range */}
 						{earliestDate && latestDate && (
