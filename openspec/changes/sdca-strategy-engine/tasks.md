@@ -1,13 +1,13 @@
 ## 1. SDCA Signal Engine (TypeScript)
 
 - [x] 1.1 Create `web/src/lib/sdcaEngine.ts` with SDCA multiplier function (piecewise linear mapping with CORRECTED sign convention: negative composite = buy, positive composite = sell)
-- [ ] 1.2 Implement cycle phase detection (Deep Discount, Value, Fair, Expansion, Euphoria) based on composite + percentile + trend
-- [ ] 1.3 Implement DCA entry rule (composite crosses below -1.0, price < 25th percentile, trend positive)
-- [ ] 1.4 Implement DCA exit rule (composite crosses above +0.5, price > 80th percentile, extended euphoria)
-- [ ] 1.5 Add causal filtering enforcement (t-1 data only for day t signals)
-- [ ] 1.6 Implement regime confidence metric (HIGH/LOW based on composite consistency)
-- [ ] 1.7 Create SDCA signal types (`SdcaSignal`, `SdcaPhase`, `SdcaAction`, `RegimeConfidence`)
-- [ ] 1.8 Write unit tests for multiplier function edge cases and phase detection
+- [x] 1.2 Implement cycle phase detection (Deep Discount, Value, Fair, Expansion, Euphoria) based on composite + percentile + trend
+- [x] 1.3 Implement DCA entry rule (composite crosses below -1.0, price < 25th percentile, trend positive)
+- [x] 1.4 Implement DCA exit rule (composite crosses above +0.5, price > 80th percentile, extended euphoria)
+- [x] 1.5 Add causal filtering enforcement (t-1 data only for day t signals)
+- [x] 1.6 Implement regime confidence metric (HIGH/LOW based on composite consistency)
+- [x] 1.7 Create SDCA signal types (`SdcaSignal`, `SdcaPhase`, `SdcaAction`, `RegimeConfidence`)
+- [x] 1.8 Write unit tests for multiplier function edge cases and phase detection
 
 ## 2. Portfolio Tracker (TypeScript)
 

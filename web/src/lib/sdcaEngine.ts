@@ -291,27 +291,30 @@ export function computeSdcaSignal(
 ): SdcaSignal {
 	const day = data[dayIndex];
 
-	// Extract arrays for causal computation (only data before dayIndex)
+	// Extract arrays for causal computation
 	const closes = data.map((d) => d.close);
 	const composites = data.map((d) => d.valuation_composite ?? 0);
 
-	// t-1 enforcement: use data up to dayIndex - 1 for signal on day dayIndex
-	const prevComposite = dayIndex > 0 ? composites[dayIndex - 1] : 0;
-	const currentComposite = composites[dayIndex]; // Current composite for multiplier
+	// ── t-1 Causal Enforcement ──
+	// Signal for day t uses ONLY data available at end of day t-1.
+	// composite[t-1] = primary signal input for multiplier, phase, and action.
+	// composite[t-2] = previous day's composite for cross detection (entry/exit).
+	const compositeT1 = dayIndex > 0 ? composites[dayIndex - 1] : 0;
+	const compositeT2 = dayIndex > 1 ? composites[dayIndex - 2] : compositeT1;
 
-	// Price percentile using t-1 data
+	// Price percentile: uses prices from t-365 to t-1 (exclusive of t)
 	const pricePct = pricePercentile(closes, dayIndex);
 
-	// Composite trend using t-1 data
+	// Composite trend: 7d vs 30d average using data up to t-1
 	const trend = compositeTrend(composites, dayIndex);
 
-	// Multiplier
-	const multiplier = sdcaMultiplier(currentComposite);
+	// Multiplier: maps t-1 composite to allocation multiplier
+	const multiplier = sdcaMultiplier(compositeT1);
 
-	// Phase
-	const phase = detectPhase(currentComposite, pricePct, trend);
+	// Phase: classified from t-1 composite + percentile + trend
+	const phase = detectPhase(compositeT1, pricePct, trend);
 
-	// Consecutive days above +0.5
+	// Consecutive days above +0.5 (counting backwards from t-1)
 	let consecutiveDays = 0;
 	for (let i = dayIndex - 1; i >= 0; i--) {
 		if (composites[i] > 0.5) {
@@ -321,10 +324,10 @@ export function computeSdcaSignal(
 		}
 	}
 
-	// Action
+	// Action: entry/exit detection using t-1 vs t-2 composite crossing
 	const action = determineAction(
-		currentComposite,
-		prevComposite,
+		compositeT1,
+		compositeT2,
 		pricePct,
 		trend,
 		consecutiveDays,
