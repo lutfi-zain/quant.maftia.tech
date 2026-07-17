@@ -3,11 +3,10 @@
  *
  * Maps valuation_composite ∈ [-2.0, +2.0] to DCA allocation multiplier [-0.5x, +3.0x].
  *
- * CRITICAL SIGN CONVENTION (confirmed from database data):
- * - Negative composite (-1.0 to -2.0) = Overvalued / Bubble → SELL zone (price tops)
- * - Positive composite (+1.0 to +2.0) = Undervalued / Deep Discount → BUY zone (price bottoms)
+ * CRITICAL SIGN CONVENTION (confirmed from database data & valuation system docs):
+ * - Positive composite (+1.0 to +2.0) = Overvalued / Bubble → SELL zone (price tops)
+ * - Negative composite (-1.0 to -2.0) = Undervalued / Deep Discount → BUY zone (price bottoms)
  * - Composite 0.0 = Fair value
- * NOTE: This is OPPOSITE to some specs but matches actual database values!
  *
  * All signals enforce strict t-1 causal filtering: signal for day t uses only data up to day t-1.
  */
@@ -53,27 +52,27 @@ export interface DailyRecord {
 /**
  * Maps valuation_composite to DCA allocation multiplier.
  *
- * Sign convention: negative composite → high multiplier (buy), positive composite → low multiplier (sell).
+ * Sign convention: positive composite → low multiplier (sell), negative composite → high multiplier (buy).
  *
  * | Composite Range | Multiplier | Phase        | Action         |
  * |-----------------|------------|--------------|----------------|
- * | ≤ -1.5          | 3.0x       | Deep Discount| Aggressive buy |
- * | ≤ -1.0          | 2.0x       | Value        | Buy            |
- * | ≤ -0.5          | 1.5x       | Fair-Low     | Moderate buy   |
- * | > -0.5 to < +0.5| 1.0x      | Fair         | Normal DCA     |
- * | ≥ +0.5          | 0.5x       | Rich         | Reduce         |
- * | ≥ +1.0          | 0.0x       | Expensive    | Pause          |
  * | ≥ +1.5          | -0.5x      | Euphoria     | DCA out (sell) |
+ * | ≥ +1.0          | 0.0x       | Expensive    | Pause          |
+ * | ≥ +0.5          | 0.5x       | Rich         | Reduce         |
+ * | > -0.5 to < +0.5| 1.0x      | Fair         | Normal DCA     |
+ * | ≤ -0.5          | 1.5x       | Fair-Low     | Moderate buy   |
+ * | ≤ -1.0          | 2.0x       | Value        | Buy            |
+ * | ≤ -1.5          | 3.0x       | Deep Discount| Aggressive buy |
  */
 export function sdcaMultiplier(composite: number): number {
-	// Database convention: negative = overvalued (sell), positive = undervalued (buy)
-	if (composite >= 1.5) return 3.0; // Very positive → Deep Discount → Aggressive buy
-	if (composite >= 1.0) return 2.0; // Positive → Value → Buy
-	if (composite >= 0.5) return 1.5; // Mild positive → Fair-Low → Moderate buy
+	// Correct convention: positive = overvalued (sell), negative = undervalued (buy)
+	if (composite >= 1.5) return -0.5; // Very positive → Euphoria → Sell
+	if (composite >= 1.0) return 0.0; // Positive → Expensive → Pause
+	if (composite >= 0.5) return 0.5; // Mild positive → Rich → Reduce
 	if (composite > -0.5) return 1.0; // Near zero → Fair → Normal DCA
-	if (composite > -1.0) return 0.5; // Mild negative → Rich → Reduce
-	if (composite > -1.5) return 0.0; // Negative → Expensive → Pause
-	return -0.5; // Very negative → Euphoria → Sell
+	if (composite > -1.0) return 1.5; // Mild negative → Fair-Low → Moderate buy
+	if (composite > -1.5) return 2.0; // Negative → Value → Buy
+	return 3.0; // Very negative → Deep Discount → Aggressive buy
 }
 
 // ─── Cycle Phase Detection ──────────────────────────────────────────────────
@@ -94,24 +93,25 @@ export function detectPhase(
 	pricePercentile: number,
 	trendPositive: boolean,
 ): SdcaPhase {
-	// Database convention: positive = undervalued (bottom), negative = overvalued (top)
-	// Deep Discount: composite ≥ +1.0 (positive = bottom), price < 25th percentile, positive trend
-	if (composite >= 1.0 && pricePercentile < 25 && trendPositive) {
+	// Correct convention: positive = overvalued (top), negative = undervalued (bottom)
+
+	// Deep Discount: composite ≤ -1.0 (negative = bottom), price < 25th percentile, positive trend
+	if (composite <= -1.0 && pricePercentile < 25 && trendPositive) {
 		return "deep_discount";
 	}
 
-	// Euphoria: composite ≤ -1.0 (negative = top), price > 80th percentile, negative trend
-	if (composite <= -1.0 && pricePercentile > 80 && !trendPositive) {
+	// Euphoria: composite ≥ +1.0 (positive = top), price > 80th percentile, negative trend
+	if (composite >= 1.0 && pricePercentile > 80 && !trendPositive) {
 		return "euphoria";
 	}
 
-	// Value: composite ≥ +0.5, price < 40th percentile
-	if (composite >= 0.5 && pricePercentile < 40) {
+	// Value: composite ≤ -0.5, price < 40th percentile
+	if (composite <= -0.5 && pricePercentile < 40) {
 		return "value";
 	}
 
-	// Expansion: composite ≤ -0.5, price > 60th percentile
-	if (composite <= -0.5 && pricePercentile > 60) {
+	// Expansion: composite ≥ +0.5, price > 60th percentile
+	if (composite >= 0.5 && pricePercentile > 60) {
 		return "expansion";
 	}
 
@@ -187,15 +187,15 @@ export function determineAction(
 	prevComposite: number,
 	pricePercentileVal: number,
 	trendPositive: boolean,
-	consecutiveDaysAbove05: number,
+	consecutiveDaysAboveMinus05: number,
 ): SdcaAction {
-	// Database convention: positive = undervalued (buy), negative = overvalued (sell)
+	// Correct convention: positive = overvalued (sell), negative = undervalued (buy)
 
 	// Entry: START_AGGRESSIVE_DCA
-	// Composite crosses above +1.0 from below (entering deep discount), price < 25th percentile, trend positive
+	// Composite crosses below -1.0 from above (entering deep discount), price < 25th percentile, trend positive
 	if (
-		prevComposite < 1.0 &&
-		currentComposite >= 1.0 &&
+		prevComposite > -1.0 &&
+		currentComposite <= -1.0 &&
 		pricePercentileVal < 25 &&
 		trendPositive
 	) {
@@ -203,29 +203,29 @@ export function determineAction(
 	}
 
 	// Aggressive exit: SELL_ALL
-	// Composite ≤ -1.0 (entering euphoria/top)
-	if (currentComposite <= -1.0) {
+	// Composite ≥ +1.0 (entering euphoria/top)
+	if (currentComposite >= 1.0) {
 		return "SELL_ALL";
 	}
 
 	// Gradual exit: REDUCE_POSITION
-	// Composite crosses below -0.5 from above AND price > 80th percentile
+	// Composite crosses above +0.5 from below AND price > 80th percentile
 	if (
-		prevComposite >= -0.5 &&
-		currentComposite < -0.5 &&
+		prevComposite <= 0.5 &&
+		currentComposite > 0.5 &&
 		pricePercentileVal > 80
 	) {
 		return "REDUCE_POSITION";
 	}
 
 	// Extended euphoria: REDUCE_POSITION
-	// Composite < -0.5 for > 30 consecutive days
-	if (currentComposite < -0.5 && consecutiveDaysAbove05 > 30) {
+	// Composite > +0.5 for > 30 consecutive days
+	if (currentComposite > 0.5 && consecutiveDaysAboveMinus05 > 30) {
 		return "REDUCE_POSITION";
 	}
 
-	// Normal DCA when composite is in buy zone (positive)
-	if (currentComposite >= 0.5) {
+	// Normal DCA when composite is in buy zone (negative)
+	if (currentComposite <= -0.5) {
 		return "NORMAL_DCA";
 	}
 
@@ -264,17 +264,17 @@ export function regimeConfidence(
 
 	if (signChanges > 3) return "LOW"; // More than 3 sign changes in 90 days
 
-	// Database convention: negative composite = overvalued (top/euphoria)
-	// Check prolonged euphoria (negative composite) without significant price drop
+	// Correct convention: positive composite = overvalued (top/euphoria)
+	// Check prolonged euphoria (positive composite) without significant price drop
 	if (validComposites.length >= 180) {
 		const last180 = validComposites.slice(-180);
-		const allBelowNeg1 = last180.every((c) => c < -1.0);
-		if (allBelowNeg1 && validPrices.length >= 2) {
+		const allAbovePos1 = last180.every((c) => c > 1.0);
+		if (allAbovePos1 && validPrices.length >= 2) {
 			const priceStart =
 				validPrices[validPrices.length - 180] || validPrices[0];
 			const priceEnd = validPrices[validPrices.length - 1];
 			const priceDrop = (priceStart - priceEnd) / priceStart;
-			// If composite < -1.0 for 180 days but price dropped < 20%, regime may be shifting
+			// If composite > +1.0 for 180 days but price dropped < 20%, regime may be shifting
 			if (priceDrop < 0.2) return "LOW";
 		}
 	}
@@ -320,11 +320,11 @@ export function computeSdcaSignal(
 	// Phase: classified from t-1 composite + percentile + trend
 	const phase = detectPhase(compositeT1, pricePct, trend);
 
-	// Consecutive days above +0.5 (counting backwards from t-1)
-	let consecutiveDays = 0;
+	// Consecutive days above +0.5 (euphoria duration, counting backwards from t-1)
+	let consecutiveDaysAbove05 = 0;
 	for (let i = dayIndex - 1; i >= 0; i--) {
 		if (composites[i] > 0.5) {
-			consecutiveDays++;
+			consecutiveDaysAbove05++;
 		} else {
 			break;
 		}
@@ -336,7 +336,7 @@ export function computeSdcaSignal(
 		compositeT2,
 		pricePct,
 		trend,
-		consecutiveDays,
+		consecutiveDaysAbove05,
 	);
 
 	// Regime confidence
