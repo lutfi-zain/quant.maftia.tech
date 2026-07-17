@@ -43,6 +43,13 @@ import {
 	computeSdcaSignal,
 	type SdcaSignal,
 } from "../../lib/sdcaEngine";
+import { SdcaPanel } from "./SdcaPanel";
+import { SdcaChart } from "./SdcaChart";
+import type { PortfolioState } from "../../lib/sdcaPortfolio";
+import {
+	createInitialState,
+	loadPortfolioState,
+} from "../../lib/sdcaPortfolio";
 
 type MaximizedPanel = null | "btc" | "val" | "eq";
 
@@ -230,6 +237,9 @@ export const ValuationStudio: React.FC = () => {
 	const [startDate, setStartDate] = useState("2020-01-01");
 	const [endDate, setEndDate] = useState("2026-12-31");
 	const [feeBps, setFeeBps] = useState(10);
+	const [portfolioState] = useState<PortfolioState>(() => {
+		return loadPortfolioState() || createInitialState();
+	});
 	const isMobile = useIsMobile();
 
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -1103,6 +1113,13 @@ export const ValuationStudio: React.FC = () => {
 							/>
 						</div>
 					</div>
+
+					{/* SDCA Strategy Panel */}
+					<SdcaPanel
+						signal={sdcaSignal}
+						currentPrice={displayPoint?.close || 0}
+						fullscreen={maximized !== null}
+					/>
 
 					{/* Interactive Backtest Controls & Metrics Bar */}
 					<div
