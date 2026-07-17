@@ -171,7 +171,9 @@ describe("compositeTrend", () => {
 
 describe("determineAction", () => {
 	it("START_AGGRESSIVE_DCA on entry signal (composite crosses -1.0)", () => {
-		expect(determineAction(-1.1, -0.9, 20, true, 0)).toBe("START_AGGRESSIVE_DCA");
+		expect(determineAction(-1.1, -0.9, 20, true, 0)).toBe(
+			"START_AGGRESSIVE_DCA",
+		);
 	});
 
 	it("does NOT trigger entry if trend is negative", () => {
