@@ -589,7 +589,13 @@ export const ValuationStudio: React.FC = () => {
 					const hovered = dailyData.find((p) => p.date === timeStr);
 					setHoveredPoint(hovered || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
-						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
+						if (i !== idx) {
+							// Find actual series value at this time for proper crosshair position
+							const data = s.data();
+							const point = data.find((d: any) => d.time === param.time);
+							const price = point ? (point.value ?? point.close ?? 0) : 0;
+							c.setCrosshairPosition(price, param.time as Time, s);
+						}
 					});
 				} else {
 					setHoveredPoint(null);
