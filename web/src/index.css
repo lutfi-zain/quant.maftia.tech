@@ -1468,12 +1468,12 @@ pre,
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	border-left: 1px solid var(--border-panel);
+	grid-column: 1 / -1;
+	border-top: 1px solid var(--border-panel);
 	font-family: var(--font-mono);
 	font-size: 12px;
 	font-weight: 700;
 	letter-spacing: 0.3px;
-	min-width: 260px;
 }
 
 @media (max-width: 1024px) {

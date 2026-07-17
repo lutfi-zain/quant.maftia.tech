@@ -1,6 +1,6 @@
 ## 1. SDCA Signal Engine (TypeScript)
 
-- [ ] 1.1 Create `web/src/lib/sdcaEngine.ts` with SDCA multiplier function (piecewise linear mapping with CORRECTED sign convention: negative composite = buy, positive composite = sell)
+- [x] 1.1 Create `web/src/lib/sdcaEngine.ts` with SDCA multiplier function (piecewise linear mapping with CORRECTED sign convention: negative composite = buy, positive composite = sell)
 - [ ] 1.2 Implement cycle phase detection (Deep Discount, Value, Fair, Expansion, Euphoria) based on composite + percentile + trend
 - [ ] 1.3 Implement DCA entry rule (composite crosses below -1.0, price < 25th percentile, trend positive)
 - [ ] 1.4 Implement DCA exit rule (composite crosses above +0.5, price > 80th percentile, extended euphoria)
