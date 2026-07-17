@@ -67,13 +67,13 @@ export interface DailyRecord {
  */
 export function sdcaMultiplier(composite: number): number {
 	// Database convention: negative = overvalued (sell), positive = undervalued (buy)
-	if (composite >= 1.5) return 3.0;     // Very positive → Deep Discount → Aggressive buy
-	if (composite >= 1.0) return 2.0;     // Positive → Value → Buy
-	if (composite >= 0.5) return 1.5;     // Mild positive → Fair-Low → Moderate buy
-	if (composite > -0.5) return 1.0;     // Near zero → Fair → Normal DCA
-	if (composite > -1.0) return 0.5;     // Mild negative → Rich → Reduce
-	if (composite > -1.5) return 0.0;     // Negative → Expensive → Pause
-	return -0.5;                          // Very negative → Euphoria → Sell
+	if (composite >= 1.5) return 3.0; // Very positive → Deep Discount → Aggressive buy
+	if (composite >= 1.0) return 2.0; // Positive → Value → Buy
+	if (composite >= 0.5) return 1.5; // Mild positive → Fair-Low → Moderate buy
+	if (composite > -0.5) return 1.0; // Near zero → Fair → Normal DCA
+	if (composite > -1.0) return 0.5; // Mild negative → Rich → Reduce
+	if (composite > -1.5) return 0.0; // Negative → Expensive → Pause
+	return -0.5; // Very negative → Euphoria → Sell
 }
 
 // ─── Cycle Phase Detection ──────────────────────────────────────────────────
