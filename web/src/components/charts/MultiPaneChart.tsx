@@ -34,7 +34,7 @@ const GRID_COLOR = "rgba(255,255,255,0.03)";
 
 function getChartYAxisWidth(): number {
 	const raw = getComputedStyle(document.documentElement)
-		.getPropertyValue('--chart-yaxis-width')
+		.getPropertyValue("--chart-yaxis-width")
 		.trim();
 	return Number(raw) || 85;
 }
@@ -423,7 +423,11 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 				chart.applyOptions({ width: newW });
 				chart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			});
-			syncYAxisWidth(priceContainerRef.current, [btcChart, valChart, lttdChart, mttdChart], yWidth);
+			syncYAxisWidth(
+				priceContainerRef.current,
+				[btcChart, valChart, lttdChart, mttdChart],
+				yWidth,
+			);
 		});
 		if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
 

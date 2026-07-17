@@ -105,7 +105,8 @@ export const BentoSummary: React.FC<BentoSummaryProps> = ({
 	const valScore = toNum(latestPoint.valuation_composite);
 	// Database convention: negative = overvalued (bubble), positive = undervalued (discount)
 	const isBubble =
-		valScore <= -1.5 || circuitBreakers.valuation_circuit_breaker.is_bubble_risk;
+		valScore <= -1.5 ||
+		circuitBreakers.valuation_circuit_breaker.is_bubble_risk;
 	const isDiscount =
 		valScore >= 1.0 ||
 		circuitBreakers.valuation_circuit_breaker.is_deep_discount;
