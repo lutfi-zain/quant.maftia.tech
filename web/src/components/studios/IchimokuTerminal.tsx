@@ -79,15 +79,15 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 			return { btc: available, imo: 0, eq: 0 };
 		case "imo":
 			return {
-				btc: Math.floor(available * 0.55),
-				imo: Math.floor(available * 0.45),
+				btc: Math.floor(available * 0.5),
+				imo: Math.floor(available * 0.5),
 				eq: 0,
 			};
 		case "eq":
 			return {
-				btc: Math.floor(available * 0.55),
+				btc: Math.floor(available * 0.5),
 				imo: 0,
-				eq: Math.floor(available * 0.45),
+				eq: Math.floor(available * 0.5),
 			};
 		default:
 			return isMobile
@@ -144,8 +144,8 @@ export const IchimokuTerminal: React.FC = () => {
 	const [params, setParams] = useState({
 		p2: 60,
 		entropy_thresh: 2.271,
-		t_entry: 0.40,
-		chikou_exit: -0.30,
+		t_entry: 0.4,
+		chikou_exit: -0.3,
 	});
 
 	const handleParamChange = (key: string, val: number) => {
@@ -176,6 +176,9 @@ export const IchimokuTerminal: React.FC = () => {
 		thresh: any;
 		entropy: any;
 		chikou: any;
+		s_tk: any;
+		s_cloud: any;
+		s_future: any;
 		refStrat: any;
 		refMarket: any;
 		interactiveStrat: any;
@@ -191,6 +194,9 @@ export const IchimokuTerminal: React.FC = () => {
 		thresh: null,
 		entropy: null,
 		chikou: null,
+		s_tk: null,
+		s_cloud: null,
+		s_future: null,
 		refStrat: null,
 		refMarket: null,
 		interactiveStrat: null,
@@ -331,97 +337,67 @@ export const IchimokuTerminal: React.FC = () => {
 		const heights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		const allNonBtcCharts: Array<{
+			chart: IChartApi | null;
+			key: string;
+			h: number;
+		}> = [
+			{ chart: imo, key: "imo", h: heights.imo },
+			{ chart: eq, key: "eq", h: heights.eq },
+		];
+
+		const resizeFn = (containerH?: number) => {
+			const total = heights.btc + heights.imo + heights.eq;
+			const effectiveH =
+				containerH && total > 0
+					? (h: number) => Math.round(containerH * (h / total))
+					: (h: number) => h;
+
+			const yWidth = getChartYAxisWidth();
+			btc.resize(w, effectiveH(heights.btc));
+			btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+
+			allNonBtcCharts.forEach(({ chart, h }) => {
+				if (!chart) return;
+				chart.resize(w, effectiveH(h));
+				chart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			});
+
+			const visiblePanels = allNonBtcCharts.filter((p) => p.h > 0);
+			const bottomId =
+				visiblePanels.length > 0
+					? visiblePanels[visiblePanels.length - 1].key
+					: null;
+
+			btc.timeScale().applyOptions({
+				visible: visiblePanels.length === 0,
+			});
+			allNonBtcCharts.forEach(({ chart, h, key }) => {
+				if (!chart) return;
+				chart.timeScale().applyOptions({ visible: h > 0 && key === bottomId });
+			});
+
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btc, imo, eq].filter(Boolean),
+					yWidth,
+				);
+			});
+		};
+
 		if (isMobile && maximized !== null) {
 			const containerH = wrapperRef.current?.clientHeight;
 			if (containerH && containerH > 0) {
-				const total = heights.btc + heights.imo + heights.eq;
-				if (total > 0) {
-					const yWidth = getChartYAxisWidth();
-					btc.resize(w, Math.round(containerH * (heights.btc / total)));
-					btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					if (imo) {
-						imo.resize(w, Math.round(containerH * (heights.imo / total)));
-						imo.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					if (eq) {
-						eq.resize(w, Math.round(containerH * (heights.eq / total)));
-						eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					const panels: Array<{
-						chart: IChartApi | null;
-						h: number;
-						id: string;
-					}> = [
-						{ chart: imo, h: heights.imo, id: "imo" },
-						{ chart: eq, h: heights.eq, id: "eq" },
-					];
-					const visiblePanels = panels.filter((p) => p.h > 0);
-					const bottomId =
-						visiblePanels.length > 0
-							? visiblePanels[visiblePanels.length - 1].id
-							: null;
-					btc.timeScale().applyOptions({
-						visible:
-							heights.imo === 0 && heights.eq === 0,
-					});
-					panels.forEach(({ chart, h, id }) => {
-						if (!chart) return;
-						chart
-							.timeScale()
-							.applyOptions({ visible: h > 0 && id === bottomId });
-					});
-					requestAnimationFrame(() => {
-						syncYAxisWidth(
-							btcContainerRef.current,
-							[btc, imo, eq].filter(Boolean),
-							getChartYAxisWidth(),
-						);
-					});
-					return;
-				}
+				resizeFn(containerH);
+				return;
 			}
 		}
 
-		const yWidth = getChartYAxisWidth();
-		btc.resize(w, heights.btc);
-		btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		if (imo) {
-			imo.resize(w, heights.imo);
-			imo.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-		if (eq) {
-			eq.resize(w, heights.eq);
-			eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-
-		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
-			{ chart: imo, h: heights.imo, id: "imo" },
-			{ chart: eq, h: heights.eq, id: "eq" },
-		];
-		const visiblePanels = panels.filter((p) => p.h > 0);
-		const bottomId =
-			visiblePanels.length > 0
-				? visiblePanels[visiblePanels.length - 1].id
-				: null;
-
-		btc.timeScale().applyOptions({
-			visible: heights.imo === 0 && heights.eq === 0,
-		});
-		panels.forEach(({ chart, h, id }) => {
-			if (!chart) return;
-			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
-		});
-		requestAnimationFrame(() => {
-			syncYAxisWidth(
-				btcContainerRef.current,
-				[btc, imo, eq].filter(Boolean),
-				yWidth,
-			);
-		});
+		resizeFn();
 	}, [maximized, isMobile]);
 
-	// Initialize 3-pane charts
+	// Initialize 3-pane charts (only runs once on mount/dailyData change)
 	useEffect(() => {
 		if (
 			!dailyData.length ||
@@ -430,12 +406,6 @@ export const IchimokuTerminal: React.FC = () => {
 			!eqContainerRef.current
 		)
 			return;
-
-		const filteredDailyData = dailyData.filter(
-			(p) =>
-				(!startDate || p.date >= startDate) && (!endDate || p.date <= endDate),
-		);
-		if (!filteredDailyData.length) return;
 
 		const common = makeCommonOptions(getChartYAxisWidth());
 		const w = wrapperRef.current?.clientWidth || 900;
@@ -548,6 +518,24 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "S_Chikou",
 		});
 
+		const sTkSeries = imoChart.addSeries(LineSeries, {
+			color: "rgba(248, 113, 113, 0.45)", // light red
+			lineWidth: 1,
+			title: "S_TK",
+		});
+
+		const sCloudSeries = imoChart.addSeries(LineSeries, {
+			color: "rgba(34, 197, 94, 0.45)", // light green
+			lineWidth: 1,
+			title: "S_Cloud",
+		});
+
+		const sFutureSeries = imoChart.addSeries(LineSeries, {
+			color: "rgba(96, 165, 250, 0.45)", // light blue
+			lineWidth: 1,
+			title: "S_Future",
+		});
+
 		// ── Pane 3: Cumulative Equity Growth (Reference vs Interactive) ──
 		const eqChart = createChart(eqContainerRef.current, {
 			...common,
@@ -596,7 +584,7 @@ export const IchimokuTerminal: React.FC = () => {
 			priceLineVisible: false,
 		});
 
-		// ── Invisible anchor series for crosshair sync (covers ALL dates in window) ──
+		// ── Invisible anchor series for crosshair sync (covers ALL dates) ──
 		const imoSyncAnchorSeries = imoChart.addSeries(LineSeries, {
 			color: "transparent",
 			lineWidth: 1,
@@ -605,7 +593,7 @@ export const IchimokuTerminal: React.FC = () => {
 			crosshairMarkerVisible: false,
 		});
 		imoSyncAnchorSeries.setData(
-			filteredDailyData.map((p) => ({ time: p.date as Time, value: 0 })),
+			dailyData.map((p) => ({ time: p.date as Time, value: 0 })),
 		);
 
 		const eqSyncAnchorSeries = eqChart.addSeries(LineSeries, {
@@ -616,7 +604,7 @@ export const IchimokuTerminal: React.FC = () => {
 			crosshairMarkerVisible: false,
 		});
 		eqSyncAnchorSeries.setData(
-			filteredDailyData.map((p) => ({ time: p.date as Time, value: 0 })),
+			dailyData.map((p) => ({ time: p.date as Time, value: 0 })),
 		);
 
 		chartsRef.current = {
@@ -635,15 +623,18 @@ export const IchimokuTerminal: React.FC = () => {
 			thresh: threshSeries,
 			entropy: entropySeries,
 			chikou: chikouSeries,
+			s_tk: sTkSeries,
+			s_cloud: sCloudSeries,
+			s_future: sFutureSeries,
 			refStrat: refStratSeries,
 			refMarket: refMarketSeries,
 			interactiveStrat: interactiveStratSeries,
 			interactiveMarket: interactiveMarketSeries,
 		};
 
-		// ── Populate BTC + Ichimoku data ──
+		// ── Populate BTC + Ichimoku data (full dataset) ──
 		candleSeries.setData(
-			filteredDailyData.map((p) => ({
+			dailyData.map((p) => ({
 				time: p.date as Time,
 				open: p.open,
 				high: p.high,
@@ -652,9 +643,8 @@ export const IchimokuTerminal: React.FC = () => {
 			})),
 		);
 
-		// Tenkan data from API (skip null warmup)
 		tenkanSeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_tenkan,
@@ -662,9 +652,8 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// Kijun data from API
 		kijunSeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_kijun,
@@ -672,9 +661,8 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// Span A data from API
 		spanASeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_senkou_a,
@@ -682,9 +670,8 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// Span B data from API
 		spanBSeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_senkou_b,
@@ -692,9 +679,8 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// Chikou data from API (60-bar displacement from prior system)
 		traditionalChikouSeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_chikou,
@@ -702,9 +688,8 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// S_Chikou data from API (normalized score [-1, +1])
 		chikouSeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_s_chikou,
@@ -712,9 +697,35 @@ export const IchimokuTerminal: React.FC = () => {
 				.filter((d) => d.value != null) as any,
 		);
 
-		// ── Populate IMO data + Entropy/ER/imo_std ──
+		sTkSeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_tk,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
+		sCloudSeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_cloud,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
+		sFutureSeries.setData(
+			dailyData
+				.map((p) => ({
+					time: p.date as Time,
+					value: p.ichimoku_s_future,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+
 		imoSeries.setData(
-			filteredDailyData.map((p) => ({
+			dailyData.map((p) => ({
 				time: p.date as Time,
 				value:
 					typeof p.ichimoku_imo === "number"
@@ -724,30 +735,10 @@ export const IchimokuTerminal: React.FC = () => {
 		);
 
 		entropySeries.setData(
-			filteredDailyData
+			dailyData
 				.map((p) => ({
 					time: p.date as Time,
 					value: p.ichimoku_entropy,
-				}))
-				.filter((d) => d.value != null) as any,
-		);
-
-		// ── Populate reference equity from backtestResult (rebased to start_date) ──
-		refStratSeries.setData(
-			backtestResult.cumStrat
-				.filter((d) => d.time >= startDate && d.time <= endDate)
-				.map((d) => ({
-					time: d.time,
-					value: d.value != null ? parseFloat((d.value * 100).toFixed(2)) : null,
-				}))
-				.filter((d) => d.value != null) as any,
-		);
-		refMarketSeries.setData(
-			backtestResult.cumMarket
-				.filter((d) => d.time >= startDate && d.time <= endDate)
-				.map((d) => ({
-					time: d.time,
-					value: d.value != null ? parseFloat((d.value * 100).toFixed(2)) : null,
 				}))
 				.filter((d) => d.value != null) as any,
 		);
@@ -765,9 +756,7 @@ export const IchimokuTerminal: React.FC = () => {
 				isSyncingRef.current = true;
 				if (param.time) {
 					const timeStr = param.time as string;
-					setHoveredPoint(
-						filteredDailyData.find((p) => p.date === timeStr) || null,
-					);
+					setHoveredPoint(dailyData.find((p) => p.date === timeStr) || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
 						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
@@ -844,18 +833,56 @@ export const IchimokuTerminal: React.FC = () => {
 				thresh: null,
 				entropy: null,
 				chikou: null,
+				s_tk: null,
+				s_cloud: null,
+				s_future: null,
 				refStrat: null,
 				refMarket: null,
 				interactiveStrat: null,
 				interactiveMarket: null,
 			};
 		};
-	}, [dailyData, startDate, endDate, backtestResult]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Update equity curve data when backtest/date range changes (without resetting scroll)
+	useEffect(() => {
+		const { eq } = chartsRef.current;
+		const { refStrat, refMarket } = seriesRef.current;
+		if (!eq || !refStrat || !refMarket) return;
+
+		refStrat.setData(
+			backtestResult.cumStrat
+				.filter((d) => d.time >= startDate && d.time <= endDate)
+				.map((d) => ({
+					time: d.time,
+					value:
+						d.value != null ? parseFloat((d.value * 100).toFixed(2)) : null,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+		refMarket.setData(
+			backtestResult.cumMarket
+				.filter((d) => d.time >= startDate && d.time <= endDate)
+				.map((d) => ({
+					time: d.time,
+					value:
+						d.value != null ? parseFloat((d.value * 100).toFixed(2)) : null,
+				}))
+				.filter((d) => d.value != null) as any,
+		);
+	}, [backtestResult, startDate, endDate]);
 
 	// Dynamically update parameters, threshold lines, and displacement data
 	useEffect(() => {
 		const { btc, imo, eq } = chartsRef.current;
-		const { candle, traditionalChikou, imo: imoSer, thresh, entropy, chikou } = seriesRef.current;
+		const {
+			candle,
+			traditionalChikou,
+			imo: imoSer,
+			thresh,
+			entropy,
+			chikou,
+		} = seriesRef.current;
 		if (!btc || !imo || !eq || !candle || dailyData.length === 0) return;
 
 		const filteredDailyData = dailyData.filter(
@@ -883,7 +910,10 @@ export const IchimokuTerminal: React.FC = () => {
 				filteredDailyData
 					.map((p) => ({
 						time: p.date as Time,
-						value: p.ichimoku_imo_std != null ? p.ichimoku_imo_std * params.t_entry : null,
+						value:
+							p.ichimoku_imo_std != null
+								? p.ichimoku_imo_std * params.t_entry
+								: null,
 					}))
 					.filter((d) => d.value != null) as any,
 			);
@@ -922,8 +952,14 @@ export const IchimokuTerminal: React.FC = () => {
 
 	const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
 	const latestImo = toNum(latestPoint?.ichimoku_imo);
-	if (typeof window !== "undefined" && (window as any).process?.env?.NODE_ENV === "development") {
-		console.assert(typeof latestImo === "number" && !isNaN(latestImo), "latestImo must be a valid number");
+	if (
+		typeof window !== "undefined" &&
+		(window as any).process?.env?.NODE_ENV === "development"
+	) {
+		console.assert(
+			typeof latestImo === "number" && !isNaN(latestImo),
+			"latestImo must be a valid number",
+		);
 	}
 	const cloudState =
 		latestImo > 0.15
@@ -989,14 +1025,19 @@ export const IchimokuTerminal: React.FC = () => {
 				</div>
 
 				<div className="studio-banner-metric">
-					<span className="studio-metric-label" title="tanh(S_TK + S_Cloud + S_Future + S_Chikou) / 4 → SuperSmoother (l=7) → [-1.0, +1.0]">IMO DENOISED OSCILLATOR</span>
+					<span
+						className="studio-metric-label"
+						title="tanh(S_TK + S_Cloud + S_Future + S_Chikou) / 4 → SuperSmoother (l=7) → [-1.0, +1.0]"
+					>
+						IMO DENOISED OSCILLATOR
+					</span>
 					<span
 						className="studio-metric-value"
 						style={{
 							color: latestImo > 0 ? "var(--accent)" : "var(--signal-bear)",
 						}}
 					>
-						{latestImo > 0 ? `+${latestImo.toFixed(4)}` : latestImo.toFixed(4)}
+						{latestImo > 0 ? `+${latestImo.toFixed(2)}` : latestImo.toFixed(2)}
 					</span>
 				</div>
 
@@ -1133,7 +1174,16 @@ export const IchimokuTerminal: React.FC = () => {
 					<div className="chart-subplot-header">
 						<div className="subplot-title">
 							<span className="subplot-badge">CAUSAL COMP</span>
-							<span className="subplot-badge" style={{ background: "rgba(34, 197, 94, 0.1)", color: "#22c55e", borderColor: "rgba(34, 197, 94, 0.25)" }}>PY ENGINE</span>
+							<span
+								className="subplot-badge"
+								style={{
+									background: "rgba(34, 197, 94, 0.1)",
+									color: "#22c55e",
+									borderColor: "rgba(34, 197, 94, 0.25)",
+								}}
+							>
+								PY ENGINE
+							</span>
 							<span>Cumulative Equity Growth</span>
 						</div>
 						<div className="subplot-controls">
@@ -1259,8 +1309,8 @@ export const IchimokuTerminal: React.FC = () => {
 								setParams({
 									p2: 60,
 									entropy_thresh: 2.271,
-									t_entry: 0.40,
-									chikou_exit: -0.30,
+									t_entry: 0.4,
+									chikou_exit: -0.3,
 								});
 							}}
 							style={{ fontSize: "11px", padding: "4px 8px" }}
@@ -1284,10 +1334,21 @@ export const IchimokuTerminal: React.FC = () => {
 							marginBottom: "4px",
 						}}
 					>
-						<div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)", display: "flex", justifyContent: "space-between" }}>
+						<div
+							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+						>
+							<label
+								style={{
+									fontSize: "11px",
+									color: "var(--text-muted)",
+									display: "flex",
+									justifyContent: "space-between",
+								}}
+							>
 								<span>Kijun Displacement (p2):</span>
-								<span style={{ color: "var(--accent)", fontWeight: 600 }}>{params.p2}d</span>
+								<span style={{ color: "var(--accent)", fontWeight: 600 }}>
+									{params.p2}d
+								</span>
 							</label>
 							<input
 								type="range"
@@ -1295,14 +1356,27 @@ export const IchimokuTerminal: React.FC = () => {
 								max="120"
 								step="1"
 								value={params.p2}
-								onChange={(e) => handleParamChange("p2", Number(e.target.value))}
+								onChange={(e) =>
+									handleParamChange("p2", Number(e.target.value))
+								}
 								style={{ width: "100%", accentColor: "var(--accent)" }}
 							/>
 						</div>
-						<div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)", display: "flex", justifyContent: "space-between" }}>
+						<div
+							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+						>
+							<label
+								style={{
+									fontSize: "11px",
+									color: "var(--text-muted)",
+									display: "flex",
+									justifyContent: "space-between",
+								}}
+							>
 								<span>Entry Threshold (t_entry):</span>
-								<span style={{ color: "var(--accent)", fontWeight: 600 }}>{params.t_entry.toFixed(2)}x</span>
+								<span style={{ color: "var(--accent)", fontWeight: 600 }}>
+									{params.t_entry.toFixed(2)}x
+								</span>
 							</label>
 							<input
 								type="range"
@@ -1310,14 +1384,27 @@ export const IchimokuTerminal: React.FC = () => {
 								max="1.50"
 								step="0.05"
 								value={params.t_entry}
-								onChange={(e) => handleParamChange("t_entry", Number(e.target.value))}
+								onChange={(e) =>
+									handleParamChange("t_entry", Number(e.target.value))
+								}
 								style={{ width: "100%", accentColor: "var(--accent)" }}
 							/>
 						</div>
-						<div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)", display: "flex", justifyContent: "space-between" }}>
+						<div
+							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+						>
+							<label
+								style={{
+									fontSize: "11px",
+									color: "var(--text-muted)",
+									display: "flex",
+									justifyContent: "space-between",
+								}}
+							>
 								<span>Entropy Limit (thresh):</span>
-								<span style={{ color: "var(--accent)", fontWeight: 600 }}>{params.entropy_thresh.toFixed(3)}</span>
+								<span style={{ color: "var(--accent)", fontWeight: 600 }}>
+									{params.entropy_thresh.toFixed(3)}
+								</span>
 							</label>
 							<input
 								type="range"
@@ -1325,14 +1412,27 @@ export const IchimokuTerminal: React.FC = () => {
 								max="3.0"
 								step="0.01"
 								value={params.entropy_thresh}
-								onChange={(e) => handleParamChange("entropy_thresh", Number(e.target.value))}
+								onChange={(e) =>
+									handleParamChange("entropy_thresh", Number(e.target.value))
+								}
 								style={{ width: "100%", accentColor: "var(--accent)" }}
 							/>
 						</div>
-						<div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)", display: "flex", justifyContent: "space-between" }}>
+						<div
+							style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+						>
+							<label
+								style={{
+									fontSize: "11px",
+									color: "var(--text-muted)",
+									display: "flex",
+									justifyContent: "space-between",
+								}}
+							>
 								<span>Chikou Exit Limit:</span>
-								<span style={{ color: "var(--accent)", fontWeight: 600 }}>{params.chikou_exit.toFixed(2)}</span>
+								<span style={{ color: "var(--accent)", fontWeight: 600 }}>
+									{params.chikou_exit.toFixed(2)}
+								</span>
 							</label>
 							<input
 								type="range"
@@ -1340,7 +1440,9 @@ export const IchimokuTerminal: React.FC = () => {
 								max="0.0"
 								step="0.05"
 								value={params.chikou_exit}
-								onChange={(e) => handleParamChange("chikou_exit", Number(e.target.value))}
+								onChange={(e) =>
+									handleParamChange("chikou_exit", Number(e.target.value))
+								}
 								style={{ width: "100%", accentColor: "var(--accent)" }}
 							/>
 						</div>

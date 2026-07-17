@@ -33,6 +33,6 @@
 
 ## 6. Commit
 
-- [ ] 6.1 Stage all changed files: `web/src/components/studios/IchimokuTerminal.tsx` (and optionally `run_report_pipeline.py` if pipeline fix was needed)
-- [ ] 6.2 Commit with Conventional Commits format: `fix(ichimoku): correct IMO banner label and verify equity curve decimal baseline`
-- [ ] 6.3 Push to feature branch (do NOT force-push to `main`): `git push origin fix/ichimoku-equity-tanh-audit`
+- [x] 6.1 Stage all changed files: `web/src/components/studios/IchimokuTerminal.tsx` (and optionally `run_report_pipeline.py` if pipeline fix was needed)
+- [x] 6.2 Commit with Conventional Commits format: `fix(ichimoku): correct IMO banner label and verify equity curve decimal baseline`
+- [x] 6.3 Push to feature branch (do NOT force-push to `main`): `git push origin fix/ichimoku-equity-tanh-audit`
