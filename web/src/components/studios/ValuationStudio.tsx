@@ -670,17 +670,18 @@ export const ValuationStudio: React.FC = () => {
 	const isBubble = latestValScore >= 1.5;
 	const isDiscount = latestValScore <= -1.0;
 
-	// SDCA visual test
+	// SDCA signal: compute for hovered day or latest day
+	const sdcaMappedData = dailyData.map((d) => ({
+		date: d.date,
+		close: d.close,
+		valuation_composite: Number(d.valuation_composite ?? 0),
+	}));
+	const hoveredIndex = displayPoint
+		? dailyData.findIndex((d) => d.date === displayPoint.date)
+		: -1;
 	const sdcaSignal: SdcaSignal | null =
-		dailyData.length > 0
-			? computeSdcaSignal(
-					dailyData.map((d) => ({
-						date: d.date,
-						close: d.close,
-						valuation_composite: Number(d.valuation_composite ?? 0),
-					})),
-					dailyData.length - 1,
-				)
+		sdcaMappedData.length > 0 && hoveredIndex >= 0
+			? computeSdcaSignal(sdcaMappedData, hoveredIndex)
 			: null;
 
 	const displayIndicators = Object.entries(INDICATOR_METADATA)
