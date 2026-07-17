@@ -229,7 +229,8 @@ export function useStudioBacktest(
 						(prevRow.lttd_prob_sideways || 0) > 0.6
 					) {
 						exitReason = "Circuit Breaker: LTTD Sideways";
-					} else if (prevRow && (prevRow.valuation_composite || 0) >= 1.5) {
+					// Database convention: negative = overvalued (bubble)
+					} else if (prevRow && (prevRow.valuation_composite || 0) <= -1.5) {
 						exitReason = "Circuit Breaker: Valuation Bubble";
 					} else if (
 						prevRow &&

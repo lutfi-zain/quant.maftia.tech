@@ -350,7 +350,8 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		// ── Buy/Sell Markers ──
 		const markers: SeriesMarker<Time>[] = [];
 		data.forEach((p) => {
-			if (p.valuation_composite <= -1.0 && p.lttd_regime === "BULL") {
+			// Database convention: positive = undervalued (buy), negative = overvalued (sell)
+			if (p.valuation_composite >= 1.0 && p.lttd_regime === "BULL") {
 				markers.push({
 					time: p.date as Time,
 					position: "belowBar",
@@ -358,7 +359,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 					shape: "arrowUp",
 					text: "BUY",
 				});
-			} else if (p.valuation_composite >= 1.5 && p.lttd_regime === "BEAR") {
+			} else if (p.valuation_composite <= -1.5 && p.lttd_regime === "BEAR") {
 				markers.push({
 					time: p.date as Time,
 					position: "aboveBar",
@@ -510,8 +511,9 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 						VAL:{" "}
 						<strong
 							style={{
+								// Database convention: negative = overvalued (bear), positive = undervalued (bull)
 								color:
-									toNum(displayPoint?.valuation_composite) >= 1.5
+									toNum(displayPoint?.valuation_composite) <= -1.5
 										? "var(--signal-bear)"
 										: "var(--signal-quant)",
 							}}

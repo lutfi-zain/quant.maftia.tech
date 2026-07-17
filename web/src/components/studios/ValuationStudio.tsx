@@ -673,8 +673,9 @@ export const ValuationStudio: React.FC = () => {
 	const latestValScore = displayPoint
 		? toNum(displayPoint.valuation_composite)
 		: 0;
-	const isBubble = latestValScore >= 1.5;
-	const isDiscount = latestValScore <= -1.0;
+	// Database convention: negative = overvalued (bubble), positive = undervalued (discount)
+	const isBubble = latestValScore <= -1.5;
+	const isDiscount = latestValScore >= 1.0;
 
 	// SDCA signal: compute for hovered day or latest day
 	const sdcaMappedData = dailyData.map((d) => ({
@@ -835,12 +836,12 @@ export const ValuationStudio: React.FC = () => {
 							{isBubble ? (
 								<>
 									<AlertTriangle size={18} style={{ flexShrink: 0 }} />
-									<span>BUBBLE FILTER ACTIVE</span>
+									<span>BUBBLE FILTER ACTIVE (Composite ≤ -1.5)</span>
 								</>
 							) : isDiscount ? (
 								<>
 									<CheckCircle2 size={18} style={{ flexShrink: 0 }} />
-									<span>ACCUMULATION ZONE (Discount ≤ -1.00)</span>
+									<span>ACCUMULATION ZONE (Composite ≥ +1.0)</span>
 								</>
 							) : (
 								<>
