@@ -254,6 +254,42 @@ export function computeMetrics(
 	};
 }
 
+// ─── Backup & Reset ───────────────────────────────────────────────────────
+
+/**
+ * Backup current portfolio state to localStorage before reset.
+ * Stores under a separate key with timestamp to avoid overwriting.
+ */
+export function backupPortfolioState(
+	config: Partial<PortfolioConfig> = {},
+): PortfolioState | null {
+	const cfg = { ...DEFAULT_CONFIG, ...config };
+	const currentState = loadPortfolioState({ storageKey: cfg.storageKey });
+	if (!currentState) return null;
+
+	try {
+		const backupKey = `${cfg.storageKey}_backup_${Date.now()}`;
+		localStorage.setItem(backupKey, JSON.stringify(currentState));
+		return currentState;
+	} catch {
+		// localStorage full or unavailable
+		return null;
+	}
+}
+
+/**
+ * Clear portfolio state and start fresh.
+ * Backs up existing state before clearing.
+ */
+export function resetPortfolio(
+	config: Partial<PortfolioConfig> = {},
+): PortfolioState {
+	backupPortfolioState(config);
+	const fresh = createInitialState(config);
+	savePortfolioState(fresh, config);
+	return fresh;
+}
+
 // ─── Persistence ────────────────────────────────────────────────────────────
 
 export function savePortfolioState(

@@ -63,9 +63,13 @@ def sdca_backtest_v2(df, buy_threshold, sell_threshold,
     """
     CORRECTED SDCA backtest with proper cash constraints.
     
+    SIGN CONVENTION (corrected - matches Valuation System):
+    - Positive composite (+1.0 to +2.0) = Overvalued → SELL zone
+    - Negative composite (-1.0 to -2.0) = Undervalued → BUY zone
+    
     Args:
-        buy_threshold: composite level to trigger DCA IN (positive = undervalued)
-        sell_threshold: composite level to trigger DCA OUT (negative = overvalued)
+        buy_threshold: composite level to trigger DCA IN (negative = undervalued, e.g., -1.0)
+        sell_threshold: composite level to trigger DCA OUT (positive = overvalued, e.g., +1.0)
         price_pct_buy: price percentile below which to buy
         price_pct_sell: price percentile above which to sell
         base_dca: base DCA amount in USD
@@ -119,17 +123,18 @@ def sdca_backtest_v2(df, buy_threshold, sell_threshold,
         # Determine multiplier based on thresholds
         multiplier = 0.0  # Default: HOLD (no trade)
         
-        # BUY ZONE: composite positive = undervalued
-        if composite_t1 >= buy_threshold:
-            multiplier = 3.0  # Aggressive buy
-        elif composite_t1 >= buy_threshold * 0.7:
-            multiplier = 2.0  # Moderate buy
-        elif composite_t1 >= buy_threshold * 0.5:
-            multiplier = 1.5  # Light buy
-        # SELL ZONE: composite negative = overvalued
-        elif composite_t1 <= sell_threshold:
+        # Correct convention: negative composite = undervalued (BUY), positive = overvalued (SELL)
+        # BUY ZONE: composite negative = undervalued
+        if composite_t1 <= buy_threshold:
+            multiplier = 3.0  # Aggressive buy (deep discount)
+        elif composite_t1 <= buy_threshold * 0.7:
+            multiplier = 2.0  # Moderate buy (value zone)
+        elif composite_t1 <= buy_threshold * 0.5:
+            multiplier = 1.5  # Light buy (fair-low)
+        # SELL ZONE: composite positive = overvalued
+        elif composite_t1 >= sell_threshold:
             multiplier = -1.0  # Aggressive sell (sell all)
-        elif composite_t1 <= sell_threshold * 0.7:
+        elif composite_t1 >= sell_threshold * 0.7:
             multiplier = -0.5  # Partial sell
         else:
             multiplier = 1.0  # Normal DCA (when composite near 0)
@@ -338,13 +343,15 @@ def grid_search(df):
     print(" SDCA STRATEGY GRID SEARCH AUDIT (v2 - CORRECTED)")
     print("="*90)
     
-    # Grid parameters
-    buy_thresholds = [0.5, 0.8, 1.0, 1.2, 1.5]
-    sell_thresholds = [-0.5, -0.8, -1.0, -1.2, -1.5]
+    # Grid parameters - CORRECTED SIGN CONVENTION
+    # Buy threshold: negative (composite <= threshold = undervalued = BUY)
+    # Sell threshold: positive (composite >= threshold = overvalued = SELL)
+    buy_thresholds = [-0.5, -0.8, -1.0, -1.2, -1.5]
+    sell_thresholds = [0.5, 0.8, 1.0, 1.2, 1.5]
     
-    print("\nGrid Parameters:")
-    print(f"  Buy Thresholds (DCA In):  {buy_thresholds}")
-    print(f"  Sell Thresholds (DCA Out): {sell_thresholds}")
+    print("\nGrid Parameters (corrected convention):")
+    print(f"  Buy Thresholds (DCA In):  {buy_thresholds}  [negative = undervalued]")
+    print(f"  Sell Thresholds (DCA Out): {sell_thresholds}  [positive = overvalued]")
     print(f"  Total Combinations: {len(buy_thresholds) * len(sell_thresholds)}")
     
     # Run grid search
@@ -380,16 +387,17 @@ def grid_search(df):
 
 
 def analyze_current_strategy(df):
-    """Analyze the current SDCA strategy (buy_threshold=1.0, sell_threshold=-1.0)."""
+    """Analyze the current SDCA strategy (buy_threshold=-1.0, sell_threshold=+1.0)."""
     print("\n" + "="*90)
     print(" CURRENT SDCA STRATEGY ANALYSIS (v2 - CORRECTED)")
     print("="*90)
     
-    result = sdca_backtest_v2(df, buy_threshold=1.0, sell_threshold=-1.0)
+    # Correct convention: negative = undervalued (buy), positive = overvalued (sell)
+    result = sdca_backtest_v2(df, buy_threshold=-1.0, sell_threshold=1.0)
     
-    print(f"\nConfiguration:")
-    print(f"  Buy Threshold:  +1.0 (composite crosses above → DCA IN)")
-    print(f"  Sell Threshold: -1.0 (composite crosses below → DCA OUT)")
+    print(f"\nConfiguration (corrected sign convention):")
+    print(f"  Buy Threshold:  -1.0 (composite crosses below → DCA IN, undervalued)")
+    print(f"  Sell Threshold: +1.0 (composite crosses above → DCA OUT, overvalued)")
     
     print(f"\nPerformance Metrics:")
     print(f"  Sharpe Ratio:      {result['sharpe']:>8.2f}")
@@ -499,20 +507,22 @@ def analyze_buy_sell_conditions(df):
     print(" BUY & SELL CONDITION ANALYSIS")
     print("="*90)
     
+    # Correct convention: negative = undervalued (buy), positive = overvalued (sell)
+    
     # Analyze buy conditions
     print("\n1. BUY CONDITION ANALYSIS:")
     print("-"*90)
-    print("  The SDCA strategy buys when composite > threshold (positive = undervalued)")
+    print("  The SDCA strategy buys when composite <= threshold (negative = undervalued)")
     print()
     
     buy_tests = [
-        (0.5, "Weak buy signal (composite >= 0.5)"),
-        (1.0, "Moderate buy signal (composite >= 1.0)"),
-        (1.5, "Strong buy signal (composite >= 1.5)")
+        (-0.5, "Weak buy signal (composite <= -0.5)"),
+        (-1.0, "Moderate buy signal (composite <= -1.0)"),
+        (-1.5, "Strong buy signal (composite <= -1.5)")
     ]
     
     for threshold, desc in buy_tests:
-        result = sdca_backtest_v2(df, threshold, -1.0)
+        result = sdca_backtest_v2(df, threshold, 1.0)
         print(f"  {desc}:")
         print(f"    Sharpe: {result['sharpe']:.2f} | CAGR: {result['cagr']:.1f}% | MaxDD: {result['max_dd']:.1f}% | Buys: {result['total_buys']}")
         print()
@@ -520,17 +530,17 @@ def analyze_buy_sell_conditions(df):
     # Analyze sell conditions
     print("2. SELL CONDITION ANALYSIS:")
     print("-"*90)
-    print("  The SDCA strategy sells when composite < threshold (negative = overvalued)")
+    print("  The SDCA strategy sells when composite >= threshold (positive = overvalued)")
     print()
     
     sell_tests = [
-        (-0.5, "Weak sell signal (composite <= -0.5)"),
-        (-1.0, "Moderate sell signal (composite <= -1.0)"),
-        (-1.5, "Strong sell signal (composite <= -1.5)")
+        (0.5, "Weak sell signal (composite >= +0.5)"),
+        (1.0, "Moderate sell signal (composite >= +1.0)"),
+        (1.5, "Strong sell signal (composite >= +1.5)")
     ]
     
     for threshold, desc in sell_tests:
-        result = sdca_backtest_v2(df, 1.0, threshold)
+        result = sdca_backtest_v2(df, -1.0, threshold)
         print(f"  {desc}:")
         print(f"    Sharpe: {result['sharpe']:.2f} | CAGR: {result['cagr']:.1f}% | MaxDD: {result['max_dd']:.1f}% | Sells: {result['total_sells']}")
         print()
@@ -538,12 +548,12 @@ def analyze_buy_sell_conditions(df):
     # Combined analysis
     print("3. COMBINED BUY/SELL MATRIX:")
     print("-"*90)
-    print(f"  {'Buy \\ Sell':>12} {'-0.5':>10} {'-0.8':>10} {'-1.0':>10} {'-1.2':>10} {'-1.5':>10}")
+    print(f"  {'Buy \\ Sell':>12} {'+0.5':>10} {'+0.8':>10} {'+1.0':>10} {'+1.2':>10} {'+1.5':>10}")
     print("  " + "-"*62)
     
-    for buy_t in [0.5, 0.8, 1.0, 1.2, 1.5]:
-        row = [f"+{buy_t:.1f}"]
-        for sell_t in [-0.5, -0.8, -1.0, -1.2, -1.5]:
+    for buy_t in [-0.5, -0.8, -1.0, -1.2, -1.5]:
+        row = [f"{buy_t:.1f}"]
+        for sell_t in [0.5, 0.8, 1.0, 1.2, 1.5]:
             result = sdca_backtest_v2(df, buy_t, sell_t)
             row.append(f"{result['sharpe']:>10.2f}")
         print(f"  {''.join(row)}")
@@ -630,10 +640,10 @@ def main():
     else:
         print(f"   ⚠️  Win rate is low ({current['win_rate']:.1f}%)")
     
-    print("\n5. RECOMMENDATIONS:")
-    print("   a) The current buy threshold (+1.0) may be too aggressive")
-    print("   b) Consider tightening sell threshold to -0.5 for earlier exits")
-    print("   c) The strategy benefits from holding through volatile periods")
+    print("\n5. RECOMMENDATIONS (corrected convention):")
+    print("   a) The current buy threshold (-1.0) triggers at deep discount")
+    print("   b) Consider loosening buy threshold to -0.5 for earlier accumulation")
+    print("   c) Consider tightening sell threshold to +1.5 for earlier profit-taking")
     print("   d) Walk-forward validation shows robust out-of-sample performance")
     
     print("\n" + "="*90)

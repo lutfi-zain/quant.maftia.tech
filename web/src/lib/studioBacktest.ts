@@ -457,16 +457,16 @@ export interface SdcaDailyRecord {
 
 /**
  * Maps valuation_composite to DCA allocation multiplier.
- * Correct convention: positive = overvalued (sell), negative = undervalued (buy).
+ * Correct convention: positive = undervalued (buy), negative = overvalued (sell).
  */
 function sdcaMultiplierLocal(composite: number): number {
-	if (composite >= 1.5) return -0.5; // Euphoria → Sell
-	if (composite >= 1.0) return 0.0; // Expensive → Pause
-	if (composite >= 0.5) return 0.5; // Rich → Reduce
+	if (composite >= 1.5) return 3.0; // Deep Discount → Aggressive buy
+	if (composite >= 1.0) return 2.0; // Value → Buy
+	if (composite >= 0.5) return 1.5; // Fair-Low → Moderate buy
 	if (composite > -0.5) return 1.0; // Fair → Normal DCA
-	if (composite > -1.0) return 1.5; // Fair-Low → Moderate buy
-	if (composite > -1.5) return 2.0; // Value → Buy
-	return 3.0; // Deep Discount → Aggressive buy
+	if (composite > -1.0) return 0.5; // Rich → Reduce
+	if (composite > -1.5) return 0.0; // Expensive → Pause
+	return -0.5; // Bubble/Euphoria → Sell
 }
 
 // ─── SDCA Backtest Engine ──────────────────────────────────────────────────

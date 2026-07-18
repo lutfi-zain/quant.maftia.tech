@@ -6,7 +6,7 @@
  */
 
 import type React from "react";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
 	ChevronDown,
 	Download,
@@ -17,7 +17,7 @@ import {
 	ArrowDown,
 } from "lucide-react";
 import type { SdcaSignal, SdcaPhase } from "../../lib/sdcaEngine";
-import type { PortfolioState, PortfolioMetrics } from "../../lib/sdcaPortfolio";
+import type { PortfolioState } from "../../lib/sdcaPortfolio";
 import {
 	computeMetrics,
 	exportTransactionsCsv,
@@ -26,12 +26,45 @@ import {
 	createInitialState,
 	executeBuy,
 	executeSell,
-	type PortfolioConfig,
+	resetPortfolio,
 } from "../../lib/sdcaPortfolio";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const PANEL_STATE_KEY = "sdca_panel_collapsed";
+const SIGN_FIX_ACKNOWLEDGED_KEY = "sdca_sign_fix_acknowledged_v1";
+const SDCA_PRESET_KEY = "sdca_preset_selection";
+
+// ─── Preset Definitions ─────────────────────────────────────────────
+
+interface SdcaPreset {
+	buy_threshold: number;
+	sell_threshold: number;
+	description: string;
+}
+
+const SDCA_PRESETS: Record<string, SdcaPreset> = {
+	optimized: {
+		buy_threshold: 0.5,
+		sell_threshold: -1.5,
+		description: "Grid search optimized (default)",
+	},
+	conservative: {
+		buy_threshold: 0.5,
+		sell_threshold: -1.5,
+		description: "Lower drawdown focus",
+	},
+	moderate: {
+		buy_threshold: 1.0,
+		sell_threshold: -1.0,
+		description: "Balanced risk/return",
+	},
+	aggressive: {
+		buy_threshold: 1.5,
+		sell_threshold: -0.5,
+		description: "Higher risk, higher return",
+	},
+};
 
 const PHASE_COLORS: Record<SdcaPhase, string> = {
 	deep_discount: "#22c55e",
@@ -75,15 +108,6 @@ function getMultiplierLabel(multiplier: number): string {
 	return "Sell";
 }
 
-// ─── Portfolio Config (defaults) ────────────────────────────────────────────
-
-const DEFAULT_PORTFOLIO_CONFIG: PortfolioConfig = {
-	initialCashBalance: 10000,
-	baseDcaAmount: 100,
-	feeRate: 0.001,
-	storageKey: "sdca_portfolio_state",
-};
-
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface SdcaPanelProps {
@@ -110,9 +134,51 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 		}
 	});
 
+	const [selectedPreset, setSelectedPreset] = useState<string>(() => {
+		try {
+			return localStorage.getItem(SDCA_PRESET_KEY) || "optimized";
+		} catch {
+			return "optimized";
+		}
+	});
+
+	// Backtest metrics from API (set by parent or fetched internally)
+	const [backtestMetrics, _setBacktestMetrics] = useState<{
+		sharpeRatio: number;
+		totalReturn: number;
+		cagr: number;
+		maxDrawdown: number;
+		winRate: number;
+		simpleDcaReturn?: number;
+	} | null>(null);
+
 	const [portfolio, setPortfolio] = useState<PortfolioState>(() => {
 		return loadPortfolioState() || createInitialState();
 	});
+
+	// One-time sign convention fix notification
+	const [showSignFixNotice, setShowSignFixNotice] = useState(() => {
+		try {
+			return localStorage.getItem(SIGN_FIX_ACKNOWLEDGED_KEY) !== "true";
+		} catch {
+			return true;
+		}
+	});
+
+	const handleDismissNotice = () => {
+		setShowSignFixNotice(false);
+		try {
+			localStorage.setItem(SIGN_FIX_ACKNOWLEDGED_KEY, "true");
+		} catch {
+			// Ignore
+		}
+	};
+
+	const handleResetWithNotice = () => {
+		const fresh = resetPortfolio();
+		setPortfolio(fresh);
+		handleDismissNotice();
+	};
 
 	// Auto-execute DCA based on signal
 	useEffect(() => {
@@ -165,9 +231,8 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 
 	const handleReset = () => {
 		if (confirm("Reset portfolio? This will clear all transaction history.")) {
-			const fresh = createInitialState();
+			const fresh = resetPortfolio();
 			setPortfolio(fresh);
-			savePortfolioState(fresh);
 		}
 	};
 
@@ -206,6 +271,69 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 				}}
 			>
 				<div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+					{/* Sign convention fix notice */}
+					{showSignFixNotice && (
+						<div
+							style={{
+								position: "absolute",
+								top: 0,
+								left: 0,
+								right: 0,
+								zIndex: 10,
+								padding: "12px 16px",
+								background: "rgba(234, 179, 8, 0.15)",
+								borderBottom: "1px solid rgba(234, 179, 8, 0.3)",
+								display: "flex",
+								alignItems: "center",
+								gap: "12px",
+								flexWrap: "wrap",
+							}}
+						>
+							<span
+								style={{ color: "#FBBF24", fontSize: "11px", fontWeight: 600 }}
+							>
+								⚠️ Sign convention fixed
+							</span>
+							<span style={{ color: "#94A3B8", fontSize: "10px" }}>
+								The SDCA engine now correctly buys at bottoms (positive
+								composite) and sells at tops (negative composite). Previous
+								positions may be based on inverted signals.
+							</span>
+							<div style={{ display: "flex", gap: "8px" }}>
+								<button
+									type="button"
+									onClick={handleResetWithNotice}
+									style={{
+										background: "rgba(234, 179, 8, 0.3)",
+										border: "1px solid rgba(234, 179, 8, 0.5)",
+										borderRadius: "4px",
+										padding: "4px 12px",
+										color: "#FBBF24",
+										cursor: "pointer",
+										fontSize: "10px",
+										fontWeight: 600,
+									}}
+								>
+									Reset Portfolio
+								</button>
+								<button
+									type="button"
+									onClick={handleDismissNotice}
+									style={{
+										background: "transparent",
+										border: "1px solid rgba(100, 116, 139, 0.5)",
+										borderRadius: "4px",
+										padding: "4px 12px",
+										color: "#94A3B8",
+										cursor: "pointer",
+										fontSize: "10px",
+									}}
+								>
+									Dismiss
+								</button>
+							</div>
+						</div>
+					)}
 					<span style={{ fontWeight: 600, color: "#E2E8F0" }}>
 						⚡ SDCA STRATEGY
 					</span>
@@ -240,6 +368,36 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 								{signal.action.replace(/_/g, " ")}
 							</span>
 						</>
+					)}
+					{/* Preset Selector */}
+					{!collapsed && (
+						<select
+							value={selectedPreset}
+							onChange={(e) => {
+								setSelectedPreset(e.target.value);
+								try {
+									localStorage.setItem(SDCA_PRESET_KEY, e.target.value);
+								} catch {
+									// Ignore
+								}
+							}}
+							style={{
+								background: "rgba(59, 130, 246, 0.15)",
+								border: "1px solid rgba(59, 130, 246, 0.3)",
+								borderRadius: "4px",
+								padding: "2px 6px",
+								color: "#93C5FD",
+								fontSize: "10px",
+								cursor: "pointer",
+								fontFamily: "Geist Mono, monospace",
+							}}
+						>
+							{Object.entries(SDCA_PRESETS).map(([key, preset]) => (
+								<option key={key} value={key}>
+									{preset.description}
+								</option>
+							))}
+						</select>
 					)}
 				</div>
 				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -445,12 +603,119 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 							fontSize: "10px",
 							color: "#64748B",
 							marginBottom: "16px",
+							flexWrap: "wrap",
 						}}
 					>
 						<span>Total Fees Paid: ${portfolio.totalFeesPaid.toFixed(2)}</span>
 						<span>Transactions: {portfolio.transactionLog.length}</span>
 						{signal && <span>Regime Confidence: {signal.confidence}</span>}
 					</div>
+
+					{/* Threshold Display with Optimization Badge */}
+					<div
+						style={{
+							display: "flex",
+							gap: "12px",
+							marginBottom: "12px",
+							alignItems: "center",
+							flexWrap: "wrap",
+						}}
+					>
+						<div
+							style={{
+								padding: "4px 10px",
+								background: "rgba(34, 197, 94, 0.1)",
+								border: "1px solid rgba(34, 197, 94, 0.3)",
+								borderRadius: "4px",
+								fontSize: "10px",
+								color: "#4ade80",
+								fontFamily: "Geist Mono, monospace",
+							}}
+						>
+							Buy &ge; {SDCA_PRESETS[selectedPreset]?.buy_threshold ?? 0.5}
+						</div>
+						<div
+							style={{
+								padding: "4px 10px",
+								background: "rgba(239, 68, 68, 0.1)",
+								border: "1px solid rgba(239, 68, 68, 0.3)",
+								borderRadius: "4px",
+								fontSize: "10px",
+								color: "#f87171",
+								fontFamily: "Geist Mono, monospace",
+							}}
+						>
+							Sell &le; {SDCA_PRESETS[selectedPreset]?.sell_threshold ?? -1.5}
+						</div>
+						{selectedPreset !== "moderate" && (
+							<div
+								style={{
+									padding: "2px 8px",
+									background: "rgba(234, 179, 8, 0.15)",
+									border: "1px solid rgba(234, 179, 8, 0.3)",
+									borderRadius: "4px",
+									fontSize: "9px",
+									color: "#FBBF24",
+									fontWeight: 600,
+								}}
+							>
+								⚡ OPTIMIZED
+							</div>
+						)}
+					</div>
+
+					{/* Alpha Comparison (SDCA vs Simple DCA) */}
+					{backtestMetrics && (
+						<div
+							style={{
+								padding: "8px 12px",
+								background:
+									backtestMetrics.totalReturn >
+									(backtestMetrics.simpleDcaReturn ?? 0)
+										? "rgba(34, 197, 94, 0.08)"
+										: "rgba(239, 68, 68, 0.08)",
+								border: `1px solid ${backtestMetrics.totalReturn > (backtestMetrics.simpleDcaReturn ?? 0) ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+								borderRadius: "4px",
+								marginBottom: "12px",
+								fontSize: "11px",
+								fontFamily: "Geist Mono, monospace",
+							}}
+						>
+							<div
+								style={{
+									display: "flex",
+									justifyContent: "space-between",
+									alignItems: "center",
+								}}
+							>
+								<span style={{ color: "#94A3B8" }}>SDCA vs Simple DCA</span>
+								<span
+									style={{
+										color:
+											backtestMetrics.totalReturn >
+											(backtestMetrics.simpleDcaReturn ?? 0)
+												? "#22c55e"
+												: "#ef4444",
+										fontWeight: 600,
+									}}
+								>
+									{backtestMetrics.totalReturn >
+									(backtestMetrics.simpleDcaReturn ?? 0)
+										? "+"
+										: ""}
+									{(
+										backtestMetrics.totalReturn -
+										(backtestMetrics.simpleDcaReturn ?? 0)
+									).toFixed(1)}
+									%
+									{backtestMetrics.totalReturn >
+									(backtestMetrics.simpleDcaReturn ?? 0)
+										? " alpha"
+										: " underperformance"}
+								</span>
+							</div>
+						</div>
+					)}
 
 					{/* Transaction Log */}
 					<div

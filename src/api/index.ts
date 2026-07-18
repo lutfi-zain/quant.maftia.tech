@@ -7,6 +7,8 @@ import { componentsRouter } from "./routes/components.js";
 import { circuitBreakersRouter } from "./routes/circuit-breakers.js";
 import { metricsRouter } from "./routes/metrics.js";
 import { lttdRouter } from "./routes/lttd.js";
+import { sdcaRouter } from "./routes/sdca.js";
+import { auditRouter } from "./routes/audit.js";
 import { startScheduler } from "./lib/scheduler.js";
 import { configRouter } from "./routes/config.js";
 
@@ -27,6 +29,8 @@ app.route("/api/v1/analytics/metric", metricsRouter);
 app.route("/api/v1/quant/metric", metricsRouter);
 app.route("/api/v1/system/circuit-breakers", circuitBreakersRouter);
 app.route("/api/v1/lttd", lttdRouter);
+app.route("/api/v1/sdca", sdcaRouter);
+app.route("/api/v1/audit", auditRouter);
 app.route("/api/v1/config", configRouter);
 
 app.get("/", (c) => {

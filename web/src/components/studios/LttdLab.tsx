@@ -206,14 +206,17 @@ export const LttdLab: React.FC = () => {
 
 	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => {
 		const regime = d.lttd_regime || "SIDEWAYS";
-		// Use target_exposure from DB if available (matching prior system behavior), else fall back to regime
+		// Use lttd_target_exposure from database directly (no regime fallback recomputation)
 		const rawExposure = d.lttd_target_exposure;
 		const pos =
 			rawExposure !== undefined && rawExposure !== null
-				? rawExposure
-				: regime === "BULL"
-					? 1.0
-					: 0.0;
+				? Number(rawExposure)
+				: 0.0;
+		if (rawExposure === undefined || rawExposure === null) {
+			console.warn(
+				`lttd_target_exposure is NULL for ${d.date}, defaulting to 0.0`,
+			);
+		}
 		return {
 			date: d.date,
 			close: d.close || d.btc_price || 0,
@@ -525,9 +528,8 @@ export const LttdLab: React.FC = () => {
 		const exposureArr = dailyData.map((p) => ({
 			time: p.date as Time,
 			value:
-				((p as any).lttd_target_exposure ??
-					(p as any).target_exposure ??
-					(p.lttd_regime === "BULL" ? 100 : 0)) * 100,
+				((p as any).lttd_target_exposure ?? (p as any).target_exposure ?? 0) *
+				100,
 		}));
 		exposureSeries.setData(exposureArr as any);
 

@@ -31,7 +31,10 @@ import {
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
-import { useStudioBacktest, type StudioDailyRecord } from "../../lib/studioBacktest";
+import {
+	useStudioBacktest,
+	type StudioDailyRecord,
+} from "../../lib/studioBacktest";
 
 type MaximizedPanel = null | "btc" | "imo" | "gates" | "eq";
 
@@ -85,24 +88,24 @@ function getPanelHeights(maximized: MaximizedPanel, isMobile: boolean) {
 			return { btc: available, imo: 0, gates: 0, eq: 0 };
 		case "imo":
 			return {
-				btc: Math.floor(available * 0.50),
-				imo: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
+				imo: Math.floor(available * 0.5),
 				gates: 0,
 				eq: 0,
 			};
 		case "gates":
 			return {
-				btc: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
 				imo: 0,
-				gates: Math.floor(available * 0.50),
+				gates: Math.floor(available * 0.5),
 				eq: 0,
 			};
 		case "eq":
 			return {
-				btc: Math.floor(available * 0.50),
+				btc: Math.floor(available * 0.5),
 				imo: 0,
 				gates: 0,
-				eq: Math.floor(available * 0.50),
+				eq: Math.floor(available * 0.5),
 			};
 		default:
 			return isMobile
@@ -201,10 +204,14 @@ export const MttdConsole: React.FC = () => {
 	const isRangeSyncingRef = useRef(false);
 
 	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => {
-		const imo = Number(d.mttd_imo ?? 0);
+		// Use mttd_position from database (includes circuit breaker overrides)
+		const dbPos = d.mttd_position;
+		const pos = dbPos !== null && dbPos !== undefined ? Number(dbPos) : 0.0;
+		if (dbPos === null || dbPos === undefined) {
+			console.warn(`mttd_position is NULL for ${d.date}, defaulting to 0.0`);
+		}
 		const er = Number(d.mttd_er ?? d.mttd_er_ratio ?? 0);
 		const entropy = Number(d.mttd_entropy ?? d.mttd_shannon_entropy ?? 0);
-		const pos = imo > 0.15 && er >= 0.20 && entropy <= 2.30 ? 1 : 0;
 		return {
 			date: d.date,
 			close: d.close || d.btc_price || 0,
@@ -214,7 +221,12 @@ export const MttdConsole: React.FC = () => {
 		};
 	});
 
-	const backtestResult = useStudioBacktest(backtestData, startDate, endDate, feeBps);
+	const backtestResult = useStudioBacktest(
+		backtestData,
+		startDate,
+		endDate,
+		feeBps,
+	);
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
@@ -224,7 +236,10 @@ export const MttdConsole: React.FC = () => {
 			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
-			createSeriesMarkers(seriesRef.current.candle, backtestResult.markers as any);
+			createSeriesMarkers(
+				seriesRef.current.candle,
+				backtestResult.markers as any,
+			);
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
 		}
@@ -297,17 +312,31 @@ export const MttdConsole: React.FC = () => {
 						eq.resize(w, Math.round(containerH * (heights.eq / total)));
 						eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
 					}
-					const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
+					const panels: Array<{
+						chart: IChartApi | null;
+						h: number;
+						id: string;
+					}> = [
 						{ chart: imo, h: heights.imo, id: "imo" },
 						{ chart: gates, h: heights.gates, id: "gates" },
 						{ chart: eq, h: heights.eq, id: "eq" },
 					];
 					const visiblePanels = panels.filter((p) => p.h > 0);
-					const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
-					btc.timeScale().applyOptions({ visible: heights.imo === 0 && heights.gates === 0 && heights.eq === 0 });
+					const bottomId =
+						visiblePanels.length > 0
+							? visiblePanels[visiblePanels.length - 1].id
+							: null;
+					btc
+						.timeScale()
+						.applyOptions({
+							visible:
+								heights.imo === 0 && heights.gates === 0 && heights.eq === 0,
+						});
 					panels.forEach(({ chart, h, id }) => {
 						if (!chart) return;
-						chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
+						chart
+							.timeScale()
+							.applyOptions({ visible: h > 0 && id === bottomId });
 					});
 					requestAnimationFrame(() => {
 						syncYAxisWidth(
@@ -343,9 +372,16 @@ export const MttdConsole: React.FC = () => {
 			{ chart: eq, h: heights.eq, id: "eq" },
 		];
 		const visiblePanels = panels.filter((p) => p.h > 0);
-		const bottomId = visiblePanels.length > 0 ? visiblePanels[visiblePanels.length - 1].id : null;
+		const bottomId =
+			visiblePanels.length > 0
+				? visiblePanels[visiblePanels.length - 1].id
+				: null;
 
-		btc.timeScale().applyOptions({ visible: heights.imo === 0 && heights.gates === 0 && heights.eq === 0 });
+		btc
+			.timeScale()
+			.applyOptions({
+				visible: heights.imo === 0 && heights.gates === 0 && heights.eq === 0,
+			});
 		panels.forEach(({ chart, h, id }) => {
 			if (!chart) return;
 			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
@@ -488,8 +524,17 @@ export const MttdConsole: React.FC = () => {
 			title: "Cum_Market (BTC)",
 		});
 
-		chartsRef.current = { btc: btcChart, imo: imoChart, gates: gatesChart, eq: eqChart };
-		seriesRef.current = { candle: candleSeries, cumStrat: cumStratSeries, cumMarket: cumMarketSeries };
+		chartsRef.current = {
+			btc: btcChart,
+			imo: imoChart,
+			gates: gatesChart,
+			eq: eqChart,
+		};
+		seriesRef.current = {
+			candle: candleSeries,
+			cumStrat: cumStratSeries,
+			cumMarket: cumMarketSeries,
+		};
 
 		// Populate data
 		candleSeries.setData(
@@ -1056,30 +1101,86 @@ export const MttdConsole: React.FC = () => {
 			</div>
 
 			{/* Interactive Backtest Controls & Metrics Bar */}
-			<div className="glass-card" style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
-				<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
-					<div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-						<span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.05em" }}>BACKTEST CONFIG</span>
+			<div
+				className="glass-card"
+				style={{
+					padding: "14px",
+					display: "flex",
+					flexDirection: "column",
+					gap: "12px",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: "12px",
+						borderBottom: "1px solid var(--border)",
+						paddingBottom: "12px",
+					}}
+				>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "12px",
+							flexWrap: "wrap",
+						}}
+					>
+						<span
+							style={{
+								fontSize: "12px",
+								fontWeight: 700,
+								color: "var(--text-main)",
+								letterSpacing: "0.05em",
+							}}
+						>
+							BACKTEST CONFIG
+						</span>
 						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Start Date:</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								Start Date:
+							</label>
 							<input
 								type="date"
 								value={startDate}
 								onChange={(e) => setStartDate(e.target.value)}
-								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+								style={{
+									background: "#0B1220",
+									border: "1px solid var(--border)",
+									color: "var(--text-main)",
+									padding: "4px 8px",
+									borderRadius: "4px",
+									fontSize: "11px",
+									fontFamily: "Geist Mono, monospace",
+								}}
 							/>
 						</div>
 						<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>End Date:</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								End Date:
+							</label>
 							<input
 								type="date"
 								value={endDate}
 								onChange={(e) => setEndDate(e.target.value)}
-								style={{ background: "#0B1220", border: "1px solid var(--border)", color: "var(--text-main)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", fontFamily: "Geist Mono, monospace" }}
+								style={{
+									background: "#0B1220",
+									border: "1px solid var(--border)",
+									color: "var(--text-main)",
+									padding: "4px 8px",
+									borderRadius: "4px",
+									fontSize: "11px",
+									fontFamily: "Geist Mono, monospace",
+								}}
 							/>
 						</div>
 						<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Fee Friction ({feeBps} bps):</label>
+							<label style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+								Fee Friction ({feeBps} bps):
+							</label>
 							<input
 								type="range"
 								min="0"
@@ -1094,7 +1195,11 @@ export const MttdConsole: React.FC = () => {
 					<div style={{ display: "flex", gap: "8px" }}>
 						<button
 							className="toggle-btn"
-							onClick={() => { setStartDate("2020-01-01"); setEndDate("2026-12-31"); setFeeBps(10); }}
+							onClick={() => {
+								setStartDate("2020-01-01");
+								setEndDate("2026-12-31");
+								setFeeBps(10);
+							}}
 							style={{ fontSize: "11px", padding: "4px 8px" }}
 						>
 							Reset Defaults
@@ -1224,7 +1329,8 @@ export const MttdConsole: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.sharpeRatio >= backtestResult.metrics.sharpeRatioMarket
+									backtestResult.metrics.sharpeRatio >=
+									backtestResult.metrics.sharpeRatioMarket
 										? "var(--signal-bull)"
 										: "var(--text-main)",
 							}}
@@ -1265,7 +1371,8 @@ export const MttdConsole: React.FC = () => {
 								fontWeight: 700,
 								fontFamily: "Geist Mono, monospace",
 								color:
-									backtestResult.metrics.annReturnStrat >= backtestResult.metrics.annReturnMarket
+									backtestResult.metrics.annReturnStrat >=
+									backtestResult.metrics.annReturnMarket
 										? "var(--signal-bull)"
 										: "var(--signal-bear)",
 							}}
@@ -1281,9 +1388,11 @@ export const MttdConsole: React.FC = () => {
 									marginLeft: "4px",
 								}}
 							>
-								(vs {backtestResult.metrics.annReturnMarket >= 0
+								(vs{" "}
+								{backtestResult.metrics.annReturnMarket >= 0
 									? `+${backtestResult.metrics.annReturnMarket.toFixed(1)}%`
-									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`})
+									: `${backtestResult.metrics.annReturnMarket.toFixed(1)}%`}
+								)
 							</span>
 						</div>
 					</div>
@@ -1416,20 +1525,44 @@ export const MttdConsole: React.FC = () => {
 
 			{/* Execution Log Table */}
 			<div className="glass-card" style={{ padding: "14px" }}>
-				<div className="card-header-bar" style={{ margin: "-14px -14px 14px -14px", width: "calc(100% + 28px)", borderRadius: "4px 4px 0 0" }}>
+				<div
+					className="card-header-bar"
+					style={{
+						margin: "-14px -14px 14px -14px",
+						width: "calc(100% + 28px)",
+						borderRadius: "4px 4px 0 0",
+					}}
+				>
 					<div className="card-header-left">
 						<span className="card-header-tag">CAUSAL EXECUTION LOG</span>
-						<h3 className="card-header-title">Completed Trade Attribution Table</h3>
+						<h3 className="card-header-title">
+							Completed Trade Attribution Table
+						</h3>
 					</div>
 					<div className="card-header-right">
-						<span className="card-header-meta">{backtestResult.trades.length} TRADES IN WINDOW</span>
+						<span className="card-header-meta">
+							{backtestResult.trades.length} TRADES IN WINDOW
+						</span>
 					</div>
 				</div>
 
 				<div style={{ overflowX: "auto", maxHeight: "360px" }}>
-					<table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", fontFamily: "Geist Mono, monospace" }}>
+					<table
+						style={{
+							width: "100%",
+							borderCollapse: "collapse",
+							fontSize: "12px",
+							fontFamily: "Geist Mono, monospace",
+						}}
+					>
 						<thead>
-							<tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left", color: "var(--text-muted)" }}>
+							<tr
+								style={{
+									borderBottom: "1px solid var(--border)",
+									textAlign: "left",
+									color: "var(--text-muted)",
+								}}
+							>
 								<th style={{ padding: "8px" }}>ID</th>
 								<th style={{ padding: "8px" }}>ENTRY DATE</th>
 								<th style={{ padding: "8px" }}>ENTRY PRICE</th>
@@ -1437,32 +1570,91 @@ export const MttdConsole: React.FC = () => {
 								<th style={{ padding: "8px" }}>EXIT PRICE</th>
 								<th style={{ padding: "8px" }}>HOLD DAYS</th>
 								<th style={{ padding: "8px" }}>EXIT REASON</th>
-								<th style={{ padding: "8px", textAlign: "right" }}>NET RETURN</th>
+								<th style={{ padding: "8px", textAlign: "right" }}>
+									NET RETURN
+								</th>
 							</tr>
 						</thead>
 						<tbody>
 							{backtestResult.trades.length === 0 ? (
 								<tr>
-									<td colSpan={8} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+									<td
+										colSpan={8}
+										style={{
+											padding: "20px",
+											textAlign: "center",
+											color: "var(--text-muted)",
+										}}
+									>
 										No completed trades found in the selected date window.
 									</td>
 								</tr>
 							) : (
 								backtestResult.trades.map((t) => (
-									<tr key={t.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "background 0.15s" }}>
-										<td style={{ padding: "8px", color: "var(--text-muted)" }}>{t.id}</td>
+									<tr
+										key={t.id}
+										style={{
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+											transition: "background 0.15s",
+										}}
+									>
+										<td style={{ padding: "8px", color: "var(--text-muted)" }}>
+											{t.id}
+										</td>
 										<td style={{ padding: "8px" }}>{t.entryDate}</td>
-										<td style={{ padding: "8px" }}>${t.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>
+											$
+											{t.entryPrice.toLocaleString(undefined, {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}
+										</td>
 										<td style={{ padding: "8px" }}>{t.exitDate}</td>
-										<td style={{ padding: "8px" }}>${t.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+										<td style={{ padding: "8px" }}>
+											$
+											{t.exitPrice.toLocaleString(undefined, {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}
+										</td>
 										<td style={{ padding: "8px" }}>{t.holdDays}d</td>
 										<td style={{ padding: "8px" }}>
-											<span style={{ padding: "2px 6px", borderRadius: "4px", fontSize: "10px", background: t.exitReason.includes("Bull") ? "rgba(34,197,94,0.1)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", color: t.exitReason.includes("Bull") ? "var(--signal-bull)" : t.exitReason.includes("Bear") || t.exitReason.includes("Stop") ? "var(--signal-bear)" : "var(--text-main)" }}>
+											<span
+												style={{
+													padding: "2px 6px",
+													borderRadius: "4px",
+													fontSize: "10px",
+													background: t.exitReason.includes("Bull")
+														? "rgba(34,197,94,0.1)"
+														: t.exitReason.includes("Bear") ||
+																t.exitReason.includes("Stop")
+															? "rgba(239,68,68,0.1)"
+															: "rgba(255,255,255,0.05)",
+													color: t.exitReason.includes("Bull")
+														? "var(--signal-bull)"
+														: t.exitReason.includes("Bear") ||
+																t.exitReason.includes("Stop")
+															? "var(--signal-bear)"
+															: "var(--text-main)",
+												}}
+											>
 												{t.exitReason}
 											</span>
 										</td>
-										<td style={{ padding: "8px", textAlign: "right", fontWeight: 700, color: t.returnPct >= 0 ? "var(--signal-bull)" : "var(--signal-bear)" }}>
-											{t.returnPct >= 0 ? `+${t.returnPct.toFixed(2)}%` : `${t.returnPct.toFixed(2)}%`}
+										<td
+											style={{
+												padding: "8px",
+												textAlign: "right",
+												fontWeight: 700,
+												color:
+													t.returnPct >= 0
+														? "var(--signal-bull)"
+														: "var(--signal-bear)",
+											}}
+										>
+											{t.returnPct >= 0
+												? `+${t.returnPct.toFixed(2)}%`
+												: `${t.returnPct.toFixed(2)}%`}
 										</td>
 									</tr>
 								))

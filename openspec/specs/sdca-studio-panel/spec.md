@@ -155,3 +155,62 @@ The SDCA panel SHALL remember its collapsed/expanded state across page reloads u
 - **WHEN** page loads for first time
 - **AND** localStorage does not contain panel state
 - **THEN** SDCA panel SHALL default to collapsed state
+
+### Requirement: Parameter Preset Selector
+
+The SDCA panel SHALL provide a dropdown selector for choosing parameter presets.
+
+**Available Presets:**
+
+| Preset | Buy Threshold | Sell Threshold | Description |
+|--------|---------------|----------------|-------------|
+| `optimized` | -0.5 | +1.5 | Grid search optimized (default) |
+| `conservative` | -0.5 | +1.5 | Lower drawdown focus |
+| `moderate` | -1.0 | +1.0 | Balanced risk/return |
+| `aggressive` | -1.5 | +0.5 | Higher risk, higher return |
+
+#### Scenario: Display preset selector
+
+- **WHEN** SDCA panel is expanded
+- **THEN** preset dropdown SHALL be visible in the header row
+- **AND** default selection SHALL be "optimized"
+- **AND** selection SHALL persist across page reloads via localStorage
+
+#### Scenario: Apply preset
+
+- **WHEN** user selects a different preset
+- **THEN** panel SHALL update threshold display
+- **AND** selection SHALL be saved to localStorage
+
+### Requirement: Threshold Display
+
+The SDCA panel SHALL display current buy/sell thresholds with an optimization badge.
+
+#### Scenario: Display thresholds
+
+- **WHEN** SDCA panel is expanded
+- **THEN** panel SHALL show: `Buy < X` and `Sell >= Y` badges
+- **AND** buy badge SHALL be green-tinted
+- **AND** sell badge SHALL be red-tinted
+
+#### Scenario: Optimization badge
+
+- **WHEN** selected preset is not "moderate"
+- **THEN** panel SHALL display "⚡ OPTIMIZED" badge
+- **AND** badge SHALL be yellow-tinted
+
+### Requirement: Alpha Comparison Display
+
+The SDCA panel SHALL display alpha comparison between SDCA and Simple DCA when backtest metrics are available.
+
+#### Scenario: Alpha display
+
+- **WHEN** backtest metrics are available
+- **THEN** panel SHALL show "SDCA vs Simple DCA" comparison
+- **AND** display the percentage difference
+- **AND** color SHALL be green if SDCA outperforms, red if underperforms
+
+#### Scenario: No metrics available
+
+- **WHEN** backtest metrics are not available
+- **THEN** alpha comparison section SHALL be hidden

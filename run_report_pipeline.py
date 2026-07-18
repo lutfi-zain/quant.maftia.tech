@@ -472,11 +472,11 @@ def main():
         if dt in ich_pos:
             ich_pos[dt] = ich_pos_val
 
-        btc_p = val_btc_all.get(dt)
-        if btc_p is None:
-            c_row = master_conn.execute("SELECT close FROM master_ohlcv WHERE date = ?", (dt,)).fetchone()
-            if c_row is not None:
-                btc_p = float(c_row[0])
+        # Single canonical price source: master_ohlcv.close (bitview.space fallback removed)
+        btc_p = None
+        c_row = master_conn.execute("SELECT close FROM master_ohlcv WHERE date = ?", (dt,)).fetchone()
+        if c_row is not None:
+            btc_p = float(c_row[0])
 
         # Extract Ichimoku extended fields from ich_rec
         ich_s_tk = ich_rec.get("s_tk")

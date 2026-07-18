@@ -31,7 +31,7 @@
   "full": {
     "trades": 12,
     "win_rate": 58.3,
-    "sharpe": 1.26,
+    "sharpe": 1.25,
     "cagr": 53.1,
     "max_dd": -35.6,
     "avg_hold": 119,
