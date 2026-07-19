@@ -52,7 +52,8 @@ def fetch_valuation_composite_data():
     rows = conn.execute("""
         SELECT date, AVG(normalized_value) as comp, MAX(btc_price) as btc
         FROM timeseries_metrics
-        WHERE normalized_value IS NOT NULL AND metric_name != 'aviv_nupl'
+        WHERE normalized_value IS NOT NULL 
+          AND metric_name NOT IN ('aviv_nupl', 'williams_r', 'fear_greed_cmc')
         GROUP BY date
         ORDER BY date ASC
     """).fetchall()
@@ -356,19 +357,6 @@ def main():
         sys.path.insert(0, project_dir)
     from engines.valuation.quant.sdca.engine import DailyRecord, compute_sdca_signals
 
-    # PCA Compression: override val_data_all with PCA-reduced composite
-    try:
-        from engines.valuation.quant.components.pca_compression import compute_pca_composite
-        master_db_path = os.path.join(BASE_DIR, "data/maftia_quant.db")
-        pca_composite = compute_pca_composite(master_db_path, cut_date=current_utc_date_str)
-        if pca_composite is not None and len(pca_composite) > 0:
-            for dt in list(val_data_all.keys()):
-                if dt in pca_composite.index:
-                    val_data_all[dt] = float(pca_composite[dt])
-            print(f"PCA composite applied: {len(pca_composite)} days")
-    except Exception as e:
-        print(f"PCA composite fallback (using simple mean): {e}")
-    
     sdca_records = []
     # Build daily records strictly causally (date sorted)
     all_dates = sorted(list(set(val_btc_all.keys()).union(set(val_data_all.keys()))))

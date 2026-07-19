@@ -36,6 +36,7 @@ import {} from "../../lib/studioBacktest";
 import type { SdcaSignal } from "../../lib/sdcaEngine";
 import { SdcaPanel } from "./SdcaPanel";
 import { SdcaChart } from "./SdcaChart";
+import { SdcaPhaseTimeline } from "./SdcaPhaseTimeline";
 import type { PortfolioState } from "../../lib/sdcaPortfolio";
 import {
 	createInitialState,
@@ -120,11 +121,6 @@ const INDICATOR_METADATA: Record<
 		category: "Fundamental",
 		description: "Active Value to Investor Value ratio",
 	},
-	aviv_nupl: {
-		name: "AVIV NUPL",
-		category: "Fundamental",
-		description: "Active Value Net Unrealized Profit/Loss",
-	},
 	cvdd_ratio: {
 		name: "CVDD Ratio",
 		category: "Fundamental",
@@ -175,12 +171,6 @@ const INDICATOR_METADATA: Record<
 		category: "Technical",
 		description: "Denoised Volatility Relative Strength Index",
 	},
-	williams_r: {
-		name: "Williams %R",
-		category: "Technical",
-		description:
-			"Bounded momentum oscillator showing overbought/oversold levels",
-	},
 	two_year_ma: {
 		name: "2-Year MA Multiplier",
 		category: "Technical",
@@ -193,14 +183,9 @@ const INDICATOR_METADATA: Record<
 			"Bitcoin cheapness index based on MA and log growth regression",
 	},
 	fear_greed_og: {
-		name: "Fear & Greed (OG)",
+		name: "Fear & Greed",
 		category: "Sentiment",
-		description: "Original multi-factor market sentiment index",
-	},
-	fear_greed_cmc: {
-		name: "Fear & Greed (CMC)",
-		category: "Sentiment",
-		description: "CoinMarketCap-aligned market sentiment index",
+		description: "Multi-factor market sentiment index",
 	},
 };
 
@@ -1817,6 +1802,13 @@ export const ValuationStudio: React.FC = () => {
 							</table>
 						</div>
 					</div>
+
+					<SdcaPhaseTimeline
+						data={dailyData.map((d: any) => ({
+							date: d.date,
+							phase: d.sdca_phase || "fair",
+						}))}
+					/>
 
 					{/* Interactive Breakdown Table */}
 					<div className="glass-card" style={{ padding: "14px" }}>
