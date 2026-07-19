@@ -36,7 +36,7 @@ SEED_DATA = [
     
     ('dvrsi', 42.0, 50.0, None, 65.0, 73.0),
     
-    ('williams_r', -80.0, -70.0, None, None, None),
+    ('williams_r', -100.0, -80.0, None, -20.0, 0.0),
     
     ('two_year_ma', 0.7, 1.0, None, 3.0, 4.2),
     ('two_year_ma_ratio', 0.7, 1.0, None, 3.0, 4.2),

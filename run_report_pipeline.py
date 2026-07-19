@@ -355,6 +355,19 @@ def main():
     if project_dir not in sys.path:
         sys.path.insert(0, project_dir)
     from engines.valuation.quant.sdca.engine import DailyRecord, compute_sdca_signals
+
+    # PCA Compression: override val_data_all with PCA-reduced composite
+    try:
+        from engines.valuation.quant.components.pca_compression import compute_pca_composite
+        master_db_path = os.path.join(BASE_DIR, "data/maftia_quant.db")
+        pca_composite = compute_pca_composite(master_db_path, cut_date=current_utc_date_str)
+        if pca_composite is not None and len(pca_composite) > 0:
+            for dt in list(val_data_all.keys()):
+                if dt in pca_composite.index:
+                    val_data_all[dt] = float(pca_composite[dt])
+            print(f"PCA composite applied: {len(pca_composite)} days")
+    except Exception as e:
+        print(f"PCA composite fallback (using simple mean): {e}")
     
     sdca_records = []
     # Build daily records strictly causally (date sorted)
@@ -582,6 +595,32 @@ def main():
             val_comp_count += 1
     except Exception as e:
         print(f"Error syncing VALUATION component signals: {e}")
+
+    # Fear & Greed CMC Fallback: copy OG value when CMC is NaN
+    try:
+        fg_cmc_rows = master_conn.execute(
+            "SELECT date, normalized_score FROM unified_component_signals WHERE system_source='VALUATION' AND component_name='fear_greed_cmc'"
+        ).fetchall()
+        fg_nan_dates = [r[0] for r in fg_cmc_rows if r[1] is None]
+        if fg_nan_dates:
+            placeholders = ",".join("?" for _ in fg_nan_dates)
+            fg_og_rows = master_conn.execute(
+                f"""SELECT date, normalized_score FROM unified_component_signals 
+                   WHERE system_source='VALUATION' AND component_name='fear_greed_og' 
+                   AND date IN ({placeholders}) AND normalized_score IS NOT NULL""",
+                fg_nan_dates
+            ).fetchall()
+            for r in fg_og_rows:
+                execute_parameterized(
+                    master_conn,
+                    """UPDATE unified_component_signals SET normalized_score=?, signal_direction=? 
+                       WHERE system_source='VALUATION' AND component_name='fear_greed_cmc' AND date=?""",
+                    (float(r[1]), 1 if float(r[1]) > 0.5 else (-1 if float(r[1]) < -0.5 else 0), r[0]),
+                    commit=False
+                )
+            print(f"Fear & Greed CMC fallback: imputed {len(fg_og_rows)} missing values from OG")
+    except Exception as e:
+        print(f"Error during Fear & Greed CMC fallback: {e}")
 
     lttd_comp_count = 0
     try:
