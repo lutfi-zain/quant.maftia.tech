@@ -21,6 +21,6 @@
 
 ## 4. Verification & Testing
 
-- [ ] 4.1 Run `python3 /home/ubuntu/projects/run_report_pipeline.py` to verify pipeline orchestration runs without errors.
+- [x] 4.1 Run `python3 /home/ubuntu/projects/run_report_pipeline.py` to verify pipeline orchestration runs without errors.
 - [x] 4.2 Validate `ValuationStudio.tsx` renders correctly using backend data without any runtime errors.
-- [ ] 4.3 Commit all changes using Conventional Commits (`quant:`, `refactor:`, `feat:`).
+- [x] 4.3 Commit all changes using Conventional Commits (`quant:`, `refactor:`, `feat:`).
