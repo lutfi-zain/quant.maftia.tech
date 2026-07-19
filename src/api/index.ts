@@ -33,6 +33,26 @@ app.route("/api/v1/sdca", sdcaRouter);
 app.route("/api/v1/audit", auditRouter);
 app.route("/api/v1/config", configRouter);
 
+import fs from "fs";
+import path from "path";
+
+app.get("/api/v1/backtest/sdca", async (c) => {
+	try {
+		const filePath = path.resolve(
+			process.cwd(),
+			"../data/sdca_backtest.json",
+		);
+		if (!fs.existsSync(filePath)) {
+			return c.json({ error: "Backtest data not found" }, 404);
+		}
+		const data = fs.readFileSync(filePath, "utf-8");
+		return c.json(JSON.parse(data));
+	} catch (err: any) {
+		console.error("Error serving sdca backtest:", err);
+		return c.json({ error: "Internal Server Error" }, 500);
+	}
+});
+
 app.get("/", (c) => {
 	return c.json({
 		service:

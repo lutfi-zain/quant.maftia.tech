@@ -63,9 +63,9 @@ def sdca_backtest_v2(df, buy_threshold, sell_threshold,
     """
     CORRECTED SDCA backtest with proper cash constraints.
     
-    SIGN CONVENTION (corrected - matches Valuation System):
-    - Positive composite (+1.0 to +2.0) = Overvalued → SELL zone
-    - Negative composite (-1.0 to -2.0) = Undervalued → BUY zone
+    SIGN CONVENTION (TRUE Backend data convention):
+    - Positive composite (+1.0 to +2.0) = Undervalued → BUY zone
+    - Negative composite (-1.0 to -2.0) = Overvalued → SELL zone
     
     Args:
         buy_threshold: composite level to trigger DCA IN (negative = undervalued, e.g., -1.0)
@@ -123,21 +123,23 @@ def sdca_backtest_v2(df, buy_threshold, sell_threshold,
         # Determine multiplier based on thresholds
         multiplier = 0.0  # Default: HOLD (no trade)
         
-        # Correct convention: negative composite = undervalued (BUY), positive = overvalued (SELL)
-        # BUY ZONE: composite negative = undervalued
-        if composite_t1 <= buy_threshold:
+        # Correct convention: positive composite = undervalued (BUY), negative = overvalued (SELL)
+        # BUY ZONE: composite positive = undervalued
+        if composite_t1 >= buy_threshold:
             multiplier = 3.0  # Aggressive buy (deep discount)
-        elif composite_t1 <= buy_threshold * 0.7:
+        elif composite_t1 >= buy_threshold * 0.7:
             multiplier = 2.0  # Moderate buy (value zone)
-        elif composite_t1 <= buy_threshold * 0.5:
+        elif composite_t1 >= buy_threshold * 0.5:
             multiplier = 1.5  # Light buy (fair-low)
-        # SELL ZONE: composite positive = overvalued
-        elif composite_t1 >= sell_threshold:
-            multiplier = -1.0  # Aggressive sell (sell all)
-        elif composite_t1 >= sell_threshold * 0.7:
-            multiplier = -0.5  # Partial sell
+        # SELL ZONE: composite negative = overvalued
+        elif composite_t1 <= sell_threshold:
+            multiplier = -20.0  # Sangat agresif jual (20x DCA amount) untuk hindari crash
+        elif composite_t1 <= sell_threshold * 0.7:
+            multiplier = -10.0  # Jual agresif
+        elif composite_t1 <= sell_threshold * 0.4:
+            multiplier = -5.0   # Mulai taking profit
         else:
-            multiplier = 1.0  # Normal DCA (when composite near 0)
+            multiplier = 0.0  # Pause (jangan beli saat overvalued, cash ditahan)
         
         # Execute SDCA trade
         sdca_amount = base_dca * multiplier
@@ -343,15 +345,13 @@ def grid_search(df):
     print(" SDCA STRATEGY GRID SEARCH AUDIT (v2 - CORRECTED)")
     print("="*90)
     
-    # Grid parameters - CORRECTED SIGN CONVENTION
-    # Buy threshold: negative (composite <= threshold = undervalued = BUY)
-    # Sell threshold: positive (composite >= threshold = overvalued = SELL)
-    buy_thresholds = [-0.5, -0.8, -1.0, -1.2, -1.5]
-    sell_thresholds = [0.5, 0.8, 1.0, 1.2, 1.5]
+    # Parameter grids for True Convention (Positive = Buy, Negative = Sell)
+    buy_thresholds = [0.5, 0.8, 1.0, 1.2, 1.5]
+    sell_thresholds = [-0.5, -0.8, -1.0, -1.2, -1.5]
     
     print("\nGrid Parameters (corrected convention):")
-    print(f"  Buy Thresholds (DCA In):  {buy_thresholds}  [negative = undervalued]")
-    print(f"  Sell Thresholds (DCA Out): {sell_thresholds}  [positive = overvalued]")
+    print("  Buy Thresholds (DCA In):  [0.5, 0.8, 1.0, 1.2, 1.5]  [positive = undervalued]")
+    print("  Sell Thresholds (DCA Out): [-0.5, -0.8, -1.0, -1.2, -1.5]  [negative = overvalued]")
     print(f"  Total Combinations: {len(buy_thresholds) * len(sell_thresholds)}")
     
     # Run grid search

@@ -1,0 +1,1 @@
+Now let me look at the existing codebase to understand current structure and validate the spec against reality.

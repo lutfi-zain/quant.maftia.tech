@@ -1,0 +1,37 @@
+{
+  "runId": "ac50cef1",
+  "agent": "reviewer",
+  "task": "Review the OpenSpec delta specifications for \"optimize-sdca-buy-sell-conditions\". Focus on:\n\n1. **Specs Completeness**:\n   - Are all modified requirements properly documented?\n   - Do scenarios follow WHEN/THEN format correctly?\n   - Are the new requirements (Adaptive Position Sizing) well-defined?\n\n2. **Specs Consistency**:\n   - Do the specs align with the proposal and design?\n   - Are the threshold values consistent across all specs?\n   - Is the sign convention preserved correctly?\n\n**CRITICAL CONTEXT**: A reviewer has already found that the sign convention in `sdcaEngine.ts` is INVERTED. The correct convention is:\n- Positive composite (+1.5 to +2.0) = Overvalued → SELL zone\n- Negative composite (-1.0 to -2.0) = Undervalued → BUY zone\n\nThis is confirmed by:\n- Valuation System Doc §4.1\n- API Daily Route (`bubble_warning: composite >= 1.5`)\n- Test file expectations (`sdcaMultiplier(1.6)` → expects `-0.5` sell)\n- `studioBacktest.ts` implementation\n\nThe current `sdcaEngine.ts` has this BACKWARDS. Review the specs to see if they correctly document the sign convention or if they perpetuate the inversion.\n\nRead the spec files at:\n- `/home/ubuntu/projects/quant.maftia.tech/openspec/changes/optimize-sdca-buy-sell-conditions/specs/sdca-strategy-engine/spec.md`\n- `/home/ubuntu/projects/quant.maftia.tech/openspec/changes/optimize-sdca-buy-sell-conditions/specs/sdca-backend-computation/spec.md`\n- `/home/ubuntu/projects/quant.maftia.tech/openspec/changes/optimize-sdca-buy-sell-conditions/specs/sdca-studio-panel/spec.md`\n\nAlso read the existing test file to understand the correct convention:\n- `/home/ubuntu/projects/quant.maftia.tech/web/src/lib/__tests__/sdcaEngine.test.ts`\n\nProvide a structured review with:\n- Sign convention correctness assessment\n- Completeness assessment\n- Consistency issues\n- Missing scenarios\n- Suggestions for improvement",
+  "exitCode": 0,
+  "usage": {
+    "input": 55864,
+    "output": 18566,
+    "cacheRead": 461696,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 13
+  },
+  "model": "opencode/mimo-v2.5-free:high",
+  "attemptedModels": [
+    "opencode/mimo-v2.5-free:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "opencode/mimo-v2.5-free:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 55864,
+        "output": 18566,
+        "cacheRead": 461696,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 13
+      }
+    }
+  ],
+  "durationMs": 364040,
+  "toolCount": 22,
+  "transcriptPath": "/home/ubuntu/projects/quant.maftia.tech/.pi-subagents/artifacts/ac50cef1_reviewer_0_transcript.jsonl",
+  "timestamp": 1784373709317
+}

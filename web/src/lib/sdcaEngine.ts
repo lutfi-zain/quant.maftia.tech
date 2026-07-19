@@ -131,22 +131,26 @@ export function mergeThresholds(
  * | > -0.5 to < +0.5| 1.0x      | Fair         | Normal DCA       |
  * | ≤ -0.5          | 0.5x       | Rich         | Reduce           |
  * | ≤ -1.0          | 0.0x       | Expensive    | Pause            |
- * | ≤ -1.5          | -0.5x      | Euphoria     | DCA out (sell)   |
+ * | ≤ -0.5          | -5.0x      | Rich         | Reduce           |
+ * | ≤ -1.0          | -10.0x     | Expensive    | Pause            |
+ * | ≤ -1.5          | -20.0x     | Euphoria     | DCA out (sell)   |
  *
  * Adaptive scaling: In deep discount zone (≥ +1.5), multiplier scales
  * proportionally with composite strength to prevent overconcentration.
  */
 export function sdcaMultiplier(composite: number): number {
-	// Positive composite = undervalued (buy), negative composite = overvalued (sell)
-	if (composite >= 1.5) return 3.0; // Very positive → Deep Discount → Aggressive buy
-	if (composite >= 1.0) return 2.0; // Positive → Value → Buy
-	if (composite >= 0.5) return 1.5; // Mild positive → Fair-Low → Moderate buy
-	if (composite > -0.5) return 1.0; // Near zero → Fair → Normal DCA
-	if (composite > -1.0) return 0.5; // Mild negative → Rich → Reduce
-	if (composite > -1.5) return 0.0; // Negative → Expensive → Pause
-
-	// Bubble: Adaptive scaling (composites ≤ -1.5)
-	return -0.5; // Sell at overvalued levels
+	// Konvensi BENAR: Positif = Diskon (Beli), Negatif = Bubble (Jual)
+	if (composite >= 1.5) return 3.0; // Deep Discount → Beli sangat agresif
+	if (composite >= 1.0) return 2.0; // Value → Beli agresif
+	if (composite >= 0.5) return 1.5; // Fair-Low → Beli moderat
+	
+	if (composite > -0.5) return 1.0; // Fair → Normal DCA (akumulasi rutin)
+	
+	if (composite <= -1.5) return -20.0; // Bubble Ekstrem → JUAL SANGAT AGRESIF
+	if (composite <= -1.0) return -10.0; // Overvalued Kuat → Jual agresif
+	if (composite <= -0.5) return -5.0;  // Mulai Overvalued → Mulai taking profit
+	
+	return 0.0; // Jaga-jaga (Pause)
 }
 
 // ─── Cycle Phase Detection ──────────────────────────────────────────────────

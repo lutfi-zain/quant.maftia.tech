@@ -10,7 +10,7 @@
 
 **Quant BTC Cycle Valuation System** adalah mesin valuasi kuantitatif dan statistikal yang dirancang untuk mengagregasi indikator *on-chain*, teknikal, dan sentimen guna mengidentifikasi titik puncak (*peak*), dasar (*trough*), dan fase transisi siklus makroekonomi Bitcoin.
 
-Sistem ini memecahkan masalah perbedaan skala indikator mentah (rasio, persentase, z-score, dan metrik absolut) dengan melakukan **interpolasi linear piecewise** berdasarkan ambang batas standar deviasi (SD) historis. Seluruh 17 indikator dikonversi ke dalam satu skala osilator standar yang terikat secara ketat pada interval **`-2.0` (Sangat Undervalued / Cycle Bottom)** hingga **`+2.0` (Sangat Overvalued / Cycle Peak)**, menghasilkan indikator komposit utama yang disebut **Master Valuation Oscillator**.
+Sistem ini memecahkan masalah perbedaan skala indikator mentah (rasio, persentase, z-score, dan metrik absolut) dengan melakukan **interpolasi linear piecewise** berdasarkan ambang batas standar deviasi (SD) historis. Seluruh 17 indikator dikonversi ke dalam satu skala osilator standar yang terikat secara ketat pada interval **`+2.0` (Sangat Undervalued / Cycle Bottom)** hingga **`-2.0` (Sangat Overvalued / Cycle Peak)**, menghasilkan indikator komposit utama yang disebut **Master Valuation Oscillator**.
 
 ---
 
@@ -22,7 +22,7 @@ Sistem ini menerapkan arsitektur modular yang memisahkan secara tegas antara *pi
 graph TD
     subgraph QuantEngine ["Layer 1: Quant Core & Ingestion (Python 3.10+)"]
         A[External APIs / bitview.space Scraper] -->|Raw Data Fetching| B[ComponentScripts: quant/components/*.py]
-        B -->|Piecewise Linear Interpolation| C[Normalized Score -2.0 to +2.0]
+        B -->|Piecewise Linear Interpolation| C[Normalized Score +2.0 to -2.0]
         C -->|Python sqlite3 Ingestion| D[(SQLite DB: database/metrics.db)]
     end
 
@@ -103,16 +103,19 @@ Mengukur ekstremitas ketakutan (*fear*) dan keserakahan (*greed*) para pelaku pa
 
 ### 4.1 Master Composite Valuation Oscillator
 Sistem menghitung nilai rata-rata aritmatika (*arithmetic mean*) dari seluruh indikator aktif pada setiap *timestamp* harian:
+$$CompositeValue_t = \frac{1}{N} \sum_{i=1}^{N} NormalizedScore_{i,t} \quad \text{dimana } NormalizedScore \in [+2.0, -2.0]$$
 $$CompositeValue_t = \frac{1}{N} \sum_{i=1}^{N} NormalizedScore_{i,t} \quad \text{dimana } NormalizedScore \in [-2.0, +2.0]$$
 - **Ambang Batas Kritis:**
-  - `Composite >= +1.50`: **Sangat Overvalued** (*Red Zone / Macro Top Warning*).
-  - `Composite <= -1.00`: **Sangat Undervalued** (*Green Zone / Generation Accumulation Opportunity*).
+  - `Composite <= -1.50`: **Sangat Overvalued** (*Red Zone / Macro Top Warning*).
+  - `Composite >= +1.00`: **Sangat Undervalued** (*Green Zone / Generation Accumulation Opportunity*).
 
 ### 4.2 Interpolasi HSL Dynamic Color System
 Pada level *frontend*, skor normalisasi dipetakan langsung ke warna visual menggunakan sistem interpolasi HSL (*Hue, Saturation, Lightness*):
-- `-2.0` (Sangat Undervalued): **Cyan / Green (`hsl(142, 71%, 45%)`)**
-- `0.0` (Fair Value / Equilibrium): **Neutral / Yellow (`hsl(45, 93%, 47%)`)**
-- `+2.0` (Sangat Overvalued): **Bright Red / Crimson (`hsl(0, 84%, 60%)`)**
+- `-2.0` (Sangat Overvalued): **Bright Red / Crimson (`hsl(0, 84%, 60%)`)**
+- `-1.0` (Overvalued): **Orange/Amber (`hsl(32, 95%, 53%)`)**
+- `0.0` (Fair Value): **Neutral Gray/White (`hsl(0, 0%, 80%)`)**
+- `+1.0` (Undervalued): **Cyan / Teal (`hsl(175, 70%, 41%)`)**
+- `+2.0` (Sangat Undervalued): **Bright Green / Lime (`hsl(142, 71%, 45%)`)**
 
 ### 4.3 Tampilan Detail Ter-Sinkronisasi (*Three-Pane Synced View*)
 Fitur visualisasi mendalam yang menampilkan tiga *subplot* bertingkat dalam satu layar dengan *crosshair* dan sumbu waktu yang tersinkronisasi sempurna menggunakan **TradingView Lightweight Charts**:

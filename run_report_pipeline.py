@@ -623,6 +623,17 @@ def main():
     master_conn.close()
     print(f"UnifiedComponentSignals synced: Upserted {val_comp_count + lttd_comp_count + mttd_comp_count + ich_comp_count} component records into maftia_quant.db.")
 
+    print("\n--- Running Backend SDCA Strategy Backtest ---")
+    try:
+        sdca_script = "/home/ubuntu/projects/quant.maftia.tech/scripts/calculate_sdca_backtest.py"
+        if os.path.exists(sdca_script):
+            subprocess.run(["python3", sdca_script], check=True)
+            print("SDCA Strategy Backtest completed successfully.")
+        else:
+            print(f"Warning: SDCA script not found at {sdca_script}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running SDCA Strategy Backtest: {e}")
+
     # Generate Markdown Table lines
     table_lines = []
     for d in dates_str:
