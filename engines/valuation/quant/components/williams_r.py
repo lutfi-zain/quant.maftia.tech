@@ -32,6 +32,19 @@ class WilliamsRComponent(BaseComponent):
             np.nan
         )
         df["btc_price"] = df["close"]
+
+        # Resample to daily frequency and forward-fill to avoid daily NaN alignment drops
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
+        
+        # Reindex to daily range and ffill
+        daily_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq='D')
+        df = df.reindex(daily_index).ffill()
+        assert isinstance(df, pd.DataFrame)
+        df.index.name = 'date'
+        df.reset_index(inplace=True)
+        # Format back to ISO string format to match DB layout
+        df["date"] = df["date"].dt.strftime("%Y-%m-%d")
         
         # Filter for delta if not full_rebuild
         if not full_rebuild:

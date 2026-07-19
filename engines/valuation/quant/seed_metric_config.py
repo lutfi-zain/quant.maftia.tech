@@ -13,7 +13,7 @@ SEED_DATA = [
     
     ('aviv_nupl', -0.6, -0.3, None, 0.3, 0.5),
     
-    ('cvdd_ratio', 1.3, 1.6, None, None, None),
+    ('cvdd_ratio', 1.0, 2.0, None, 15.0, 25.0),
     
     ('mvrv_z', 0.15, 0.17, None, 4.6, 6.65),
     
@@ -21,11 +21,11 @@ SEED_DATA = [
     
     ('terminal_price_ratio', 1.0, 0.75, None, 0.25, 0.17),
     
-    ('unrealized_sell_risk', None, None, None, 1.8, 2.2),
+    ('unrealized_sell_risk', 0.7, 0.85, None, 1.8, 2.2),
     
     # Technical
-    ('sharpe_ratio_52w', -20.0, -10.0, None, 42.0, 53.0),
-    ('sharpe_52w', -20.0, -10.0, None, 42.0, 53.0),
+    ('sharpe_ratio_52w', -2.0, -1.0, None, 2.0, 3.0),
+    ('sharpe_52w', -2.0, -1.0, None, 2.0, 3.0),
     
     ('pi_cycle_top', 0.35, 0.45, None, 0.7, 0.95),
     ('pi_cycle_top_ratio', 0.35, 0.45, None, 0.7, 0.95),
@@ -55,7 +55,10 @@ def seed_db(db_path: str = DB_PATH):
     # Ensure directory exists
     db_dir = os.path.dirname(db_path)
     if db_dir and not os.path.exists(db_dir):
-        os.makedirs(db_dir, exist_ok=True)
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+        except Exception:
+            pass
         
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
