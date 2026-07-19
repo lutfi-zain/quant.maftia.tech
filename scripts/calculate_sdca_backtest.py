@@ -72,35 +72,22 @@ def run_sdca_backtest():
         
         action = None
         
-        if multiplier >= 0 and sdca_cash >= base_dca:
-            # Always execute baseline DCA (1.0x = $100) silently
-            fee_base = base_dca * fee_rate
-            net_base = base_dca - fee_base
-            btc_base = net_base / price
-            sdca_btc += btc_base
-            sdca_cash -= base_dca
+        if sdca_amount > 0 and sdca_cash >= sdca_amount:
+            # BUY: execute full multiplier amount directly
+            fee = sdca_amount * fee_rate
+            net = sdca_amount - fee
+            btc_bought = net / price
+            sdca_btc += btc_bought
+            sdca_cash -= sdca_amount
             
-            # Execute extra amount above 1.0x when applicable
-            if multiplier > 1.0:
-                extra = base_dca * (multiplier - 1.0)
-                if sdca_cash >= extra:
-                    fee_extra = extra * fee_rate
-                    net_extra = extra - fee_extra
-                    btc_extra = net_extra / price
-                    sdca_btc += btc_extra
-                    sdca_cash -= extra
+            action = 'BUY'
+            trades.append({
+                'date': date, 'action': 'BUY', 'amount': sdca_amount,
+                'price': price, 'multiplier': multiplier, 'profitPct': 0, 'holdDays': 0
+            })
             
-            # Record BUY marker only when multiplier >= 1.5 (aggressive buy zone)
-            if multiplier >= 1.5:
-                action = 'BUY'
-                total_amount = base_dca + (base_dca * (multiplier - 1.0) if multiplier > 1.0 else 0)
-                trades.append({
-                    'date': date, 'action': 'BUY', 'amount': total_amount,
-                    'price': price, 'multiplier': multiplier, 'profitPct': 0, 'holdDays': 0
-                })
-                
-        elif multiplier < 0 and sdca_btc > 0:
-            # SELL zone
+        elif sdca_amount < 0 and sdca_btc > 0:
+            # SELL
             sell_amount = abs(sdca_amount)
             btc_to_sell = min(sell_amount / price, sdca_btc)
             if btc_to_sell > 0:
@@ -137,7 +124,8 @@ def run_sdca_backtest():
             'simpleDcaEquity': simple_portfolio / total_injected if total_injected > 0 else 1.0,
             'buyHoldEquity': buy_hold_btc * price / initial_cash,
             'marketEquity': price / first_price,
-            'action': action
+            'action': action,
+            'multiplier': multiplier
         })
     
     if not daily_records:
