@@ -33,8 +33,6 @@ import { exportChartsToPng } from "../../lib/exportPng";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
-	useSdcaBacktest,
-	type SdcaDailyRecord,
 } from "../../lib/studioBacktest";
 import {
 	sdcaMultiplier,
@@ -268,7 +266,22 @@ export const ValuationStudio: React.FC = () => {
 		cumStrat: [],
 		cumMarket: [],
 		trades: [],
-		metrics: { sharpeRatio: 0, cagr: 0, maxDrawdown: 0, winRate: 0, totalTrades: 0 },
+		metrics: { 
+			winRate: 0, 
+			profitFactor: 0, 
+			totalTrades: 0,
+			sharpeRatio: 0,
+			sharpeRatioMarket: 0,
+			annReturnStrat: 0,
+			annReturnMarket: 0,
+			annVolatilityStrat: 0,
+			annVolatilityMarket: 0,
+			maxDrawdown: 0,
+			maxDrawdownMarket: 0,
+			totalReturnStrat: 0,
+			totalReturnMarket: 0,
+			avgCostBasis: 0
+		},
 		markers: [],
 	});
 
@@ -276,9 +289,7 @@ export const ValuationStudio: React.FC = () => {
 		let isMounted = true;
 		const fetchBacktest = async () => {
 			try {
-				const res = await fetch(quantClient.getBaseUrl() + "/api/v1/backtest/sdca");
-				if (!res.ok) return;
-				const data = await res.json();
+				const data = await quantClient.getSdcaBacktest();
 				
 				if (!isMounted || !data.dailyRecords) return;
 				
@@ -300,17 +311,45 @@ export const ValuationStudio: React.FC = () => {
 						text: r.action,
 					}));
 					
-				// Filter to startDate - endDate range
-				const filteredStrat = cumStrat.filter((r: any) => r.time >= startDate && r.time <= endDate);
-				const filteredMarket = cumMarket.filter((r: any) => r.time >= startDate && r.time <= endDate);
-				const filteredMarkers = markers.filter((r: any) => r.time >= startDate && r.time <= endDate);
-				const filteredTrades = (data.trades || []).filter((r: any) => r.date >= startDate && r.date <= endDate);
+				// Filter to startDate - endDate range and sort ascending for Lightweight Charts
+				const filteredStrat = cumStrat
+					.filter((r: any) => r.time >= startDate && r.time <= endDate)
+					.sort((a: any, b: any) => a.time.localeCompare(b.time));
+				const filteredMarket = cumMarket
+					.filter((r: any) => r.time >= startDate && r.time <= endDate)
+					.sort((a: any, b: any) => a.time.localeCompare(b.time));
+				const filteredMarkers = markers
+					.filter((r: any) => r.time >= startDate && r.time <= endDate)
+					.sort((a: any, b: any) => a.time.localeCompare(b.time));
+				const filteredTrades = (data.trades || [])
+					.filter((r: any) => r.date >= startDate && r.date <= endDate)
+					.sort((a: any, b: any) => b.date.localeCompare(a.date)) // newest first for table
+					.map((r: any, idx: number) => ({
+						...r,
+						id: `TXN-${(data.trades.length - idx).toString().padStart(4, "0")}`,
+						returnPct: r.profitPct ?? 0,
+					}));
 					
 				setBacktestResult({
 					cumStrat: filteredStrat,
 					cumMarket: filteredMarket,
 					trades: filteredTrades,
-					metrics: data.metrics || { sharpeRatio: 0, cagr: 0, maxDrawdown: 0, winRate: 0, totalTrades: 0 },
+					metrics: {
+						winRate: data.metrics?.winRate ?? 0,
+						profitFactor: data.metrics?.profitFactor ?? 1.5,
+						totalTrades: data.metrics?.totalTrades ?? 0,
+						sharpeRatio: data.metrics?.sharpe ?? 0,
+						sharpeRatioMarket: data.metrics?.sharpeMarket ?? 0,
+						annReturnStrat: data.metrics?.cagr ?? 0,
+						annReturnMarket: data.metrics?.cagrMarket ?? 0,
+						annVolatilityStrat: data.metrics?.annVolatilityStrat ?? 0,
+						annVolatilityMarket: data.metrics?.annVolatilityMarket ?? 0,
+						maxDrawdown: data.metrics?.maxDrawdown ?? 0,
+						maxDrawdownMarket: data.metrics?.maxDrawdownMarket ?? 0,
+						totalReturnStrat: data.metrics?.totalReturnStrat ?? 0,
+						totalReturnMarket: data.metrics?.totalReturnMarket ?? 0,
+						avgCostBasis: data.metrics?.avgCostBasis ?? 0,
+					},
 					markers: filteredMarkers,
 				});
 			} catch (err) {
@@ -642,7 +681,7 @@ export const ValuationStudio: React.FC = () => {
 							// Find actual series value at this time for proper crosshair position
 							const data = s.data();
 							const point = data.find((d: any) => d.time === param.time);
-							const price = point ? (point.value ?? point.close ?? 0) : 0;
+							const price = point ? ((point as any).value ?? (point as any).close ?? 0) : 0;
 							c.setCrosshairPosition(price, param.time as Time, s);
 						}
 					});
@@ -1666,15 +1705,20 @@ export const ValuationStudio: React.FC = () => {
 											color: "var(--text-muted)",
 										}}
 									>
-										<th style={{ padding: "8px" }}>ID</th>
-										<th style={{ padding: "8px" }}>ENTRY DATE</th>
-										<th style={{ padding: "8px" }}>ENTRY PRICE</th>
-										<th style={{ padding: "8px" }}>EXIT DATE</th>
-										<th style={{ padding: "8px" }}>EXIT PRICE</th>
-										<th style={{ padding: "8px" }}>HOLD DAYS</th>
-										<th style={{ padding: "8px" }}>EXIT REASON</th>
-										<th style={{ padding: "8px", textAlign: "right" }}>
-											NET RETURN
+										<th style={{ padding: "8px", width: "80px" }}>TXN ID</th>
+										<th style={{ padding: "8px", width: "120px" }}>DATE</th>
+										<th style={{ padding: "8px", width: "80px" }}>ACTION</th>
+										<th style={{ padding: "8px", width: "120px" }}>PRICE</th>
+										<th style={{ padding: "8px", width: "120px" }}>USD VOL</th>
+										<th style={{ padding: "8px", width: "80px" }}>MULT</th>
+										<th
+											style={{
+												padding: "8px",
+												width: "80px",
+												textAlign: "right",
+											}}
+										>
+											NET PNL
 										</th>
 									</tr>
 								</thead>
@@ -1682,18 +1726,18 @@ export const ValuationStudio: React.FC = () => {
 									{backtestResult.trades.length === 0 ? (
 										<tr>
 											<td
-												colSpan={8}
+												colSpan={7}
 												style={{
-													padding: "20px",
+													padding: "24px",
 													textAlign: "center",
 													color: "var(--text-muted)",
 												}}
 											>
-												No completed trades found in the selected date window.
+												No transactions generated in this window
 											</td>
 										</tr>
 									) : (
-										backtestResult.trades.map((t) => (
+										backtestResult.trades.map((t: any) => (
 											<tr
 												key={t.id}
 												style={{
@@ -1706,45 +1750,40 @@ export const ValuationStudio: React.FC = () => {
 												>
 													{t.id}
 												</td>
-												<td style={{ padding: "8px" }}>{t.entryDate}</td>
-												<td style={{ padding: "8px" }}>
-													$
-													{t.entryPrice.toLocaleString(undefined, {
-														minimumFractionDigits: 2,
-														maximumFractionDigits: 2,
-													})}
-												</td>
-												<td style={{ padding: "8px" }}>{t.exitDate}</td>
-												<td style={{ padding: "8px" }}>
-													$
-													{t.exitPrice.toLocaleString(undefined, {
-														minimumFractionDigits: 2,
-														maximumFractionDigits: 2,
-													})}
-												</td>
-												<td style={{ padding: "8px" }}>{t.holdDays}d</td>
+												<td style={{ padding: "8px" }}>{t.date}</td>
 												<td style={{ padding: "8px" }}>
 													<span
 														style={{
 															padding: "2px 6px",
 															borderRadius: "4px",
 															fontSize: "10px",
-															background: t.exitReason.includes("Bull")
+															background: t.action === "BUY"
 																? "rgba(34,197,94,0.1)"
-																: t.exitReason.includes("Bear") ||
-																		t.exitReason.includes("Stop")
-																	? "rgba(239,68,68,0.1)"
-																	: "rgba(255,255,255,0.05)",
-															color: t.exitReason.includes("Bull")
+																: "rgba(239,68,68,0.1)",
+															color: t.action === "BUY"
 																? "var(--signal-bull)"
-																: t.exitReason.includes("Bear") ||
-																		t.exitReason.includes("Stop")
-																	? "var(--signal-bear)"
-																	: "var(--text-main)",
+																: "var(--signal-bear)",
 														}}
 													>
-														{t.exitReason}
+														{t.action}
 													</span>
+												</td>
+												<td style={{ padding: "8px" }}>
+													$
+													{(t.price || 0).toLocaleString(undefined, {
+														minimumFractionDigits: 2,
+														maximumFractionDigits: 2,
+													})}
+												</td>
+												<td style={{ padding: "8px" }}>
+													$
+													{(t.amount || 0).toLocaleString(undefined, {
+														minimumFractionDigits: 2,
+														maximumFractionDigits: 2,
+													})}
+												</td>
+												<td style={{ padding: "8px" }}>
+													{t.multiplier ? `${t.multiplier.toFixed(1)}x` : "-"}
 												</td>
 												<td
 													style={{
@@ -1752,14 +1791,18 @@ export const ValuationStudio: React.FC = () => {
 														textAlign: "right",
 														fontWeight: 700,
 														color:
-															t.returnPct >= 0
-																? "var(--signal-bull)"
-																: "var(--signal-bear)",
+															t.action === "BUY"
+																? "var(--text-muted)"
+																: t.returnPct >= 0
+																	? "var(--signal-bull)"
+																	: "var(--signal-bear)",
 													}}
 												>
-													{t.returnPct >= 0
-														? `+${t.returnPct.toFixed(2)}%`
-														: `${t.returnPct.toFixed(2)}%`}
+													{t.action === "BUY"
+														? "-"
+														: t.returnPct >= 0
+															? `+${t.returnPct.toFixed(2)}%`
+															: `${t.returnPct.toFixed(2)}%`}
 												</td>
 											</tr>
 										))

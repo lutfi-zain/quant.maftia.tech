@@ -139,18 +139,16 @@ export function mergeThresholds(
  * proportionally with composite strength to prevent overconcentration.
  */
 export function sdcaMultiplier(composite: number): number {
-	// Konvensi BENAR: Positif = Diskon (Beli), Negatif = Bubble (Jual)
-	if (composite >= 1.5) return 3.0; // Deep Discount → Beli sangat agresif
-	if (composite >= 1.0) return 2.0; // Value → Beli agresif
-	if (composite >= 0.5) return 1.5; // Fair-Low → Beli moderat
+	// Beli mulai dari +1.5
+	if (composite >= 2.0) return 3.0; // Deep Discount → Beli agresif
+	if (composite >= 1.5) return 2.0; // Value → Beli moderat
 	
-	if (composite > -0.5) return 1.0; // Fair → Normal DCA (akumulasi rutin)
-	
+	// Jual ketika melewati <= -1.25
 	if (composite <= -1.5) return -20.0; // Bubble Ekstrem → JUAL SANGAT AGRESIF
-	if (composite <= -1.0) return -10.0; // Overvalued Kuat → Jual agresif
-	if (composite <= -0.5) return -5.0;  // Mulai Overvalued → Mulai taking profit
+	if (composite <= -1.25) return -10.0; // Overvalued Kuat → Jual agresif
 	
-	return 0.0; // Jaga-jaga (Pause)
+	// Range -1.25 < composite < 1.5: HOLD
+	return 0.0;
 }
 
 // ─── Cycle Phase Detection ──────────────────────────────────────────────────

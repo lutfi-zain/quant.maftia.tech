@@ -13,17 +13,15 @@ DB_PATH = "/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db"
 OUTPUT_JSON_PATH = "/home/ubuntu/projects/quant.maftia.tech/data/sdca_backtest.json"
 
 def sdca_multiplier(composite: float) -> float:
-    # Konvensi BENAR: Positif = Diskon (Beli), Negatif = Bubble (Jual)
-    if composite >= 1.5: return 3.0
-    if composite >= 1.0: return 2.0
-    if composite >= 0.5: return 1.5
-    if composite > -0.5: return 1.0
+    # Beli ketika sudah masuk >= 1.5
+    if composite >= 2.0: return 3.0
+    if composite >= 1.5: return 2.0
     
-    # Aggressive Drawdown Protection
+    # Jual ketika melewati <= -1.25
     if composite <= -1.5: return -20.0
-    if composite <= -1.0: return -10.0
-    if composite <= -0.5: return -5.0
+    if composite <= -1.25: return -10.0
     
+    # Range antara -1.25 dan 1.5 = HOLD (Tidak Beli)
     return 0.0
 
 def run_sdca_backtest():

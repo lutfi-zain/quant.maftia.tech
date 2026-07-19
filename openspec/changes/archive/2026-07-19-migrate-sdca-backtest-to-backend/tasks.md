@@ -18,6 +18,6 @@
 
 ## 4. Verification & Testing
 
-- [ ] 4.1 Run automated pipeline verification using `python3 /home/ubuntu/projects/run_report_pipeline.py` to confirm data generation succeeds.
-- [ ] 4.2 Start the web and API servers and visually verify that Valuation Studio loads the charts correctly with aligned markers and trade logs.
-- [ ] 4.3 Commit changes using Conventional Commits (`quant: migrate SDCA backtest to backend`, etc).
+- [x] 4.1 Run automated pipeline verification using `python3 /home/ubuntu/projects/run_report_pipeline.py` to confirm data generation succeeds.
+- [x] 4.2 Start the web and API servers and visually verify that Valuation Studio loads the charts correctly with aligned markers and trade logs.
+- [x] 4.3 Commit changes using Conventional Commits (`quant: migrate SDCA backtest to backend`, etc).

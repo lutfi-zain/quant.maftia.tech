@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: SDCA Chart Consumption
 The Valuation Studio UI SHALL fetch SDCA backtest data from the backend API instead of using the local `useSdcaBacktest` client-side engine.

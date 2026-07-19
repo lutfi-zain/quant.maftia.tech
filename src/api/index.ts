@@ -40,7 +40,7 @@ app.get("/api/v1/backtest/sdca", async (c) => {
 	try {
 		const filePath = path.resolve(
 			process.cwd(),
-			"../data/sdca_backtest.json",
+			"data/sdca_backtest.json",
 		);
 		if (!fs.existsSync(filePath)) {
 			return c.json({ error: "Backtest data not found" }, 404);

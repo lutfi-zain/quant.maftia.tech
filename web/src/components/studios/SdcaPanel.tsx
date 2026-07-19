@@ -252,9 +252,13 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 			}}
 		>
 			{/* Header */}
-			<button
-				type="button"
-				onClick={() => setCollapsed(!collapsed)}
+			<div
+				onClick={(e) => {
+					// Only collapse if the click wasn't on a button or select inside
+					if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'SELECT') {
+						setCollapsed(!collapsed);
+					}
+				}}
 				style={{
 					display: "flex",
 					alignItems: "center",
@@ -453,7 +457,7 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 						}}
 					/>
 				</div>
-			</button>
+			</div>
 
 			{/* Collapsed Summary */}
 			{collapsed && (

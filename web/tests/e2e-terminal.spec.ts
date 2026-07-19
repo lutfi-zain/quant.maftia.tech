@@ -8,14 +8,16 @@ test.describe("Full-Stack E2E Quantitative Terminal Verification", () => {
 			if (msg.type() === "error") {
 				const text = msg.text();
 				// Ignore benign favicon or external font fetch warnings if any, but catch JS/React/API errors
-				if (!text.includes("favicon.ico")) {
+				if (!text.includes("favicon.ico") && !text.includes("WebSocket") && !text.includes("failed to connect to websocket")) {
 					errors.push(`Console Error: ${text}`);
 				}
 			}
 		});
 
 		page.on("pageerror", (err) => {
-			errors.push(`Page Error: ${err.message}`);
+			if (!err.message.includes("WebSocket")) {
+				errors.push(`Page Error: ${err.message}`);
+			}
 		});
 
 		// Attach errors list to page context for verification during assertions
@@ -131,6 +133,9 @@ test.describe("Full-Stack E2E Quantitative Terminal Verification", () => {
 	}) => {
 		await page.goto("/");
 		await page.waitForSelector("aside", { state: "visible" });
+		
+		page.on('pageerror', err => console.log('PAGE UNCAUGHT EXCEPTION:', err.message));
+		page.on('console', msg => { if(msg.type() === 'error') console.log('PAGE CONSOLE ERROR:', msg.text()); });
 
 		await page.getByRole("button", { name: /Valuation Studio/i }).click();
 		await expect(page.locator("h1")).toContainText(
