@@ -210,7 +210,7 @@ export const ValuationStudio: React.FC = () => {
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
 	const [dropdownOpenValuation, setDropdownOpenValuation] = useState(false);
-	const [startDate, setStartDate] = useState("2020-01-01");
+	const [startDate, setStartDate] = useState("2009-01-01");
 	const [endDate, setEndDate] = useState("2026-12-31");
 	const [feeBps, setFeeBps] = useState(10);
 	const [portfolioState] = useState<PortfolioState>(() => {
@@ -290,12 +290,25 @@ export const ValuationStudio: React.FC = () => {
 					}));
 
 				// Filter to startDate - endDate range and sort ascending for Lightweight Charts
-				const filteredStrat = cumStrat
+				const rawStrat = cumStrat
 					.filter((r: any) => r.time >= startDate && r.time <= endDate)
 					.sort((a: any, b: any) => a.time.localeCompare(b.time));
-				const filteredMarket = cumMarket
+				const rawMarket = cumMarket
 					.filter((r: any) => r.time >= startDate && r.time <= endDate)
 					.sort((a: any, b: any) => a.time.localeCompare(b.time));
+
+				// Re-index equity curves to start at 1.0 at the sliced startDate
+				const baseStrat = rawStrat.length > 0 ? rawStrat[0].value : 1;
+				const baseMarket = rawMarket.length > 0 ? rawMarket[0].value : 1;
+				const filteredStrat = rawStrat.map((r: any) => ({
+					time: r.time,
+					value: baseStrat > 0 ? r.value / baseStrat : 1,
+				}));
+				const filteredMarket = rawMarket.map((r: any) => ({
+					time: r.time,
+					value: baseMarket > 0 ? r.value / baseMarket : 1,
+				}));
+
 				const filteredMarkers = markers
 					.filter((r: any) => r.time >= startDate && r.time <= endDate)
 					.sort((a: any, b: any) => a.time.localeCompare(b.time));
@@ -313,31 +326,44 @@ export const ValuationStudio: React.FC = () => {
 				const marketValues = filteredMarket.map((r: any) => r.value);
 				const n = stratValues.length;
 
-				const totalReturnStrat = n >= 2 ? (stratValues[n-1] / stratValues[0] - 1) * 100 : 0;
-				const totalReturnMarket = n >= 2 ? (marketValues[n-1] / marketValues[0] - 1) * 100 : 0;
+				const totalReturnStrat =
+					n >= 2 ? (stratValues[n - 1] / stratValues[0] - 1) * 100 : 0;
+				const totalReturnMarket =
+					n >= 2 ? (marketValues[n - 1] / marketValues[0] - 1) * 100 : 0;
 
 				// Daily returns for volatility/sharpe
 				const dailyRets: number[] = [];
 				for (let i = 1; i < n; i++) {
-					if (stratValues[i-1] > 0) {
-						dailyRets.push((stratValues[i] - stratValues[i-1]) / stratValues[i-1]);
+					if (stratValues[i - 1] > 0) {
+						dailyRets.push(
+							(stratValues[i] - stratValues[i - 1]) / stratValues[i - 1],
+						);
 					}
 				}
 				const marketDailyRets: number[] = [];
 				for (let i = 1; i < n; i++) {
-					if (marketValues[i-1] > 0) {
-						marketDailyRets.push((marketValues[i] - marketValues[i-1]) / marketValues[i-1]);
+					if (marketValues[i - 1] > 0) {
+						marketDailyRets.push(
+							(marketValues[i] - marketValues[i - 1]) / marketValues[i - 1],
+						);
 					}
 				}
 
-				const meanRet = dailyRets.reduce((a, b) => a + b, 0) / (dailyRets.length || 1);
-				const variance = dailyRets.reduce((a, b) => a + (b - meanRet) ** 2, 0) / (dailyRets.length || 1);
+				const meanRet =
+					dailyRets.reduce((a, b) => a + b, 0) / (dailyRets.length || 1);
+				const variance =
+					dailyRets.reduce((a, b) => a + (b - meanRet) ** 2, 0) /
+					(dailyRets.length || 1);
 				const annVol = Math.sqrt(variance) * Math.sqrt(365) * 100;
 				const annRet = meanRet * 365 * 100;
 				const sharpe = annVol > 0 ? annRet / annVol : 0;
 
-				const meanMarketRet = marketDailyRets.reduce((a, b) => a + b, 0) / (marketDailyRets.length || 1);
-				const marketVariance = marketDailyRets.reduce((a, b) => a + (b - meanMarketRet) ** 2, 0) / (marketDailyRets.length || 1);
+				const meanMarketRet =
+					marketDailyRets.reduce((a, b) => a + b, 0) /
+					(marketDailyRets.length || 1);
+				const marketVariance =
+					marketDailyRets.reduce((a, b) => a + (b - meanMarketRet) ** 2, 0) /
+					(marketDailyRets.length || 1);
 				const annVolMarket = Math.sqrt(marketVariance) * Math.sqrt(365) * 100;
 				const annRetMarket = meanMarketRet * 365 * 100;
 				const sharpeMarket = annVolMarket > 0 ? annRetMarket / annVolMarket : 0;
@@ -358,24 +384,41 @@ export const ValuationStudio: React.FC = () => {
 					if (dd > maxDdM) maxDdM = dd;
 				}
 
-				const winTrades = filteredTrades.filter((t: any) => (t.returnPct || t.profit_pct || 0) > 0);
-				const lossTrades = filteredTrades.filter((t: any) => (t.returnPct || t.profit_pct || 0) <= 0);
-				const winRate = filteredTrades.length > 0 ? (winTrades.length / filteredTrades.length) * 100 : 0;
-				const grossProfit = winTrades.reduce((a: number, t: any) => a + Math.abs(t.returnPct || t.profit_pct || 0), 0);
-				const grossLoss = lossTrades.reduce((a: number, t: any) => a + Math.abs(t.returnPct || t.profit_pct || 0), 0);
-				const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? 999 : 0);
+				const winTrades = filteredTrades.filter(
+					(t: any) => (t.returnPct || t.profit_pct || 0) > 0,
+				);
+				const lossTrades = filteredTrades.filter(
+					(t: any) => (t.returnPct || t.profit_pct || 0) <= 0,
+				);
+				const winRate =
+					filteredTrades.length > 0
+						? (winTrades.length / filteredTrades.length) * 100
+						: 0;
+				const grossProfit = winTrades.reduce(
+					(a: number, t: any) => a + Math.abs(t.returnPct || t.profit_pct || 0),
+					0,
+				);
+				const grossLoss = lossTrades.reduce(
+					(a: number, t: any) => a + Math.abs(t.returnPct || t.profit_pct || 0),
+					0,
+				);
+				const profitFactor =
+					grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 999 : 0;
 
 				const years = n / 365.25;
-				const cagr = years > 0 && stratValues[0] > 0
-					? ((stratValues[n-1] / stratValues[0]) ** (1 / years) - 1) * 100
-					: 0;
+				const cagr =
+					years > 0 && stratValues[0] > 0
+						? ((stratValues[n - 1] / stratValues[0]) ** (1 / years) - 1) * 100
+						: 0;
 
 				const avgCostBasisArr = filteredTrades
 					.filter((t: any) => t.action === "BUY")
 					.map((t: any) => t.btc_price || t.price || 0);
-				const avgCostBasis = avgCostBasisArr.length > 0
-					? avgCostBasisArr.reduce((a: number, b: number) => a + b, 0) / avgCostBasisArr.length
-					: data.metrics?.avgCostBasis ?? 0;
+				const avgCostBasis =
+					avgCostBasisArr.length > 0
+						? avgCostBasisArr.reduce((a: number, b: number) => a + b, 0) /
+							avgCostBasisArr.length
+						: (data.metrics?.avgCostBasis ?? 0);
 
 				setBacktestResult({
 					cumStrat: filteredStrat,
