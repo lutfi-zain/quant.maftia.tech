@@ -32,8 +32,7 @@ import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import { exportChartsToPng } from "../../lib/exportPng";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import {
-} from "../../lib/studioBacktest";
+import {} from "../../lib/studioBacktest";
 import type { SdcaSignal } from "../../lib/sdcaEngine";
 import { SdcaPanel } from "./SdcaPanel";
 import { SdcaChart } from "./SdcaChart";
@@ -260,9 +259,9 @@ export const ValuationStudio: React.FC = () => {
 		cumStrat: [],
 		cumMarket: [],
 		trades: [],
-		metrics: { 
-			winRate: 0, 
-			profitFactor: 0, 
+		metrics: {
+			winRate: 0,
+			profitFactor: 0,
 			totalTrades: 0,
 			sharpeRatio: 0,
 			sharpeRatioMarket: 0,
@@ -274,7 +273,7 @@ export const ValuationStudio: React.FC = () => {
 			maxDrawdownMarket: 0,
 			totalReturnStrat: 0,
 			totalReturnMarket: 0,
-			avgCostBasis: 0
+			avgCostBasis: 0,
 		},
 		markers: [],
 	});
@@ -284,9 +283,9 @@ export const ValuationStudio: React.FC = () => {
 		const fetchBacktest = async () => {
 			try {
 				const data = await quantClient.getSdcaBacktest();
-				
+
 				if (!isMounted || !data.dailyRecords) return;
-				
+
 				const cumStrat = data.dailyRecords.map((r: any) => ({
 					time: r.date,
 					value: r.stratEquity,
@@ -304,7 +303,7 @@ export const ValuationStudio: React.FC = () => {
 						shape: r.action === "BUY" ? "arrowUp" : "arrowDown",
 						text: r.action,
 					}));
-					
+
 				// Filter to startDate - endDate range and sort ascending for Lightweight Charts
 				const filteredStrat = cumStrat
 					.filter((r: any) => r.time >= startDate && r.time <= endDate)
@@ -323,7 +322,7 @@ export const ValuationStudio: React.FC = () => {
 						id: `TXN-${(data.trades.length - idx).toString().padStart(4, "0")}`,
 						returnPct: r.profitPct ?? 0,
 					}));
-					
+
 				setBacktestResult({
 					cumStrat: filteredStrat,
 					cumMarket: filteredMarket,
@@ -351,7 +350,9 @@ export const ValuationStudio: React.FC = () => {
 			}
 		};
 		fetchBacktest();
-		return () => { isMounted = false; };
+		return () => {
+			isMounted = false;
+		};
 	}, [startDate, endDate]);
 
 	useEffect(() => {
@@ -675,7 +676,9 @@ export const ValuationStudio: React.FC = () => {
 							// Find actual series value at this time for proper crosshair position
 							const data = s.data();
 							const point = data.find((d: any) => d.time === param.time);
-							const price = point ? ((point as any).value ?? (point as any).close ?? 0) : 0;
+							const price = point
+								? ((point as any).value ?? (point as any).close ?? 0)
+								: 0;
 							c.setCrosshairPosition(price, param.time as Time, s);
 						}
 					});
@@ -773,7 +776,7 @@ export const ValuationStudio: React.FC = () => {
 					confidence: (dailyData[hoveredIndex].sdca_confidence as any) ?? "LOW",
 					pricePercentile: 0,
 					trendPositive: true,
-			  }
+				}
 			: null;
 
 	const displayIndicators = Object.entries(INDICATOR_METADATA)
@@ -1656,7 +1659,11 @@ export const ValuationStudio: React.FC = () => {
 										color: "var(--text-main)",
 									}}
 								>
-									${backtestResult.metrics.avgCostBasis.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+									$
+									{backtestResult.metrics.avgCostBasis.toLocaleString(
+										undefined,
+										{ minimumFractionDigits: 2, maximumFractionDigits: 2 },
+									)}
 								</div>
 							</div>
 						</div>
@@ -1754,12 +1761,14 @@ export const ValuationStudio: React.FC = () => {
 															padding: "2px 6px",
 															borderRadius: "4px",
 															fontSize: "10px",
-															background: t.action === "BUY"
-																? "rgba(34,197,94,0.1)"
-																: "rgba(239,68,68,0.1)",
-															color: t.action === "BUY"
-																? "var(--signal-bull)"
-																: "var(--signal-bear)",
+															background:
+																t.action === "BUY"
+																	? "rgba(34,197,94,0.1)"
+																	: "rgba(239,68,68,0.1)",
+															color:
+																t.action === "BUY"
+																	? "var(--signal-bull)"
+																	: "var(--signal-bear)",
 														}}
 													>
 														{t.action}

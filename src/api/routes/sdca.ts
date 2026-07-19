@@ -137,7 +137,7 @@ sdcaRouter.post("/backtest", async (c) => {
 			ORDER BY date ASC
 		`;
 		const records = executeQuery(sql, [startDate, endDate]);
-		
+
 		// Map it so the frontend gets the array of records to slice
 		return c.json({
 			signals: records.map((r: any) => ({
@@ -147,13 +147,13 @@ sdcaRouter.post("/backtest", async (c) => {
 				action: r.action,
 				confidence: r.confidence,
 				pricePercentile: 0,
-				trendPositive: true
+				trendPositive: true,
 			})),
 			records: records.map((r: any) => ({
 				date: r.date,
 				close: r.close,
-				valuation_composite: r.valuation_composite
-			}))
+				valuation_composite: r.valuation_composite,
+			})),
 		});
 	} catch (err: any) {
 		console.error("Error in POST /api/v1/sdca/backtest:", err);
