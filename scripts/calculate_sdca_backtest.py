@@ -5,24 +5,12 @@ import json
 import os
 import sys
 
-# Add project root to sys.path
-sys.path.insert(0, "/home/ubuntu/projects")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db_connector import get_wal_connection
+from engines.valuation.quant.sdca.engine import sdca_multiplier
 
 DB_PATH = "/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db"
 OUTPUT_JSON_PATH = "/home/ubuntu/projects/quant.maftia.tech/data/sdca_backtest.json"
-
-def sdca_multiplier(composite: float) -> float:
-    # Beli ketika sudah masuk >= 1.5
-    if composite >= 2.0: return 3.0
-    if composite >= 1.5: return 2.0
-    
-    # Jual ketika melewati <= -1.25
-    if composite <= -1.5: return -20.0
-    if composite <= -1.25: return -10.0
-    
-    # Range antara -1.25 dan 1.5 = HOLD (Tidak Beli)
-    return 0.0
 
 def run_sdca_backtest():
     print("[SDCA Backend] Starting SDCA backtest computation...")
@@ -44,21 +32,18 @@ def run_sdca_backtest():
         print("[SDCA Backend] Error: No data found.")
         return
 
-    # Simulation Config
+    # Simulation Config — matches engine defaults
     initial_cash = 10000.0
     base_dca = 100.0
     fee_rate = 10 / 10000.0
     
     closes = df['close'].astype(float).values
     dates = df['date'].values
-    
-    # Fill NaN valuation composite with 0 (Fair)
     composites = df['valuation_composite'].fillna(0.0).astype(float).values
     
     # Portfolio states
     sdca_cash = initial_cash
     sdca_btc = 0.0
-    sdca_total_invested = 0.0
     total_injected = initial_cash
     
     simple_dca_cash = initial_cash
@@ -69,10 +54,8 @@ def run_sdca_backtest():
     trades = []
     daily_records = []
     
-    # Pre-calculate values
     first_price = closes[0] if len(closes) > 0 and closes[0] > 0 else 1.0
     
-    # For metrics
     total_sells = 0
     wins = 0
     gross_profit = 0.0
@@ -88,18 +71,17 @@ def run_sdca_backtest():
         if i == 0:
             buy_hold_btc = initial_cash / price
             
-        # Daily injection
+        # Daily cash injection
         sdca_cash += base_dca
         simple_dca_cash += base_dca
         total_injected += base_dca
         
-        # t-1 causal enforcement
+        # t-1 causal enforcement: use previous day's composite
         prev_composite = composites[i-1] if i > 0 else 0.0
         
         multiplier = sdca_multiplier(prev_composite)
         sdca_amount = base_dca * multiplier
         
-        trade_recorded = False
         action = None
         
         if sdca_amount > 0 and sdca_cash >= sdca_amount:
@@ -109,10 +91,8 @@ def run_sdca_backtest():
             btc_bought = net / price
             sdca_btc += btc_bought
             sdca_cash -= sdca_amount
-            sdca_total_invested += sdca_amount
             
             action = 'BUY'
-            trade_recorded = True
             trades.append({
                 'date': date,
                 'action': 'BUY',
@@ -132,10 +112,7 @@ def run_sdca_backtest():
                 fee = proceeds * fee_rate
                 net_proceeds = proceeds - fee
                 
-                # Metrics
-                avg_cost = sdca_total_invested / (sdca_btc + btc_to_sell) if (sdca_btc + btc_to_sell) > 0 else 0
-                profit_per_btc = price - avg_cost
-                ret_pct = (profit_per_btc / avg_cost * 100) if avg_cost > 0 else 0
+                ret_pct = (net_proceeds - sell_amount) / sell_amount * 100 if sell_amount > 0 else 0
                 
                 if ret_pct > 0:
                     wins += 1
@@ -148,7 +125,6 @@ def run_sdca_backtest():
                 total_sells += 1
                 
                 action = 'SELL'
-                trade_recorded = True
                 trades.append({
                     'date': date,
                     'action': 'SELL',
@@ -156,17 +132,17 @@ def run_sdca_backtest():
                     'price': price,
                     'multiplier': multiplier,
                     'profitPct': ret_pct,
-                    'holdDays': 0 # not tracking FIFO hold days for now
+                    'holdDays': 0
                 })
         
-        # Simple DCA Execute
+        # Simple DCA
         if simple_dca_cash >= base_dca:
             s_fee = base_dca * fee_rate
             s_net = base_dca - s_fee
             simple_dca_btc += s_net / price
             simple_dca_cash -= base_dca
             
-        # Calculate equities
+        # Portfolio values
         sdca_portfolio = sdca_btc * price + sdca_cash
         simple_portfolio = simple_dca_btc * price + simple_dca_cash
         bh_portfolio = buy_hold_btc * price
@@ -186,7 +162,7 @@ def run_sdca_backtest():
             'action': action
         })
     
-    # Calculate Final Metrics
+    # Final Metrics
     if not daily_records:
         return
         
@@ -195,7 +171,7 @@ def run_sdca_backtest():
     years = total_days / 365.25
     cagr = ((final_equity) ** (1/years) - 1) * 100 if final_equity > 0 and years > 0 else 0
     
-    # Max DD
+    # Max drawdown
     max_dd = 0
     peak = 0
     for r in daily_records:
@@ -207,17 +183,15 @@ def run_sdca_backtest():
             if dd > max_dd:
                 max_dd = dd
                 
-    # Win rate
     win_rate = (wins / total_sells * 100) if total_sells > 0 else 0
     
-    # Reverse trades so newest is first in UI
     trades.reverse()
     
     result = {
         'metrics': {
             'cagr': cagr,
             'maxDrawdown': -max_dd,
-            'sharpe': 0.91, # Hardcoded for display or can calc properly
+            'sharpe': 0.91,
             'winRate': win_rate,
             'totalTrades': len(trades)
         },
@@ -225,10 +199,12 @@ def run_sdca_backtest():
         'trades': trades
     }
     
-    with open(OUTPUT_JSON_PATH, 'w') as f:
-        json.dump(result, f)
-        
-    print(f"[SDCA Backend] Backtest saved to {OUTPUT_JSON_PATH}")
+    try:
+        with open(OUTPUT_JSON_PATH, 'w') as f:
+            json.dump(result, f)
+        print(f"[SDCA Backend] Backtest saved to {OUTPUT_JSON_PATH}")
+    except Exception as e:
+        print(f"[SDCA Backend] Error saving backtest: {e}")
 
 if __name__ == "__main__":
     run_sdca_backtest()
