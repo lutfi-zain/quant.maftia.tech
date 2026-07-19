@@ -34,13 +34,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
 } from "../../lib/studioBacktest";
-import {
-	sdcaMultiplier,
-	detectPhase,
-	pricePercentile,
-	computeSdcaSignal,
-	type SdcaSignal,
-} from "../../lib/sdcaEngine";
+import type { SdcaSignal } from "../../lib/sdcaEngine";
 import { SdcaPanel } from "./SdcaPanel";
 import { SdcaChart } from "./SdcaChart";
 import type { PortfolioState } from "../../lib/sdcaPortfolio";
@@ -765,18 +759,21 @@ export const ValuationStudio: React.FC = () => {
 	const isBubble = latestValScore <= -1.5;
 	const isDiscount = latestValScore >= 1.0;
 
-	// SDCA signal: compute for hovered day or latest day
-	const sdcaMappedData = dailyData.map((d) => ({
-		date: d.date,
-		close: d.close,
-		valuation_composite: Number(d.valuation_composite ?? 0),
-	}));
+	// SDCA signal: map from basic API fields instead of calculating
 	const hoveredIndex = displayPoint
 		? dailyData.findIndex((d) => d.date === displayPoint.date)
 		: -1;
 	const sdcaSignal: SdcaSignal | null =
-		sdcaMappedData.length > 0 && hoveredIndex >= 0
-			? computeSdcaSignal(sdcaMappedData, hoveredIndex)
+		dailyData.length > 0 && hoveredIndex >= 0
+			? {
+					date: dailyData[hoveredIndex].date,
+					multiplier: Number(dailyData[hoveredIndex].sdca_multiplier ?? 0),
+					phase: (dailyData[hoveredIndex].sdca_phase as any) ?? "fair",
+					action: (dailyData[hoveredIndex].sdca_action as any) ?? "HOLD",
+					confidence: (dailyData[hoveredIndex].sdca_confidence as any) ?? "LOW",
+					pricePercentile: 0,
+					trendPositive: true,
+			  }
 			: null;
 
 	const displayIndicators = Object.entries(INDICATOR_METADATA)

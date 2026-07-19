@@ -34,6 +34,10 @@ export interface DailyAnalyticsPoint {
 	ichimoku_cum_market?: number;
 	ichimoku_active_pos?: number;
 	ichimoku_strat_net_ret?: number;
+	sdca_multiplier?: number;
+	sdca_phase?: string;
+	sdca_action?: string;
+	sdca_confidence?: string;
 }
 
 export interface CircuitBreakersResponse {

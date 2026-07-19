@@ -150,6 +150,10 @@ def main():
   date                   TEXT PRIMARY KEY,
   btc_price              REAL,
   valuation_composite    REAL,
+  sdca_multiplier        REAL,
+  sdca_phase             TEXT,
+  sdca_action            TEXT,
+  sdca_confidence        TEXT,
   lttd_regime            TEXT,
   lttd_score             REAL,
   lttd_prob_bull         REAL,
@@ -346,6 +350,27 @@ def main():
     except Exception as e:
         print(f"Error fetching full valuation composite: {e}")
 
+    # SDCA processing
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    if project_dir not in sys.path:
+        sys.path.insert(0, project_dir)
+    from engines.valuation.quant.sdca.engine import DailyRecord, compute_sdca_signals
+    
+    sdca_records = []
+    # Build daily records strictly causally (date sorted)
+    all_dates = sorted(list(set(val_btc_all.keys()).union(set(val_data_all.keys()))))
+    for dt in all_dates:
+        price = val_btc_all.get(dt, 0.0)
+        comp = val_data_all.get(dt, 0.0)
+        if price > 0:
+            sdca_records.append(DailyRecord(dt, price, comp))
+            
+    sdca_signals_map = {}
+    if sdca_records:
+        signals = compute_sdca_signals(sdca_records)
+        for sig in signals:
+            sdca_signals_map[sig["date"]] = sig
+
     lttd_data_all = {}
     try:
         conn = get_wal_connection(db_path)
@@ -497,10 +522,17 @@ def main():
         ich_active_pos = ich_rec.get("active_pos")
         ich_strat_net_ret = ich_rec.get("strat_net_ret")
 
+        sdca_sig = sdca_signals_map.get(dt)
+        sdca_mult = sdca_sig["multiplier"] if sdca_sig else 0.0
+        sdca_phase = sdca_sig["phase"] if sdca_sig else "fair"
+        sdca_action = sdca_sig["action"] if sdca_sig else "HOLD"
+        sdca_conf = sdca_sig["confidence"] if sdca_sig else "LOW"
+
         execute_parameterized(
             master_conn,
             """INSERT OR REPLACE INTO unified_daily_analytics (
                 date, btc_price, valuation_composite,
+                sdca_multiplier, sdca_phase, sdca_action, sdca_confidence,
                 lttd_regime, lttd_score, lttd_prob_bull, lttd_prob_bear, lttd_prob_sideways, lttd_exposure,
                 mttd_imo, mttd_er, mttd_entropy, mttd_position, mttd_immunity_active,
                 ichimoku_imo, ichimoku_regime, ichimoku_position,
@@ -509,9 +541,10 @@ def main():
                 ichi_entropy, ichi_er, ichi_imo_std,
                 ichi_ref_pos, ichi_cum_strat, ichi_cum_market,
                 ichi_active_pos, ichi_strat_net_ret
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 dt, btc_p, val_comp,
+                sdca_mult, sdca_phase, sdca_action, sdca_conf,
                 lttd_reg, lttd_score, p_bull, p_bear, p_side, lttd_exposure,
                 mttd_imo, mttd_er, mttd_ent, mttd_pos_val, mttd_imm,
                 ich_imo, ich_reg, ich_pos_val,
