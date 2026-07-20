@@ -64,13 +64,55 @@ def fetch_valuation_composite_data():
         ORDER BY date ASC
     """).fetchall()
     conn.close()
+
+    # Apply Volatility Regime Multiplier
+    try:
+        from engines.valuation.quant.components.bitview_client import fetch_series
+        df_cvsc = fetch_series('cointime_value_stored_cumulative')
+        df_cvsc['date_dt'] = pd.to_datetime(df_cvsc['date']).dt.strftime('%Y-%m-%d')
+        cvsc_dict = dict(zip(df_cvsc['date_dt'], df_cvsc['value']))
+    except Exception as e:
+        print(f"Error fetching cvsc: {e}")
+        cvsc_dict = {}
+
+    prices_list_vol = []
     
     for r in rows:
         dt = pd.to_datetime(r[0]).strftime("%Y-%m-%d")
         try:
+            price = float(r[2]) if r[2] is not None else 0.0
+        except (ValueError, TypeError):
+            price = 0.0
+            
+        prices_list_vol.append(price)
+        
+        try:
             raw_val = float(r[1]) if r[1] is not None else None
         except (ValueError, TypeError):
             raw_val = None
+            
+        # Volatility Calculation
+        vol_730d = 0.05
+        if len(prices_list_vol) >= 30:
+            prices_series = pd.Series(prices_list_vol)
+            returns = prices_series.pct_change()
+            vol_30d = returns.rolling(window=30).std()
+            vol_730d_series = vol_30d.rolling(window=730, min_periods=30).mean()
+            current_vol = vol_730d_series.iloc[-1]
+            if pd.notnull(current_vol) and current_vol > 0:
+                vol_730d = current_vol
+
+        cvsc_val = cvsc_dict.get(dt, 0.0)
+        
+        # Apply modifier if we have valid CVSC and raw value
+        if raw_val is not None and cvsc_val > 0:
+            multiplier = (0.05 / vol_730d) * (cvsc_val ** 0.04)
+            raw_val = raw_val * multiplier
+            
+        # Hard clamp between -2.0 and 2.0
+        if raw_val is not None:
+            raw_val = max(-2.0, min(2.0, raw_val))
+
         rescaled_val = raw_val
         if comp_params and raw_val is not None:
             p2_5, p50, p97_5 = comp_params['p2_5'], comp_params['p50'], comp_params['p97_5']
