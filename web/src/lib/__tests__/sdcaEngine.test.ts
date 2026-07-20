@@ -233,13 +233,13 @@ describe("computeSdcaSignal", () => {
 
 	it("enforces t-1 causal filtering", () => {
 		const data: DailyRecord[] = [
-			{ date: "2024-01-06", close: 50000, valuation_composite: 1.5 }, 
+			{ date: "2024-01-06", close: 50000, valuation_composite: 1.5 },
 			{ date: "2024-01-07", close: 45000, valuation_composite: 1.5 },
-			{ date: "2024-01-08", close: 52000, valuation_composite: -1.5 }, 
+			{ date: "2024-01-08", close: 52000, valuation_composite: -1.5 },
 		];
 
 		const signal = computeSdcaSignal(data, 2);
-		expect(signal.multiplier).toBe(3.0); 
+		expect(signal.multiplier).toBe(3.0);
 	});
 });
 

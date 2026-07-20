@@ -283,9 +283,9 @@ export const ValuationStudio: React.FC = () => {
 					.filter((r: any) => r.action)
 					.map((r: any) => ({
 						time: r.date,
-						position: r.action === "BUY" ? "belowBar" : "aboveBar",
-						color: r.action === "BUY" ? "#10B981" : "#EF4444",
-						shape: r.action === "BUY" ? "arrowUp" : "arrowDown",
+						position: r.action.startsWith("BUY") ? "belowBar" : "aboveBar",
+						color: r.action.startsWith("BUY") ? "#10B981" : "#EF4444",
+						shape: r.action.startsWith("BUY") ? "arrowUp" : "arrowDown",
 						text: r.action,
 					}));
 
@@ -412,7 +412,7 @@ export const ValuationStudio: React.FC = () => {
 						: 0;
 
 				const avgCostBasisArr = filteredTrades
-					.filter((t: any) => t.action === "BUY")
+					.filter((t: any) => t.action && t.action.startsWith("BUY"))
 					.map((t: any) => t.btc_price || t.price || 0);
 				const avgCostBasis =
 					avgCostBasisArr.length > 0
@@ -871,8 +871,10 @@ export const ValuationStudio: React.FC = () => {
 					phase: (dailyData[hoveredIndex].sdca_phase as any) ?? "fair",
 					action: (dailyData[hoveredIndex].sdca_action as any) ?? "HOLD",
 					confidence: (dailyData[hoveredIndex].sdca_confidence as any) ?? "LOW",
-					pricePercentile: (dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) * 100.0,
-					trendPositive: (dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) >= 1.0,
+					pricePercentile:
+						(dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) * 100.0,
+					trendPositive:
+						(dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) >= 1.0,
 					price_ma200_ratio: dailyData[hoveredIndex].price_ma200_ratio,
 					ath_drawdown: dailyData[hoveredIndex].ath_drawdown,
 				}
@@ -1861,11 +1863,11 @@ export const ValuationStudio: React.FC = () => {
 															borderRadius: "4px",
 															fontSize: "10px",
 															background:
-																t.action === "BUY"
+																t.action && t.action.startsWith("BUY")
 																	? "rgba(34,197,94,0.1)"
 																	: "rgba(239,68,68,0.1)",
 															color:
-																t.action === "BUY"
+																t.action && t.action.startsWith("BUY")
 																	? "var(--signal-bull)"
 																	: "var(--signal-bear)",
 														}}
@@ -1896,14 +1898,14 @@ export const ValuationStudio: React.FC = () => {
 														textAlign: "right",
 														fontWeight: 700,
 														color:
-															t.action === "BUY"
+															t.action && t.action.startsWith("BUY")
 																? "var(--text-muted)"
 																: t.returnPct >= 0
 																	? "var(--signal-bull)"
 																	: "var(--signal-bear)",
 													}}
 												>
-													{t.action === "BUY"
+													{t.action && t.action.startsWith("BUY")
 														? "-"
 														: t.returnPct >= 0
 															? `+${t.returnPct.toFixed(2)}%`

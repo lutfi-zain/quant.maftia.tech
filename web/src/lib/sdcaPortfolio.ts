@@ -110,7 +110,10 @@ export function executeBuy(
 	config: Partial<PortfolioConfig> = {},
 ): PortfolioState {
 	const cfg = { ...DEFAULT_CONFIG, ...config };
-	const buyAmount = multiplier === 999.0 ? state.cashBalance / (1 + cfg.feeRate) : cfg.baseDcaAmount * Math.max(0, multiplier);
+	const buyAmount =
+		multiplier === 999.0
+			? state.cashBalance / (1 + cfg.feeRate)
+			: cfg.baseDcaAmount * Math.max(0, multiplier);
 	if (buyAmount <= 0 || price <= 0) return state;
 
 	// Calculate fee

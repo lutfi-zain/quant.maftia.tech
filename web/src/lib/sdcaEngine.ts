@@ -154,11 +154,11 @@ export function sdcaMultiplier(composite: number): number {
 	// Beli mulai dari +1.5
 	if (composite >= 2.0) return 3.0; // Deep Discount → Beli agresif
 	if (composite >= 1.5) return 2.0; // Value → Beli moderat
-	
+
 	// Jual ketika melewati <= -1.25
 	if (composite <= -1.5) return -20.0; // Bubble Ekstrem → JUAL SANGAT AGRESIF
 	if (composite <= -1.25) return -10.0; // Overvalued Kuat → Jual agresif
-	
+
 	// Range -1.25 < composite < 1.5: HOLD
 	return 0.0;
 }
@@ -392,19 +392,19 @@ export function computeSdcaSignals(
 	_thresholds?: SdcaThresholds,
 ): SdcaSignal[] {
 	const signals: SdcaSignal[] = [];
-	
+
 	let state = "NEUTRAL";
 	let buy_all_fired = false;
-	
+
 	const composites = data.map((d) => d.valuation_composite ?? 0);
-	
+
 	const pricesList: number[] = [];
 	const ma200List: number[] = [];
 	const ratioList: number[] = [];
 	const athList: number[] = [];
 	const drawdownList: number[] = [];
 	let runningAth = 0.0;
-	
+
 	for (let i = 0; i < data.length; i++) {
 		const price = data[i].close;
 		if (price > 0) {
@@ -424,12 +424,12 @@ export function computeSdcaSignals(
 			drawdownList.push(0.0);
 		}
 	}
-	
+
 	for (let i = 0; i < data.length; i++) {
 		const dateStr = data[i].date;
 		const ratio = ratioList[i];
 		const drawdown = drawdownList[i];
-		
+
 		let isMonday = false;
 		try {
 			const dt = new Date(dateStr);
@@ -437,12 +437,12 @@ export function computeSdcaSignals(
 		} catch {
 			isMonday = false;
 		}
-		
+
 		let comp_t1 = 0.0;
 		let ratio_t1 = 1.0;
 		let drawdown_t1 = 0.0;
 		let cross_above_ma200 = false;
-		
+
 		if (i > 0) {
 			comp_t1 = composites[i - 1];
 			ratio_t1 = ratioList[i - 1];
@@ -452,15 +452,16 @@ export function computeSdcaSignals(
 				cross_above_ma200 = ratio_t2 < 1.0 && ratio_t1 >= 1.0;
 			}
 		}
-		
+
 		if (comp_t1 < 0.0) {
 			buy_all_fired = false;
 		}
-		
+
 		// 1. SELL_ALL
-		const sell_all_trigger = comp_t1 <= -1.5 && ratio_t1 < 2.0 && drawdown_t1 >= 20.0;
+		const sell_all_trigger =
+			comp_t1 <= -1.5 && ratio_t1 < 2.0 && drawdown_t1 >= 20.0;
 		const safety_net_trigger = comp_t1 <= -0.5 && ratio_t1 < 1.0;
-		
+
 		if (sell_all_trigger || safety_net_trigger) {
 			state = "SELL_ALL";
 		} else if (comp_t1 <= -1.0 && ratio_t1 < 2.0) {
@@ -472,10 +473,10 @@ export function computeSdcaSignals(
 		} else if (comp_t1 > -0.5 && comp_t1 < 0.5) {
 			state = "NEUTRAL";
 		}
-		
+
 		let action: SdcaAction = "HOLD";
 		let multiplier = 0.0;
-		
+
 		if (state === "SELL_ALL") {
 			action = "SELL_ALL";
 			multiplier = -1.0;
@@ -509,7 +510,7 @@ export function computeSdcaSignals(
 				multiplier = 0.0;
 			}
 		}
-		
+
 		signals.push({
 			date: dateStr,
 			multiplier,
@@ -522,7 +523,7 @@ export function computeSdcaSignals(
 			ath_drawdown: drawdown,
 		});
 	}
-	
+
 	return signals;
 }
 

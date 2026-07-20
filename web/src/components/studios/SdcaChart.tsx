@@ -158,10 +158,10 @@ export const SdcaChart: React.FC<SdcaChartProps> = ({
 			const markers = portfolio.transactionLog.map((tx) => ({
 				time: tx.timestamp.slice(0, 10) as Time,
 				position:
-					tx.action === "BUY" ? ("belowBar" as const) : ("aboveBar" as const),
-				color: tx.action === "BUY" ? "#22c55e" : "#ef4444",
+					tx.action && tx.action.startsWith("BUY") ? ("belowBar" as const) : ("aboveBar" as const),
+				color: tx.action && tx.action.startsWith("BUY") ? "#22c55e" : "#ef4444",
 				shape:
-					tx.action === "BUY" ? ("arrowUp" as const) : ("arrowDown" as const),
+					tx.action && tx.action.startsWith("BUY") ? ("arrowUp" as const) : ("arrowDown" as const),
 				text: `${tx.action} $${tx.amountUsd.toFixed(0)}`,
 			}));
 
@@ -213,10 +213,10 @@ export const SdcaChart: React.FC<SdcaChartProps> = ({
 		const markers = portfolio.transactionLog.map((tx) => ({
 			time: tx.timestamp.slice(0, 10) as Time,
 			position:
-				tx.action === "BUY" ? ("belowBar" as const) : ("aboveBar" as const),
-			color: tx.action === "BUY" ? "#22c55e" : "#ef4444",
+				tx.action && tx.action.startsWith("BUY") ? ("belowBar" as const) : ("aboveBar" as const),
+			color: tx.action && tx.action.startsWith("BUY") ? "#22c55e" : "#ef4444",
 			shape:
-				tx.action === "BUY" ? ("arrowUp" as const) : ("arrowDown" as const),
+				tx.action && tx.action.startsWith("BUY") ? ("arrowUp" as const) : ("arrowDown" as const),
 			text: `${tx.action} $${tx.amountUsd.toFixed(0)}`,
 		}));
 		markers.sort((a, b) => (a.time as string).localeCompare(b.time as string));

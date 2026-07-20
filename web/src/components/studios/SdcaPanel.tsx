@@ -273,7 +273,10 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 			<div
 				onClick={(e) => {
 					// Only collapse if the click wasn't on a button or select inside
-					if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'SELECT') {
+					if (
+						(e.target as HTMLElement).tagName !== "BUTTON" &&
+						(e.target as HTMLElement).tagName !== "SELECT"
+					) {
 						setCollapsed(!collapsed);
 					}
 				}}
@@ -637,7 +640,11 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 							</span>
 						)}
 						{signal && signal.ath_drawdown !== undefined && (
-							<span style={{ color: signal.ath_drawdown >= 20.0 ? "#ef4444" : "#f59e0b" }}>
+							<span
+								style={{
+									color: signal.ath_drawdown >= 20.0 ? "#ef4444" : "#f59e0b",
+								}}
+							>
 								ATH Drawdown: {signal.ath_drawdown.toFixed(1)}%
 							</span>
 						)}
