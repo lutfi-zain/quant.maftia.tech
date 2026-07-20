@@ -457,16 +457,19 @@ export function computeSdcaSignals(
 			buy_all_fired = false;
 		}
 
+		// Reset state to NEUTRAL every day to avoid sticky state lock-in
+		state = "NEUTRAL";
+
 		// 1. SELL_ALL
 		const sell_all_trigger =
 			comp_t1 <= -1.5 && ratio_t1 < 2.0 && drawdown_t1 >= 20.0;
-		const safety_net_trigger = comp_t1 <= -0.5 && ratio_t1 < 1.0;
+		const safety_net_trigger = comp_t1 <= -1.0 && ratio_t1 < 1.0;
 
 		if (sell_all_trigger || safety_net_trigger) {
 			state = "SELL_ALL";
 		} else if (comp_t1 <= -1.0 && ratio_t1 < 2.0) {
 			state = "SELL_DCA";
-		} else if (comp_t1 > 0.5 && cross_above_ma200 && !buy_all_fired) {
+		} else if (comp_t1 >= 1.0 && cross_above_ma200 && !buy_all_fired) {
 			state = "BUY_ALL";
 		} else if (comp_t1 >= 1.0 && ratio_t1 < 1.0) {
 			state = "BUY_DCA";

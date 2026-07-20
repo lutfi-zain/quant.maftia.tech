@@ -215,6 +215,9 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             cross_above_ma200 = False
             
         # FSM State Transitions
+        # Reset state to NEUTRAL every day to avoid sticky state lock-in
+        state = "NEUTRAL"
+        
         # Reset buy_all_fired when composite goes negative (enters overvalued area)
         if comp_t1 < 0.0:
             buy_all_fired = False
@@ -222,8 +225,8 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
         # 1. SELL_ALL Conditions (Highest priority exit)
         # Triple-gate: comp <= -1.5, ratio < 2.0, drawdown >= 20%
         sell_all_trigger = (comp_t1 <= -1.5 and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
-        # Safety net: comp <= -0.5 and price < MA200 (ratio < 1.0)
-        safety_net_trigger = (comp_t1 <= -0.5 and ratio_t1 < 1.0)
+        # Safety net: comp <= -1.0 and price < MA200 (ratio < 1.0)
+        safety_net_trigger = (comp_t1 <= -1.0 and ratio_t1 < 1.0)
         
         if sell_all_trigger or safety_net_trigger:
             state = "SELL_ALL"
@@ -231,7 +234,7 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
         elif comp_t1 <= -1.0 and ratio_t1 < 2.0:
             state = "SELL_DCA"
         # 3. BUY_ALL Condition (Breakout bottom ending)
-        elif comp_t1 > 0.5 and cross_above_ma200 and not buy_all_fired:
+        elif comp_t1 >= 1.0 and cross_above_ma200 and not buy_all_fired:
             state = "BUY_ALL"
         # 4. BUY_DCA Condition (Bottom confirmed)
         elif comp_t1 >= 1.0 and ratio_t1 < 1.0:
