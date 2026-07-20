@@ -104,10 +104,18 @@ def fetch_valuation_composite_data():
 
         cvsc_val = cvsc_dict.get(dt, 0.0)
         
-        # Apply modifier if we have valid CVSC and raw value
+        # Apply asymmetric modifier only to the overvalued (negative) side
+        multiplier = 1.0
         if raw_val is not None and cvsc_val > 0:
-            multiplier = (0.05 / vol_730d) * (cvsc_val ** 0.04)
-            raw_val = raw_val * multiplier
+            import numpy as np
+            log_cvsc = np.log10(cvsc_val)
+            cvsc_factor = max(0, log_cvsc - 13.0) * 0.2
+            vol_factor = max(0, (0.05 / vol_730d) - 1.0) * 0.1
+            
+            multiplier = 1.0 + cvsc_factor + vol_factor
+            
+            if raw_val < 0:
+                raw_val = raw_val * multiplier
             
         # Hard clamp between -2.0 and 2.0
         if raw_val is not None:
