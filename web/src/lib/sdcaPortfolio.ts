@@ -110,7 +110,7 @@ export function executeBuy(
 	config: Partial<PortfolioConfig> = {},
 ): PortfolioState {
 	const cfg = { ...DEFAULT_CONFIG, ...config };
-	const buyAmount = cfg.baseDcaAmount * Math.max(0, multiplier);
+	const buyAmount = multiplier === 999.0 ? state.cashBalance / (1 + cfg.feeRate) : cfg.baseDcaAmount * Math.max(0, multiplier);
 	if (buyAmount <= 0 || price <= 0) return state;
 
 	// Calculate fee
@@ -182,10 +182,13 @@ export function executeSell(
 	if (state.btcBalance <= 0 || price <= 0) return state;
 
 	let sellValueUsd: number;
-	if (sellAll) {
+	if (sellAll || multiplier === -1.0 || multiplier === -999.0) {
 		sellValueUsd = state.btcBalance * price;
+	} else if (multiplier < 0 && multiplier > -1.0) {
+		// Graduated weekly selling (fraction of current position)
+		sellValueUsd = state.btcBalance * Math.abs(multiplier) * price;
 	} else {
-		// Sell USD-amount based on multiplier (NOT percentage of holdings)
+		// Sell USD-amount based on multiplier (DCA amount)
 		sellValueUsd = cfg.baseDcaAmount * Math.abs(multiplier);
 	}
 

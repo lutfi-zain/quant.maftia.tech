@@ -20,6 +20,11 @@ The `ValuationStudio` SHALL render a colored phase timeline strip below the main
 
 ### REMOVED Requirement: Indicator Cards for Redundant Metrics
 
-**Reason**: `williams_r` (single-sided oscillator, 5655 missing days) and `fear_greed_cmc` (r=0.918 redundant with `fear_greed_og`) add visual clutter without independent signal value.
+**Reason**: `williams_r` (single-sided oscillator, 5655 missing days) and `fear_greed_cmc` (r=0.918 redundant with `fear_greed_og`) SHALL be removed from the component grid to eliminate visual clutter without losing independent signal value.
 
 **Migration**: The component grid in Valuation Studio SHALL display 14 indicator cards instead of 17, omitting `williams_r` and `fear_greed_cmc`.
+
+#### Scenario: Component Grid Displays 14 Cards
+
+- **WHEN** the Valuation Studio loads the component breakdown section
+- **THEN** the system SHALL render exactly 14 indicator cards, excluding `williams_r` and `fear_greed_cmc` from the grid

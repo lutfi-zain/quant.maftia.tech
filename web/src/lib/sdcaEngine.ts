@@ -18,14 +18,22 @@ export type SdcaPhase =
 	| "value"
 	| "fair"
 	| "expansion"
-	| "euphoria";
+	| "euphoria"
+	| "neutral"
+	| "sell_all"
+	| "sell_dca"
+	| "buy_all"
+	| "buy_dca";
 
 export type SdcaAction =
 	| "HOLD"
 	| "START_AGGRESSIVE_DCA"
 	| "NORMAL_DCA"
 	| "REDUCE_POSITION"
-	| "SELL_ALL";
+	| "SELL_ALL"
+	| "BUY_DCA"
+	| "BUY_ALL"
+	| "SELL_DCA";
 
 export type RegimeConfidence = "HIGH" | "LOW";
 
@@ -39,12 +47,16 @@ export interface SdcaSignal {
 	pricePercentile: number;
 	/** Composite trend: true if 7d avg > 30d avg (positive momentum) */
 	trendPositive: boolean;
+	price_ma200_ratio?: number;
+	ath_drawdown?: number;
 }
 
 export interface DailyRecord {
 	date: string;
 	close: number;
 	valuation_composite?: number;
+	price_ma200_ratio?: number;
+	ath_drawdown?: number;
 }
 
 /** Configuration thresholds for SDCA entry/exit rules */
@@ -375,79 +387,161 @@ export function regimeConfidence(
  * @param dayIndex - Index of the day to compute signal for
  * @returns SDCA signal for the day
  */
+export function computeSdcaSignals(
+	data: DailyRecord[],
+	_thresholds?: SdcaThresholds,
+): SdcaSignal[] {
+	const signals: SdcaSignal[] = [];
+	
+	let state = "NEUTRAL";
+	let buy_all_fired = false;
+	
+	const composites = data.map((d) => d.valuation_composite ?? 0);
+	
+	const pricesList: number[] = [];
+	const ma200List: number[] = [];
+	const ratioList: number[] = [];
+	const athList: number[] = [];
+	const drawdownList: number[] = [];
+	let runningAth = 0.0;
+	
+	for (let i = 0; i < data.length; i++) {
+		const price = data[i].close;
+		if (price > 0) {
+			pricesList.push(price);
+			const window = pricesList.slice(-200);
+			const ma = window.reduce((a, b) => a + b, 0) / window.length;
+			const ratio = price / ma;
+			ma200List.push(ma);
+			ratioList.push(ratio);
+			if (price > runningAth) runningAth = price;
+			athList.push(runningAth);
+			drawdownList.push(((runningAth - price) / runningAth) * 100.0);
+		} else {
+			ma200List.push(0.0);
+			ratioList.push(1.0);
+			athList.push(runningAth);
+			drawdownList.push(0.0);
+		}
+	}
+	
+	for (let i = 0; i < data.length; i++) {
+		const dateStr = data[i].date;
+		const ratio = ratioList[i];
+		const drawdown = drawdownList[i];
+		
+		let isMonday = false;
+		try {
+			const dt = new Date(dateStr);
+			isMonday = dt.getUTCDay() === 1;
+		} catch {
+			isMonday = false;
+		}
+		
+		let comp_t1 = 0.0;
+		let ratio_t1 = 1.0;
+		let drawdown_t1 = 0.0;
+		let cross_above_ma200 = false;
+		
+		if (i > 0) {
+			comp_t1 = composites[i - 1];
+			ratio_t1 = ratioList[i - 1];
+			drawdown_t1 = drawdownList[i - 1];
+			if (i > 1) {
+				const ratio_t2 = ratioList[i - 2];
+				cross_above_ma200 = ratio_t2 < 1.0 && ratio_t1 >= 1.0;
+			}
+		}
+		
+		if (comp_t1 < 0.0) {
+			buy_all_fired = false;
+		}
+		
+		// 1. SELL_ALL
+		const sell_all_trigger = comp_t1 <= -1.5 && ratio_t1 < 2.0 && drawdown_t1 >= 20.0;
+		const safety_net_trigger = comp_t1 <= -0.5 && ratio_t1 < 1.0;
+		
+		if (sell_all_trigger || safety_net_trigger) {
+			state = "SELL_ALL";
+		} else if (comp_t1 <= -1.0 && ratio_t1 < 2.0) {
+			state = "SELL_DCA";
+		} else if (comp_t1 > 0.5 && cross_above_ma200 && !buy_all_fired) {
+			state = "BUY_ALL";
+		} else if (comp_t1 >= 1.0 && ratio_t1 < 1.0) {
+			state = "BUY_DCA";
+		} else if (comp_t1 > -0.5 && comp_t1 < 0.5) {
+			state = "NEUTRAL";
+		}
+		
+		let action: SdcaAction = "HOLD";
+		let multiplier = 0.0;
+		
+		if (state === "SELL_ALL") {
+			action = "SELL_ALL";
+			multiplier = -1.0;
+		} else if (state === "SELL_DCA") {
+			if (isMonday) {
+				action = "SELL_DCA";
+				multiplier = comp_t1 <= -1.5 ? -0.15 : -0.08;
+			} else {
+				action = "HOLD";
+				multiplier = 0.0;
+			}
+		} else if (state === "BUY_ALL") {
+			action = "BUY_ALL";
+			multiplier = 999.0;
+			buy_all_fired = true;
+			state = "NEUTRAL";
+		} else if (state === "BUY_DCA") {
+			if (isMonday) {
+				action = "BUY_DCA";
+				multiplier = comp_t1 >= 1.5 ? 3.0 : comp_t1 >= 1.0 ? 2.0 : 1.5;
+			} else {
+				action = "HOLD";
+				multiplier = 0.0;
+			}
+		} else if (state === "NEUTRAL") {
+			if (isMonday && comp_t1 >= 0.5) {
+				action = "BUY_DCA";
+				multiplier = 1.0;
+			} else {
+				action = "HOLD";
+				multiplier = 0.0;
+			}
+		}
+		
+		signals.push({
+			date: dateStr,
+			multiplier,
+			phase: state.toLowerCase() as SdcaPhase,
+			action,
+			confidence: "HIGH",
+			pricePercentile: ratio * 100.0,
+			trendPositive: ratio >= 1.0,
+			price_ma200_ratio: ratio,
+			ath_drawdown: drawdown,
+		});
+	}
+	
+	return signals;
+}
+
 export function computeSdcaSignal(
 	data: DailyRecord[],
 	dayIndex: number,
 	thresholds?: SdcaThresholds,
 ): SdcaSignal {
-	const day = data[dayIndex];
-
-	// Extract arrays for causal computation
-	const closes = data.map((d) => d.close);
-	const composites = data.map((d) => d.valuation_composite ?? 0);
-
-	// ── t-1 Causal Enforcement ──
-	// Signal for day t uses ONLY data available at end of day t-1.
-	// composite[t-1] = primary signal input for multiplier, phase, and action.
-	// composite[t-2] = previous day's composite for cross detection (entry/exit).
-	const compositeT1 = dayIndex > 0 ? composites[dayIndex - 1] : 0;
-	const compositeT2 = dayIndex > 1 ? composites[dayIndex - 2] : compositeT1;
-
-	// Price percentile: uses prices from t-365 to t-1 (exclusive of t)
-	const pricePct = pricePercentile(closes, dayIndex);
-
-	// Composite trend: 7d vs 30d average using data up to t-1
-	const trend = compositeTrend(composites, dayIndex);
-
-	// Multiplier: maps t-1 composite to allocation multiplier
-	const multiplier = sdcaMultiplier(compositeT1);
-
-	// Phase: classified from t-1 composite + percentile + trend
-	const phase = detectPhase(compositeT1, pricePct, trend);
-
-	// Consecutive days below -0.5 (overvaluation duration, counting backwards from t-1)
-	let consecutiveDaysBelowNeg05 = 0;
-	for (let i = dayIndex - 1; i >= 0; i--) {
-		if (composites[i] < -0.5) {
-			consecutiveDaysBelowNeg05++;
-		} else {
-			break;
-		}
+	const signals = computeSdcaSignals(data, thresholds);
+	if (dayIndex >= 0 && dayIndex < signals.length) {
+		return signals[dayIndex];
 	}
-
-	// Action: entry/exit detection using t-1 vs t-2 composite crossing
-	const action = determineAction(
-		compositeT1,
-		compositeT2,
-		pricePct,
-		trend,
-		consecutiveDaysBelowNeg05,
-		thresholds,
-	);
-
-	// Regime confidence
-	const confidence = regimeConfidence(composites, closes, dayIndex);
-
 	return {
-		date: day.date,
-		multiplier,
-		phase,
-		action,
-		confidence,
-		pricePercentile: pricePct,
-		trendPositive: trend,
+		date: data[dayIndex]?.date || "",
+		multiplier: 0.0,
+		phase: "neutral",
+		action: "HOLD",
+		confidence: "LOW",
+		pricePercentile: 50.0,
+		trendPositive: true,
 	};
-}
-
-/**
- * Compute SDCA signals for entire dataset (vectorized, t-1 causal).
- *
- * @param data - Array of daily records (chronologically sorted)
- * @returns Array of SDCA signals for each day
- */
-export function computeSdcaSignals(
-	data: DailyRecord[],
-	thresholds?: SdcaThresholds,
-): SdcaSignal[] {
-	return data.map((_, index) => computeSdcaSignal(data, index, thresholds));
 }

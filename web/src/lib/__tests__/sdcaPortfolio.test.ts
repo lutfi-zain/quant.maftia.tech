@@ -141,16 +141,16 @@ describe("executeSell", () => {
 		const btcBeforeSell = state.btcBalance;
 		executeSell(state, 100000, -0.5, "euphoria", false, TEST_CONFIG);
 
-		// sellValueUsd = 100 * 0.5 = 50
-		// btcToSell = 50 / 100000 = 0.0005
-		// fee = 50 * 0.001 = 0.05
-		// proceeds = 50 - 0.05 = 49.95
-		expect(state.btcBalance).toBeCloseTo(btcBeforeSell - 0.0005, 6);
-		expect(state.cashBalance).toBeCloseTo(9699.7 + 49.95, 2);
-		expect(state.totalFeesPaid).toBeCloseTo(0.3 + 0.05, 4);
+		// btcBeforeSell = 0.005
+		// sellFraction = 0.5
+		// btcToSell = 0.0025
+		// proceeds = 250 - 0.25 = 249.75
+		expect(state.btcBalance).toBeCloseTo(btcBeforeSell - 0.0025, 6);
+		expect(state.cashBalance).toBeCloseTo(9699.7 + 249.75, 2);
+		expect(state.totalFeesPaid).toBeCloseTo(0.3 + 0.25, 4);
 		expect(state.transactionLog).toHaveLength(2);
 		expect(state.transactionLog[1].action).toBe("SELL");
-		expect(state.transactionLog[1].proceedsUsd).toBeCloseTo(49.95, 2);
+		expect(state.transactionLog[1].proceedsUsd).toBeCloseTo(249.75, 2);
 	});
 
 	it("executes full sell (SELL_ALL)", () => {
@@ -284,7 +284,7 @@ describe("transaction log", () => {
 
 		const tx = state.transactionLog[1];
 		expect(tx.action).toBe("SELL");
-		expect(tx.proceedsUsd).toBeCloseTo(49.95, 2);
-		expect(tx.feeUsd).toBeCloseTo(0.05, 4);
+		expect(tx.proceedsUsd).toBeCloseTo(249.75, 2);
+		expect(tx.feeUsd).toBeCloseTo(0.25, 4);
 	});
 });

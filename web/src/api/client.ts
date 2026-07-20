@@ -137,6 +137,12 @@ export const quantClient = {
 			ichimoku_cum_market: item.ichimoku_imo?.cum_market ?? undefined,
 			ichimoku_active_pos: item.ichimoku_imo?.active_pos ?? undefined,
 			ichimoku_strat_net_ret: item.ichimoku_imo?.strat_net_ret ?? undefined,
+			sdca_multiplier: item.sdca_multiplier ?? undefined,
+			sdca_phase: item.sdca_phase ?? undefined,
+			sdca_action: item.sdca_action ?? undefined,
+			sdca_confidence: item.sdca_confidence ?? undefined,
+			price_ma200_ratio: item.price_ma200_ratio ?? undefined,
+			ath_drawdown: item.ath_drawdown ?? undefined,
 		}));
 
 		return verifyCausalData(mapped);

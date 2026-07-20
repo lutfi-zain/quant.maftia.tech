@@ -9,7 +9,7 @@
 
 ## 3. Frontend: Add SDCA Phase Timeline
 
-- [ ] 3.1 Create a `SdcaPhaseTimeline` React component that renders a horizontal colored strip divided into segments by `sdca_phase` value, with colors: deep_discount=#10B981, value=#3B82F6, fair=#6B7280, expansion=#F59E0B, euphoria=#EF4444.
+- [x] 3.1 Create a `SdcaPhaseTimeline` React component that renders a horizontal colored strip divided into segments by `sdca_phase` value, with colors: deep_discount=#10B981, value=#3B82F6, fair=#6B7280, expansion=#F59E0B, euphoria=#EF4444.
 - [x] 3.2 Integrate `SdcaPhaseTimeline` into `ValuationStudio.tsx` below the equity curve subplot, passing `dailyData` mapped to phase-date pairs.
 
 ## 4. Verification & Deployment
@@ -17,4 +17,4 @@
 - [x] 4.1 Run full pipeline `python3 /home/ubuntu/projects/run_report_pipeline.py` to verify rollback works without errors.
 - [x] 4.2 Run audit `python3 scripts/audit_valuation.py` to confirm no flatline metrics and healthy range distribution.
 - [x] 4.3 Build frontend `bun run build` (in web/) and run Playwright test to confirm no regressions.
-- [ ] 4.4 Commit and push with conventional commit message.
+- [x] 4.4 Commit and push with conventional commit message.

@@ -70,7 +70,10 @@ export const SdcaPhaseTimeline: React.FC<SdcaPhaseTimelineProps> = ({
 			>
 				<span>SDCA Regime Timeline</span>
 				{Object.entries(PHASE_LABELS).map(([key, label]) => (
-					<span key={key} style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+					<span
+						key={key}
+						style={{ display: "flex", alignItems: "center", gap: "3px" }}
+					>
 						<span
 							style={{
 								width: "6px",

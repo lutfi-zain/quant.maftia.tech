@@ -37,6 +37,12 @@ def fetch_valuation_composite_data():
     """Directly reads valuation composite scores from metrics.db using WAL connection, rescale, and causal filter."""
     val_data = {}
     val_btc = {}
+    val_ma200 = {}
+    val_ratio = {}
+    val_ath = {}
+    val_drawdown = {}
+    prices_list = []
+    running_ath = 0.0
     db_metrics_path = os.path.join(VALUATION_DIR, "database/metrics.db")
     if not os.path.exists(db_metrics_path):
         return val_data, val_btc
@@ -61,7 +67,10 @@ def fetch_valuation_composite_data():
     
     for r in rows:
         dt = pd.to_datetime(r[0]).strftime("%Y-%m-%d")
-        raw_val = float(r[1]) if r[1] is not None else None
+        try:
+            raw_val = float(r[1]) if r[1] is not None else None
+        except (ValueError, TypeError):
+            raw_val = None
         rescaled_val = raw_val
         if comp_params and raw_val is not None:
             p2_5, p50, p97_5 = comp_params['p2_5'], comp_params['p50'], comp_params['p97_5']
@@ -76,9 +85,28 @@ def fetch_valuation_composite_data():
                 denom = p97_5 - p50
                 rescaled_val = 2.0 if abs(denom) < 1e-9 else 0.0 + 2.0 * (raw_val - p50) / denom
         val_data[dt] = rescaled_val
-        if r[2] is not None:
-            val_btc[dt] = float(r[2])
-    return val_data, val_btc
+        try:
+            price = float(r[2]) if r[2] is not None else 0.0
+        except (ValueError, TypeError):
+            price = 0.0
+        val_btc[dt] = price
+        if price > 0:
+            prices_list.append(price)
+            window = prices_list[-200:]
+            ma200 = sum(window) / len(window)
+            ratio = price / ma200 if ma200 > 0 else 1.0
+            val_ma200[dt] = ma200
+            val_ratio[dt] = ratio
+            if price > running_ath:
+                running_ath = price
+            val_ath[dt] = running_ath
+            val_drawdown[dt] = (running_ath - price) / running_ath * 100.0 if running_ath > 0 else 0.0
+        else:
+            val_ma200[dt] = 0.0
+            val_ratio[dt] = 1.0
+            val_ath[dt] = running_ath
+            val_drawdown[dt] = 0.0
+    return val_data, val_btc, val_ma200, val_ratio, val_ath, val_drawdown
 
 
 def main():
@@ -160,6 +188,9 @@ def main():
   lttd_prob_bull         REAL,
   lttd_prob_bear         REAL,
   lttd_prob_sideways     REAL,
+  lttd_exposure          REAL,
+  price_ma200_ratio      REAL,
+  ath_drawdown           REAL,
   mttd_imo               REAL,
   mttd_er                REAL,
   mttd_entropy           REAL,
@@ -188,29 +219,15 @@ def main():
   FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 )"""
         )
-        for col in ["ichi_s_tk", "ichi_s_cloud", "ichi_s_future", "ichi_s_chikou", "ichi_tenkan", "ichi_kijun", "ichi_senkou_a", "ichi_senkou_b", "ichi_chikou", "ichi_entropy", "ichi_er", "ichi_imo_std", "ichi_ref_pos", "ichi_cum_strat", "ichi_cum_market", "ichi_active_pos", "ichi_strat_net_ret"]:
-            try:
-                master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col} REAL")
-            except Exception:
-                pass
-        execute_parameterized(
-            master_conn,
-            """CREATE TABLE IF NOT EXISTS unified_component_signals (
-  date                   TEXT,
-  system_source          TEXT,
-  component_name         TEXT,
-  raw_value              REAL,
-  normalized_score       REAL,
-  signal_direction       INTEGER,
-  PRIMARY KEY (date, system_source, component_name)
-)"""
-        )
-        # Migration: add missing Ichimoku columns to existing unified_daily_analytics table
+        # Migration: add missing columns to existing unified_daily_analytics table
         existing_cols = [r[1] for r in master_conn.execute("PRAGMA table_info(unified_daily_analytics)").fetchall()]
-        ichi_new_cols = ['ichi_s_tk', 'ichi_s_cloud', 'ichi_s_future', 'ichi_s_chikou',
-                         'ichi_tenkan', 'ichi_kijun', 'ichi_senkou_a', 'ichi_senkou_b', 'ichi_chikou',
-                         'ichi_entropy', 'ichi_er', 'ichi_imo_std', 'ichi_active_pos', 'ichi_strat_net_ret']
-        for col_name in ichi_new_cols:
+        new_cols_to_add = [
+            'lttd_exposure', 'price_ma200_ratio', 'ath_drawdown',
+            'ichi_s_tk', 'ichi_s_cloud', 'ichi_s_future', 'ichi_s_chikou',
+            'ichi_tenkan', 'ichi_kijun', 'ichi_senkou_a', 'ichi_senkou_b', 'ichi_chikou',
+            'ichi_entropy', 'ichi_er', 'ichi_imo_std', 'ichi_active_pos', 'ichi_strat_net_ret'
+        ]
+        for col_name in new_cols_to_add:
             if col_name not in existing_cols:
                 try:
                     master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col_name} REAL")
@@ -260,11 +277,17 @@ def main():
 
     # 6. Run Ichimoku Strategy (clear cache first)
     cache_file = os.path.join(ICHIMOKU_DIR, "tmp/btc_cache.csv")
-    if os.path.exists(cache_file):
-        os.remove(cache_file)
+    try:
+        if os.path.exists(cache_file):
+            os.remove(cache_file)
+    except OSError:
+        pass
     local_cache = "tmp/btc_cache.csv"
-    if os.path.exists(local_cache):
-        os.remove(local_cache)
+    try:
+        if os.path.exists(local_cache):
+            os.remove(local_cache)
+    except OSError:
+        pass
     run_cmd(["python3", "main.py"], ICHIMOKU_DIR)
 
     # 7. Query and compile last 7 days report
@@ -277,7 +300,7 @@ def main():
     # Fetch valuation values
     val_scores, btc_prices = {}, {}
     try:
-        v_data, v_btc = fetch_valuation_composite_data()
+        v_data, v_btc, _, _, _, _ = fetch_valuation_composite_data()
         for dt in dates_str:
             if dt in v_data:
                 val_scores[dt] = v_data[dt]
@@ -340,14 +363,28 @@ def main():
     # 8. Sync UnifiedDailyAnalytics and UnifiedComponentSignals (Phase 2)
     print("Syncing UnifiedDailyAnalytics and UnifiedComponentSignals...")
     val_data_all, val_btc_all = {}, {}
+    val_ma200_all, val_ratio_all = {}, {}
+    val_ath_all, val_drawdown_all = {}, {}
     try:
-        v_data, v_btc = fetch_valuation_composite_data()
+        v_data, v_btc, v_ma200, v_ratio, v_ath, v_drawdown = fetch_valuation_composite_data()
         for dt, score in v_data.items():
             if dt <= current_utc_date_str:
                 val_data_all[dt] = score
         for dt, price in v_btc.items():
             if dt <= current_utc_date_str:
                 val_btc_all[dt] = price
+        for dt, ma in v_ma200.items():
+            if dt <= current_utc_date_str:
+                val_ma200_all[dt] = ma
+        for dt, ratio in v_ratio.items():
+            if dt <= current_utc_date_str:
+                val_ratio_all[dt] = ratio
+        for dt, ath_val in v_ath.items():
+            if dt <= current_utc_date_str:
+                val_ath_all[dt] = ath_val
+        for dt, dd in v_drawdown.items():
+            if dt <= current_utc_date_str:
+                val_drawdown_all[dt] = dd
     except Exception as e:
         print(f"Error fetching full valuation composite: {e}")
 
@@ -363,8 +400,10 @@ def main():
     for dt in all_dates:
         price = val_btc_all.get(dt, 0.0)
         comp = val_data_all.get(dt, 0.0)
+        ratio = val_ratio_all.get(dt, 1.0)
+        dd = val_drawdown_all.get(dt, 0.0)
         if price > 0:
-            sdca_records.append(DailyRecord(dt, price, comp))
+            sdca_records.append(DailyRecord(dt, price, comp, ratio, dd))
             
     sdca_signals_map = {}
     if sdca_records:
@@ -502,7 +541,10 @@ def main():
         btc_p = None
         c_row = master_conn.execute("SELECT close FROM master_ohlcv WHERE date = ?", (dt,)).fetchone()
         if c_row is not None:
-            btc_p = float(c_row[0])
+            try:
+                btc_p = float(c_row[0])
+            except (ValueError, TypeError):
+                btc_p = 0.0
 
         # Extract Ichimoku extended fields from ich_rec
         ich_s_tk = ich_rec.get("s_tk")
@@ -528,6 +570,8 @@ def main():
         sdca_phase = sdca_sig["phase"] if sdca_sig else "fair"
         sdca_action = sdca_sig["action"] if sdca_sig else "HOLD"
         sdca_conf = sdca_sig["confidence"] if sdca_sig else "LOW"
+        price_ma200_ratio = sdca_sig["price_ma200_ratio"] if sdca_sig and "price_ma200_ratio" in sdca_sig else 1.0
+        ath_drawdown = sdca_sig["ath_drawdown"] if sdca_sig and "ath_drawdown" in sdca_sig else 0.0
 
         execute_parameterized(
             master_conn,
@@ -535,6 +579,7 @@ def main():
                 date, btc_price, valuation_composite,
                 sdca_multiplier, sdca_phase, sdca_action, sdca_confidence,
                 lttd_regime, lttd_score, lttd_prob_bull, lttd_prob_bear, lttd_prob_sideways, lttd_exposure,
+                price_ma200_ratio, ath_drawdown,
                 mttd_imo, mttd_er, mttd_entropy, mttd_position, mttd_immunity_active,
                 ichimoku_imo, ichimoku_regime, ichimoku_position,
                 ichi_s_tk, ichi_s_cloud, ichi_s_future, ichi_s_chikou,
@@ -542,11 +587,12 @@ def main():
                 ichi_entropy, ichi_er, ichi_imo_std,
                 ichi_ref_pos, ichi_cum_strat, ichi_cum_market,
                 ichi_active_pos, ichi_strat_net_ret
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 dt, btc_p, val_comp,
                 sdca_mult, sdca_phase, sdca_action, sdca_conf,
                 lttd_reg, lttd_score, p_bull, p_bear, p_side, lttd_exposure,
+                price_ma200_ratio, ath_drawdown,
                 mttd_imo, mttd_er, mttd_ent, mttd_pos_val, mttd_imm,
                 ich_imo, ich_reg, ich_pos_val,
                 ich_s_tk, ich_s_cloud, ich_s_future, ich_s_chikou,
@@ -592,11 +638,12 @@ def main():
         fg_nan_dates = [r[0] for r in fg_cmc_rows if r[1] is None]
         if fg_nan_dates:
             placeholders = ",".join("?" for _ in fg_nan_dates)
-            fg_og_rows = master_conn.execute(
+            fg_og_rows = execute_parameterized(
+                master_conn,
                 f"""SELECT date, normalized_score FROM unified_component_signals 
                    WHERE system_source='VALUATION' AND component_name='fear_greed_og' 
                    AND date IN ({placeholders}) AND normalized_score IS NOT NULL""",
-                fg_nan_dates
+                tuple(fg_nan_dates)
             ).fetchall()
             for r in fg_og_rows:
                 execute_parameterized(
@@ -700,9 +747,22 @@ def main():
         btc = f"${btc_prices.get(d, 0):,.2f}" if d in btc_prices else "N/A"
         val = f"{val_scores[d]:.4f}" if d in val_scores else "N/A"
         lttd = f"{lttd_scores[d]:.4f} ({lttd_regimes[d]})" if d in lttd_scores else "N/A"
-        mttd = f"{mttd_scores[d]:.4f} (Pos: {int(mttd_pos[d])})" if d in mttd_scores else "N/A"
-        ich = f"{ich_scores[d]:.4f} ({ich_regimes[d]}, Pos: {int(ich_pos[d])})" if d in ich_scores else "N/A"
-        table_lines.append(f"| **{d}** | {btc} | {val} | {lttd} | {mttd} | {ich} |")
+        
+        mttd_val_str = "N/A"
+        if d in mttd_scores:
+            try:
+                mttd_val_str = f"{mttd_scores[d]:.4f} (Pos: {int(float(mttd_pos.get(d, 0.0)))})"
+            except (ValueError, TypeError):
+                mttd_val_str = f"{mttd_scores[d]:.4f} (Pos: 0)"
+                
+        ich_val_str = "N/A"
+        if d in ich_scores:
+            try:
+                ich_val_str = f"{ich_scores[d]:.4f} ({ich_regimes[d]}, Pos: {int(float(ich_pos.get(d, 0.0)))})"
+            except (ValueError, TypeError):
+                ich_val_str = f"{ich_scores[d]:.4f} ({ich_regimes[d]}, Pos: 0)"
+                
+        table_lines.append(f"| **{d}** | {btc} | {val} | {lttd} | {mttd_val_str} | {ich_val_str} |")
 
     report_content = f"""# Quantitative Bitcoin Systems Weekly Report
 **Report Date:** {dates_str[-1]} (Data Period: {dates_str[0]} to {dates_str[-1]})
@@ -725,9 +785,12 @@ The table below aggregates the daily final scores and positions for all four pro
 > All three trend-following systems (**LTTD**, **MTTD**, and **Ichimoku**) remain in a **strong bearish/neutral state** with **0.0 position exposure**, while the **Valuation System** registers high scores (above 1.50), reflecting historical deep valuation discounts.
 """
 
-    with open(REPORT_PATH, "w") as f:
-        f.write(report_content)
-    print(f"Report written successfully to {REPORT_PATH}")
+    try:
+        with open(REPORT_PATH, "w") as f:
+            f.write(report_content)
+        print(f"Report written successfully to {REPORT_PATH}")
+    except Exception as e:
+        print(f"Error writing report: {e}")
     
     # If we started valuation temporarily, stop it now
     if valuation_proc:

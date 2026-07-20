@@ -72,6 +72,11 @@ const PHASE_COLORS: Record<SdcaPhase, string> = {
 	fair: "#3b82f6",
 	expansion: "#f59e0b",
 	euphoria: "#ef4444",
+	neutral: "#3b82f6",
+	sell_all: "#ef4444",
+	sell_dca: "#f59e0b",
+	buy_all: "#22c55e",
+	buy_dca: "#4ade80",
 };
 
 const PHASE_LABELS: Record<SdcaPhase, string> = {
@@ -80,6 +85,11 @@ const PHASE_LABELS: Record<SdcaPhase, string> = {
 	fair: "FAIR",
 	expansion: "EXPANSION",
 	euphoria: "EUPHORIA",
+	neutral: "NEUTRAL",
+	sell_all: "SELL ALL",
+	sell_dca: "SELL DCA",
+	buy_all: "BUY ALL",
+	buy_dca: "BUY DCA",
 };
 
 const PHASE_ICONS: Record<SdcaPhase, React.ReactNode> = {
@@ -88,9 +98,15 @@ const PHASE_ICONS: Record<SdcaPhase, React.ReactNode> = {
 	fair: <Minus size={14} />,
 	expansion: <TrendingUp size={14} />,
 	euphoria: <ArrowUp size={14} />,
+	neutral: <Minus size={14} />,
+	sell_all: <ArrowUp size={14} />,
+	sell_dca: <TrendingUp size={14} />,
+	buy_all: <ArrowDown size={14} />,
+	buy_dca: <TrendingDown size={14} />,
 };
 
 function getMultiplierColor(multiplier: number): string {
+	if (multiplier === 999.0) return "#22c55e";
 	if (multiplier >= 2.0) return "#22c55e";
 	if (multiplier >= 1.5) return "#4ade80";
 	if (multiplier >= 1.0) return "#3b82f6";
@@ -100,12 +116,14 @@ function getMultiplierColor(multiplier: number): string {
 }
 
 function getMultiplierLabel(multiplier: number): string {
+	if (multiplier === 999.0) return "BUY ALL (100% Cash)";
+	if (multiplier === -1.0) return "SELL ALL (100% Position)";
 	if (multiplier >= 2.0) return "Aggressive Buy";
 	if (multiplier >= 1.5) return "Value Buy";
 	if (multiplier >= 1.0) return "Normal DCA";
 	if (multiplier >= 0.5) return "Reduce";
 	if (multiplier >= 0.0) return "Pause";
-	return "Sell";
+	return "Sell DCA";
 }
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -534,7 +552,7 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 								<div
 									style={{
 										position: "absolute",
-										left: `${Math.max(0, Math.min(100, ((signal.multiplier + 0.5) / 3.5) * 100))}%`,
+										left: `${Math.max(0, Math.min(100, (((signal.multiplier === 999.0 ? 3.0 : signal.multiplier === -1.0 || signal.multiplier === -999.0 ? -0.5 : signal.multiplier) + 0.5) / 3.5) * 100))}%`,
 										top: "-4px",
 										width: "4px",
 										height: "16px",
@@ -613,6 +631,16 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 						<span>Total Fees Paid: ${portfolio.totalFeesPaid.toFixed(2)}</span>
 						<span>Transactions: {portfolio.transactionLog.length}</span>
 						{signal && <span>Regime Confidence: {signal.confidence}</span>}
+						{signal && signal.price_ma200_ratio !== undefined && (
+							<span style={{ color: "#3b82f6" }}>
+								Price/MA200: {signal.price_ma200_ratio.toFixed(2)}x
+							</span>
+						)}
+						{signal && signal.ath_drawdown !== undefined && (
+							<span style={{ color: signal.ath_drawdown >= 20.0 ? "#ef4444" : "#f59e0b" }}>
+								ATH Drawdown: {signal.ath_drawdown.toFixed(1)}%
+							</span>
+						)}
 					</div>
 
 					{/* Threshold Display with Optimization Badge */}

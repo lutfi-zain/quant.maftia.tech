@@ -871,8 +871,10 @@ export const ValuationStudio: React.FC = () => {
 					phase: (dailyData[hoveredIndex].sdca_phase as any) ?? "fair",
 					action: (dailyData[hoveredIndex].sdca_action as any) ?? "HOLD",
 					confidence: (dailyData[hoveredIndex].sdca_confidence as any) ?? "LOW",
-					pricePercentile: 0,
-					trendPositive: true,
+					pricePercentile: (dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) * 100.0,
+					trendPositive: (dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) >= 1.0,
+					price_ma200_ratio: dailyData[hoveredIndex].price_ma200_ratio,
+					ath_drawdown: dailyData[hoveredIndex].ath_drawdown,
 				}
 			: null;
 

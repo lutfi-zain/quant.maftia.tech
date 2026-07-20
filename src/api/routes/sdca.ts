@@ -32,7 +32,9 @@ sdcaRouter.post("/signal", async (c) => {
 					sdca_multiplier as multiplier, 
 					sdca_phase as phase, 
 					sdca_action as action, 
-					sdca_confidence as confidence 
+					sdca_confidence as confidence,
+					COALESCE(price_ma200_ratio, 1.0) as price_ma200_ratio,
+					COALESCE(ath_drawdown, 0.0) as ath_drawdown
 				FROM unified_daily_analytics 
 				WHERE date = ?
 			`;
@@ -43,8 +45,8 @@ sdcaRouter.post("/signal", async (c) => {
 
 			const lastSignal = {
 				...rows[0],
-				pricePercentile: 0, // Fallback if needed
-				trendPositive: true, // Fallback if needed
+				pricePercentile: (rows[0].price_ma200_ratio ?? 1.0) * 100.0,
+				trendPositive: (rows[0].price_ma200_ratio ?? 1.0) >= 1.0,
 			};
 			return c.json(lastSignal);
 		}
@@ -74,7 +76,9 @@ sdcaRouter.post("/signal", async (c) => {
 				sdca_multiplier as multiplier, 
 				sdca_phase as phase, 
 				sdca_action as action, 
-				sdca_confidence as confidence 
+				sdca_confidence as confidence,
+				COALESCE(price_ma200_ratio, 1.0) as price_ma200_ratio,
+				COALESCE(ath_drawdown, 0.0) as ath_drawdown
 			FROM unified_daily_analytics 
 			WHERE date >= ? AND date <= ?
 			ORDER BY date ASC
@@ -86,8 +90,8 @@ sdcaRouter.post("/signal", async (c) => {
 
 		const signals = records.map((r: any) => ({
 			...r,
-			pricePercentile: 0,
-			trendPositive: true,
+			pricePercentile: (r.price_ma200_ratio ?? 1.0) * 100.0,
+			trendPositive: (r.price_ma200_ratio ?? 1.0) >= 1.0,
 		}));
 		return c.json(signals);
 	} catch (err: any) {
@@ -131,7 +135,9 @@ sdcaRouter.post("/backtest", async (c) => {
 				sdca_action as action, 
 				sdca_confidence as confidence,
 				btc_price as close,
-				valuation_composite
+				valuation_composite,
+				COALESCE(price_ma200_ratio, 1.0) as price_ma200_ratio,
+				COALESCE(ath_drawdown, 0.0) as ath_drawdown
 			FROM unified_daily_analytics 
 			WHERE date >= ? AND date <= ?
 			ORDER BY date ASC
@@ -146,8 +152,10 @@ sdcaRouter.post("/backtest", async (c) => {
 				phase: r.phase,
 				action: r.action,
 				confidence: r.confidence,
-				pricePercentile: 0,
-				trendPositive: true,
+				pricePercentile: (r.price_ma200_ratio ?? 1.0) * 100.0,
+				trendPositive: (r.price_ma200_ratio ?? 1.0) >= 1.0,
+				price_ma200_ratio: r.price_ma200_ratio,
+				ath_drawdown: r.ath_drawdown,
 			})),
 			records: records.map((r: any) => ({
 				date: r.date,

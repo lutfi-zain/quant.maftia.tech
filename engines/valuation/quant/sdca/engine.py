@@ -5,10 +5,12 @@ from typing import List, Dict, Any, Optional
 # --- Types ---
 
 class DailyRecord:
-    def __init__(self, date: str, close: float, valuation_composite: float = 0.0):
+    def __init__(self, date: str, close: float, valuation_composite: float = 0.0, price_ma200_ratio: float = 1.0, ath_drawdown: float = 0.0):
         self.date = date
         self.close = close
         self.valuation_composite = valuation_composite
+        self.price_ma200_ratio = price_ma200_ratio
+        self.ath_drawdown = ath_drawdown
 
 # --- Thresholds ---
 
@@ -165,53 +167,149 @@ def calculate_regime_confidence(composites: List[float], prices: List[float], cu
                 
     return "HIGH"
 
+def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str, float]] = None) -> List[Dict[str, Any]]:
+    """Compute SDCA signals for entire dataset with FSM chronological state tracking."""
+    from datetime import datetime
+    signals = []
+    
+    # FSM State variables
+    state = "NEUTRAL"
+    buy_all_fired = False
+    
+    for i in range(len(data)):
+        day = data[i]
+        date_str = day.date
+        price = day.close
+        comp = day.valuation_composite
+        ratio = getattr(day, 'price_ma200_ratio', 1.0)
+        drawdown = getattr(day, 'ath_drawdown', 0.0)
+        
+        # Parse today's weekday
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            is_monday = dt.weekday() == 0
+        except Exception:
+            is_monday = False
+            
+        # Get yesterday's values (t-1 causal lookup)
+        if i > 0:
+            prev_day = data[i - 1]
+            comp_t1 = prev_day.valuation_composite
+            price_t1 = prev_day.close
+            ratio_t1 = getattr(prev_day, 'price_ma200_ratio', 1.0)
+            drawdown_t1 = getattr(prev_day, 'ath_drawdown', 0.0)
+            
+            # Check price/MA200 crossover for BUY_ALL
+            if i > 1:
+                prev_prev_day = data[i - 2]
+                ratio_t2 = getattr(prev_prev_day, 'price_ma200_ratio', 1.0)
+                # Cross above MA200: ratio crossed from < 1.0 to >= 1.0
+                cross_above_ma200 = ratio_t2 < 1.0 and ratio_t1 >= 1.0
+            else:
+                cross_above_ma200 = False
+        else:
+            comp_t1 = 0.0
+            price_t1 = 0.0
+            ratio_t1 = 1.0
+            drawdown_t1 = 0.0
+            cross_above_ma200 = False
+            
+        # FSM State Transitions
+        # Reset buy_all_fired when composite goes negative (enters overvalued area)
+        if comp_t1 < 0.0:
+            buy_all_fired = False
+            
+        # 1. SELL_ALL Conditions (Highest priority exit)
+        # Triple-gate: comp <= -1.5, ratio < 2.0, drawdown >= 20%
+        sell_all_trigger = (comp_t1 <= -1.5 and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
+        # Safety net: comp <= -0.5 and price < MA200 (ratio < 1.0)
+        safety_net_trigger = (comp_t1 <= -0.5 and ratio_t1 < 1.0)
+        
+        if sell_all_trigger or safety_net_trigger:
+            state = "SELL_ALL"
+        # 2. SELL_DCA Conditions
+        elif comp_t1 <= -1.0 and ratio_t1 < 2.0:
+            state = "SELL_DCA"
+        # 3. BUY_ALL Condition (Breakout bottom ending)
+        elif comp_t1 > 0.5 and cross_above_ma200 and not buy_all_fired:
+            state = "BUY_ALL"
+        # 4. BUY_DCA Condition (Bottom confirmed)
+        elif comp_t1 >= 1.0 and ratio_t1 < 1.0:
+            state = "BUY_DCA"
+        # 5. Fallback to NEUTRAL
+        elif -0.5 < comp_t1 < 0.5:
+            state = "NEUTRAL"
+            
+        # Action Determination based on current State and Cadence
+        action = "HOLD"
+        multiplier = 0.0
+        
+        if state == "SELL_ALL":
+            action = "SELL_ALL"
+            multiplier = -1.0  # -1.0 represents sell 100% remaining
+        elif state == "SELL_DCA":
+            if is_monday:
+                action = "SELL_DCA"
+                # Graduated weekly DCA percentages: 15% if comp <= -1.5, 8% if comp <= -1.0
+                multiplier = -0.15 if comp_t1 <= -1.5 else -0.08
+            else:
+                action = "HOLD"
+                multiplier = 0.0
+        elif state == "BUY_ALL":
+            action = "BUY_ALL"
+            multiplier = 999.0  # Special multiplier code for BUY_ALL remaining cash
+            buy_all_fired = True
+            # Transition state to NEUTRAL after firing to prevent re-triggering
+            state = "NEUTRAL"
+        elif state == "BUY_DCA":
+            if is_monday:
+                action = "BUY_DCA"
+                # Proportional weekly DCA multipliers:
+                if comp_t1 >= 1.5:
+                    multiplier = 3.0
+                elif comp_t1 >= 1.0:
+                    multiplier = 2.0
+                else:
+                    multiplier = 1.5
+            else:
+                action = "HOLD"
+                multiplier = 0.0
+        elif state == "NEUTRAL":
+            # Normal DCA if composite is still positive (fair value) and it's Monday
+            if is_monday and comp_t1 >= 0.5:
+                action = "BUY_DCA"
+                multiplier = 1.0
+            else:
+                action = "HOLD"
+                multiplier = 0.0
+                
+        signals.append({
+            "date": date_str,
+            "multiplier": multiplier,
+            "phase": state.lower(),
+            "action": action,
+            "confidence": "HIGH",
+            "pricePercentile": ratio * 100.0, # UI compatibility mapping
+            "price_ma200_ratio": ratio,
+            "ath_drawdown": drawdown,
+            "trendPositive": ratio >= 1.0
+        })
+        
+    return signals
+
 def compute_sdca_signal(data: List[DailyRecord], day_index: int, thresholds: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
     """Compute SDCA signal for a given day (t-1 causal filtering)."""
-    t = merge_thresholds(thresholds)
-    
-    day = data[day_index]
-    closes = [d.close for d in data]
-    composites = [d.valuation_composite for d in data]
-    
-    # t-1 Causal Enforcement
-    composite_t1 = composites[day_index - 1] if day_index > 0 else 0.0
-    composite_t2 = composites[day_index - 2] if day_index > 1 else composite_t1
-    
-    price_pct = calculate_price_percentile(closes, day_index)
-    trend = calculate_composite_trend(composites, day_index)
-    
-    multiplier = sdca_multiplier(composite_t1)
-    phase = detect_phase(composite_t1, price_pct, trend)
-    
-    consecutive_days_below_neg05 = 0
-    for i in range(day_index - 1, -1, -1):
-        if composites[i] < -0.5:
-            consecutive_days_below_neg05 += 1
-        else:
-            break
-            
-    action = determine_action(
-        composite_t1,
-        composite_t2,
-        price_pct,
-        trend,
-        consecutive_days_below_neg05,
-        t
-    )
-    
-    confidence = calculate_regime_confidence(composites, closes, day_index)
-    
+    signals = compute_sdca_signals(data, thresholds)
+    if 0 <= day_index < len(signals):
+        return signals[day_index]
     return {
-        "date": day.date,
-        "multiplier": multiplier,
-        "phase": phase,
-        "action": action,
-        "confidence": confidence,
-        "pricePercentile": price_pct,
-        "trendPositive": trend
+        "date": data[day_index].date if day_index < len(data) else "",
+        "multiplier": 0.0,
+        "phase": "neutral",
+        "action": "HOLD",
+        "confidence": "LOW",
+        "pricePercentile": 50.0,
+        "price_ma200_ratio": 1.0,
+        "ath_drawdown": 0.0,
+        "trendPositive": True
     }
-
-def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str, float]] = None) -> List[Dict[str, Any]]:
-    """Compute SDCA signals for entire dataset (vectorized)."""
-    t = merge_thresholds(thresholds)
-    return [compute_sdca_signal(data, i, t) for i in range(len(data))]

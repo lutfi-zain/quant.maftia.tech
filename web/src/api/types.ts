@@ -38,6 +38,8 @@ export interface DailyAnalyticsPoint {
 	sdca_phase?: string;
 	sdca_action?: string;
 	sdca_confidence?: string;
+	price_ma200_ratio?: number;
+	ath_drawdown?: number;
 }
 
 export interface CircuitBreakersResponse {

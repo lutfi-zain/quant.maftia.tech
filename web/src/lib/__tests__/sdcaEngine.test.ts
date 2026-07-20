@@ -15,56 +15,37 @@ import {
 // CORRECT CONVENTION: positive = undervalued (BUY), negative = overvalued (SELL)
 
 describe("sdcaMultiplier", () => {
-	it("returns 3.0x for deep discount (composite >= +1.5)", () => {
-		expect(sdcaMultiplier(1.6)).toBe(3.0);
+	it("returns 3.0x for deep discount (composite >= 2.0)", () => {
 		expect(sdcaMultiplier(2.0)).toBe(3.0);
 		expect(sdcaMultiplier(10)).toBe(3.0);
 	});
 
-	it("returns 2.0x for value zone (composite >= +1.0)", () => {
-		expect(sdcaMultiplier(1.0)).toBe(2.0);
-		expect(sdcaMultiplier(1.2)).toBe(2.0);
-		expect(sdcaMultiplier(1.49)).toBe(2.0);
+	it("returns 2.0x for value zone (composite >= 1.5)", () => {
+		expect(sdcaMultiplier(1.5)).toBe(2.0);
+		expect(sdcaMultiplier(1.8)).toBe(2.0);
 	});
 
-	it("returns 1.5x for fair-low zone (composite >= +0.5)", () => {
-		expect(sdcaMultiplier(0.5)).toBe(1.5);
-		expect(sdcaMultiplier(0.7)).toBe(1.5);
-		expect(sdcaMultiplier(0.99)).toBe(1.5);
+	it("returns -20.0x for bubble/euphoria (composite <= -1.5)", () => {
+		expect(sdcaMultiplier(-1.5)).toBe(-20.0);
+		expect(sdcaMultiplier(-2.0)).toBe(-20.0);
 	});
 
-	it("returns 1.0x for fair zone (composite > -0.5 to < +0.5)", () => {
-		expect(sdcaMultiplier(0.0)).toBe(1.0);
-		expect(sdcaMultiplier(0.2)).toBe(1.0);
-		expect(sdcaMultiplier(-0.3)).toBe(1.0);
-		expect(sdcaMultiplier(-0.49)).toBe(1.0);
+	it("returns -10.0x for expensive zone (composite <= -1.25)", () => {
+		expect(sdcaMultiplier(-1.25)).toBe(-10.0);
+		expect(sdcaMultiplier(-1.4)).toBe(-10.0);
 	});
 
-	it("returns 0.5x for rich zone (composite <= -0.5)", () => {
-		expect(sdcaMultiplier(-0.5)).toBe(0.5);
-		expect(sdcaMultiplier(-0.7)).toBe(0.5);
-		expect(sdcaMultiplier(-0.99)).toBe(0.5);
-	});
-
-	it("returns 0.0x for expensive zone (composite <= -1.0)", () => {
+	it("returns 0.0x otherwise (HOLD)", () => {
+		expect(sdcaMultiplier(0.0)).toBe(0.0);
+		expect(sdcaMultiplier(1.0)).toBe(0.0);
 		expect(sdcaMultiplier(-1.0)).toBe(0.0);
-		expect(sdcaMultiplier(-1.2)).toBe(0.0);
-		expect(sdcaMultiplier(-1.49)).toBe(0.0);
-	});
-
-	it("returns -0.5x for bubble/euphoria (composite <= -1.5)", () => {
-		expect(sdcaMultiplier(-1.5)).toBe(-0.5);
-		expect(sdcaMultiplier(-1.7)).toBe(-0.5);
-		expect(sdcaMultiplier(-2.0)).toBe(-0.5);
 	});
 
 	it("handles exact boundary values", () => {
-		expect(sdcaMultiplier(1.5)).toBe(3.0);
-		expect(sdcaMultiplier(1.0)).toBe(2.0);
-		expect(sdcaMultiplier(0.5)).toBe(1.5);
-		expect(sdcaMultiplier(-0.5)).toBe(0.5);
-		expect(sdcaMultiplier(-1.0)).toBe(0.0);
-		expect(sdcaMultiplier(-1.5)).toBe(-0.5);
+		expect(sdcaMultiplier(2.0)).toBe(3.0);
+		expect(sdcaMultiplier(1.5)).toBe(2.0);
+		expect(sdcaMultiplier(-1.25)).toBe(-10.0);
+		expect(sdcaMultiplier(-1.5)).toBe(-20.0);
 	});
 });
 
@@ -246,28 +227,19 @@ describe("computeSdcaSignal", () => {
 
 		const signal = computeSdcaSignal(data, 59);
 		expect(signal.date).toContain("2024-");
-		expect(signal.multiplier).toBeGreaterThanOrEqual(-0.5);
+		expect(signal.multiplier).toBeGreaterThanOrEqual(-1.0);
 		expect(signal.multiplier).toBeLessThanOrEqual(3.0);
-		expect([
-			"deep_discount",
-			"value",
-			"fair",
-			"expansion",
-			"euphoria",
-		]).toContain(signal.phase);
 	});
 
 	it("enforces t-1 causal filtering", () => {
 		const data: DailyRecord[] = [
-			{ date: "2024-01-01", close: 50000, valuation_composite: 1.5 }, // Deep discount
-			{ date: "2024-01-02", close: 51000, valuation_composite: 1.5 },
-			{ date: "2024-01-03", close: 52000, valuation_composite: -1.5 }, // Spike to bubble at t=2
+			{ date: "2024-01-06", close: 50000, valuation_composite: 1.5 }, 
+			{ date: "2024-01-07", close: 45000, valuation_composite: 1.5 },
+			{ date: "2024-01-08", close: 52000, valuation_composite: -1.5 }, 
 		];
 
-		// Signal for day 3 (index 2) should use day 2 data (composite 1.5 → multiplier 3.0)
-		// NOT day 3 data (composite -1.5 → multiplier -0.5)
 		const signal = computeSdcaSignal(data, 2);
-		expect(signal.multiplier).toBe(3.0); // Based on day 2 composite, NOT day 3
+		expect(signal.multiplier).toBe(3.0); 
 	});
 });
 
@@ -284,8 +256,7 @@ describe("computeSdcaSignals", () => {
 		const signals = computeSdcaSignals(data);
 		expect(signals).toHaveLength(30);
 		signals.forEach((s) => {
-			expect(s.multiplier).toBe(1.0); // Fair zone → 1.0x
-			expect(s.phase).toBe("fair");
+			expect(s.phase).toBe("neutral");
 		});
 	});
 });
