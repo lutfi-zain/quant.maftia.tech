@@ -125,3 +125,68 @@ def test_db_threshold_loading(tmp_path):
 
     val = normalize_metric(db_file, "ahr999", 0.575)
     assert val == pytest.approx(1.5)
+
+def test_volatility_adjusted_normalization(tmp_path):
+    # Set up temp db with metric config and btc price data
+    db_file = str(tmp_path / "test_vol.db")
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE metric_config (
+            metric_name TEXT PRIMARY KEY,
+            t_minus_2 REAL,
+            t_minus_1 REAL,
+            t_zero REAL,
+            t_plus_1 REAL,
+            t_plus_2 REAL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE btc_ohlc (
+            date TEXT PRIMARY KEY,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL
+        )
+    ''')
+    # Insert config
+    cursor.execute('''
+        INSERT INTO metric_config (metric_name, t_minus_2, t_minus_1, t_zero, t_plus_1, t_plus_2)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', ("mvrv_z", 6.65, 4.6, None, 0.17, 0.15))
+
+    # Insert 370 days of mock prices with high volatility to test scaling
+    # Let's write prices that are constant then drop, or simply random, to get a non-zero std
+    import numpy as np
+    np.random.seed(42)
+    prices = 100.0 * np.cumprod(1.0 + np.random.normal(0, 0.05, 380))
+    import datetime
+    start_date = datetime.date(2020, 1, 1)
+    for i, p in enumerate(prices):
+        d_str = (start_date + datetime.timedelta(days=i)).strftime('%Y-%m-%d')
+        cursor.execute("INSERT INTO btc_ohlc (date, open, high, low, close) VALUES (?, ?, ?, ?, ?)", (d_str, p, p, p, p))
+    conn.commit()
+    conn.close()
+
+    # Clear global cache
+    import quant.components.normalization as norm_mod
+    norm_mod._vol_ratio_cache = {}
+
+    # Call normalize_metric with a date
+    target_date = (start_date + datetime.timedelta(days=375)).strftime('%Y-%m-%d')
+
+    # Test that loading vol ratios works
+    norm_mod.load_vol_ratios(db_file)
+    assert target_date in norm_mod._vol_ratio_cache
+    vol_ratio = norm_mod._vol_ratio_cache[target_date]
+    assert 0.4 <= vol_ratio <= 1.5
+
+    # Run normalisation and verify the output is adjusted
+    # Without vol adjustment:
+    # mvrv_z = 2.5 on date target_date
+    val_unadjusted = normalize(2.5, 0.15, 0.17, 4.6, 6.65)
+    # With vol adjustment:
+    val_adjusted = normalize_metric(db_file, "mvrv_z", 2.5, target_date)
+    assert val_adjusted != val_unadjusted
+

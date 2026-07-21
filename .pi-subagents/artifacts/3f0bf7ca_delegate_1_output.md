@@ -1,0 +1,1 @@
+I have researched the bitview.space metrics and identified the structural differences between the 2017 and Nov 2021 peaks, and formulated a modifier to properly register Nov 2021 as a macro top.
