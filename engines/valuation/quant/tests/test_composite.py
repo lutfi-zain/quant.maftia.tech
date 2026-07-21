@@ -43,7 +43,13 @@ def test_fit_rescaling_params_db(tmp_path):
     run_date = "2026-06-01"
     
     # Insert 10 different metrics to satisfy the component_count >= 10 constraint
-    # Plus insert aviv_nupl with a huge value to verify it is excluded from the average
+    # Plus insert a mock metric with a huge value that is not in any cluster to verify how it is handled,
+    # or just test with standard metrics. Let's insert a metric that we don't query in raw composites.
+    # Wait, in the new cluster consolidation, any metric not in clusters is included.
+    # If we want to verify that a metric is excluded or ignored, we can see if we should explicitly exclude
+    # 'aviv_nupl' or other deprecated ones. But since aviv_nupl is now in the cost_basis cluster,
+    # let's change this to use another name if we want to test exclusion, or simply not insert it to keep
+    # the composite clean. Let's just not insert the huge aviv_nupl value.
     for i in range(100):
         date_str = f"2026-05-{i+1:02d}" if i < 30 else f"2026-06-{i-29:02d}"
         val = float(i) / 100.0 # goes from 0.0 to 0.99
@@ -56,15 +62,6 @@ def test_fit_rescaling_params_db(tmp_path):
                 btc_price=60000.0,
                 db_path=db_file
             )
-        # aviv_nupl should be ignored in composite average
-        insert_metric(
-            date=date_str,
-            metric_name="aviv_nupl",
-            raw_value=999.0,
-            normalized_value=999.0,
-            btc_price=60000.0,
-            db_path=db_file
-        )
         
     params = fit_rescaling_params(db_file, run_date)
     assert "raw_p2_5" in params

@@ -29,6 +29,19 @@ def fetch_plotly_chart(url: str) -> dict[str, pd.DataFrame]:
         raise CheckonchainClientError(f"HTTP request failed: {str(e)}")
 
     html = resp.text
+
+    # Check for iframe redirection (common in newer checkonchain pages)
+    iframe_match = re.search(r'<iframe[^>]+src=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if iframe_match:
+        iframe_url = iframe_match.group(1)
+        try:
+            logger.info(f"Detected iframe wrapper. Fetching actual chart HTML from {iframe_url}...")
+            resp = requests.get(iframe_url, headers=headers, timeout=30)
+            resp.raise_for_status()
+            html = resp.text
+        except requests.RequestException as e:
+            raise CheckonchainClientError(f"HTTP request for iframe failed: {str(e)}")
+
     parts = html.split('Plotly.newPlot(')
     if len(parts) < 2:
         raise CheckonchainClientError(f"Could not find Plotly.newPlot block in HTML from {url}")

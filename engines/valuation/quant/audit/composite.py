@@ -39,30 +39,30 @@ def rescale(raw_value: float, params: Optional[Dict[str, Any]]) -> float:
 
 def fit_rescaling_params(db_path: str, run_date: str) -> Dict[str, Any]:
     """
-    Computes raw composite values, fits percentile-based rescaling parameters,
+    Computes raw composite values (simple average), fits percentile-based rescaling parameters,
     and stores them in the audit_composite_params table.
     """
     conn = get_connection(db_path)
     cursor = conn.cursor()
-    
-    # Compute raw composite AVG(normalized_value) grouped by date, excluding aviv_nupl and requiring >=10 active components
+
+    # Compute raw composite AVG(normalized_value) grouped by date, excluding aviv_nupl, williams_r, fear_greed_cmc
     cursor.execute('''
         SELECT date, AVG(normalized_value) as raw_composite
         FROM timeseries_metrics
         WHERE normalized_value IS NOT NULL
-          AND metric_name != 'aviv_nupl'
+          AND metric_name NOT IN ('aviv_nupl', 'williams_r', 'fear_greed_cmc')
         GROUP BY date
         HAVING COUNT(normalized_value) >= 10
         ORDER BY date ASC
     ''')
     rows = cursor.fetchall()
-    
+
     if not rows:
         conn.close()
         return {}
-        
+
     raw_composites = [row[1] for row in rows if row[1] is not None]
-    
+
     if not raw_composites:
         conn.close()
         return {}

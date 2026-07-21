@@ -133,8 +133,6 @@ interface SdcaPanelProps {
 	signal: SdcaSignal | null;
 	/** Current BTC price */
 	currentPrice: number;
-	/** Whether panel is in fullscreen mode */
-	fullscreen?: boolean;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -142,7 +140,6 @@ interface SdcaPanelProps {
 export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 	signal,
 	currentPrice,
-	fullscreen = false,
 }) => {
 	const [collapsed, setCollapsed] = useState(() => {
 		try {
@@ -260,7 +257,7 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 
 	return (
 		<div
-			className={`chart-panel ${fullscreen ? "fullscreen" : ""}`}
+			className="chart-panel"
 			style={{
 				background: "#0B1220",
 				border: "1px solid rgba(30, 41, 59, 0.8)",

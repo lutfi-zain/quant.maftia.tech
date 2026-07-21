@@ -47,8 +47,9 @@ class MvrvZComponent(BaseComponent):
         return df
 
     def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["normalized_value"] = df["raw_value"].apply(
-            lambda val: normalize_metric(self.db_path, self.METRIC_NAME, val)
+        df["normalized_value"] = df.apply(
+            lambda row: normalize_metric(self.db_path, self.METRIC_NAME, row["raw_value"], row["date"]),
+            axis=1
         )
         return df
 

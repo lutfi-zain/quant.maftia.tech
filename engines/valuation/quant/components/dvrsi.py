@@ -81,7 +81,7 @@ class DvrsiComponent(BaseComponent):
 
         df.index.name = 'date'
         df.reset_index(inplace=True)
-        df["date"] = df["date"].dt.strftime("%Y-%m-%d")
+        df["date"] = df["date"].dt.strftime("%Y-%m-%dT00:00:00Z")
 
         # Filter for delta if not full_rebuild
         if not full_rebuild:

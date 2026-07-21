@@ -1297,7 +1297,6 @@ export const ValuationStudio: React.FC = () => {
 					<SdcaPanel
 						signal={sdcaSignal}
 						currentPrice={displayPoint?.close || 0}
-						fullscreen={maximized !== null}
 					/>
 
 					{/* Interactive Backtest Controls & Metrics Bar */}

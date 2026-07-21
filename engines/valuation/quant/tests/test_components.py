@@ -336,8 +336,8 @@ def test_williams_r_component(mock_fetch, test_db):
     
     res = comp.run_pipeline(full_rebuild=True)
     assert res["status"] == "success"
-    # rolling window 71. 80 rows -> 10 stored
-    assert res["rows_stored"] == 10
+    # resampled to daily. 10 weeks of valid data -> 64 daily rows stored
+    assert res["rows_stored"] == 64
 
 @patch('quant.components.two_year_ma.fetch_series')
 def test_two_year_ma_component(mock_fetch, test_db):

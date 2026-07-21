@@ -43,8 +43,8 @@ class WilliamsRComponent(BaseComponent):
         assert isinstance(df, pd.DataFrame)
         df.index.name = 'date'
         df.reset_index(inplace=True)
-        # Format back to ISO string format to match DB layout
-        df["date"] = df["date"].dt.strftime("%Y-%m-%d")
+        # Format back to ISO string format to match DB layout (T-format matches bitview_client.py)
+        df["date"] = df["date"].dt.strftime("%Y-%m-%dT00:00:00Z")
         
         # Filter for delta if not full_rebuild
         if not full_rebuild:
