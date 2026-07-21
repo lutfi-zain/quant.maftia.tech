@@ -324,7 +324,7 @@ def test_dvrsi_component(mock_fetch, test_db):
     
     res = comp.run_pipeline(full_rebuild=True)
     assert res["status"] == "success"
-    assert res["rows_stored"] == 20
+    assert res["rows_stored"] == 134
 
 @patch('quant.components.williams_r.fetch_series')
 def test_williams_r_component(mock_fetch, test_db):

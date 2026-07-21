@@ -50,37 +50,18 @@ class DvrsiComponent(BaseComponent):
         df["raw_value"] = pd.Series(rsi).ewm(span=14, adjust=False).mean()
         df["btc_price"] = df["value_price"]
 
-        # --- Daily RSI Fallback Imputation ---
-        # Resample to daily and fill NaN gaps with simple daily RSI(14)
+        # Resample to daily and forward-fill to avoid daily NaN alignment drops
         df["date"] = pd.to_datetime(df["date"])
         df.set_index("date", inplace=True)
+        
+        # Reindex to daily range and ffill
         daily_idx = pd.date_range(start=df.index.min(), end=df.index.max(), freq='D')
-        df = df.reindex(daily_idx)
-
-        try:
-            df_daily_price = fetch_series("price", index="day1")
-            if not df_daily_price.empty:
-                df_daily = df_daily_price.dropna(subset=["value"]).sort_values("date")
-                df_daily["date"] = pd.to_datetime(df_daily["date"])
-                df_daily.set_index("date", inplace=True)
-
-                daily_close = df_daily["value"].reindex(daily_idx)
-                delta = daily_close.diff()
-                gain = delta.clip(lower=0).rolling(window=14).mean()
-                loss = (-delta.clip(upper=0)).rolling(window=14).mean()
-                safe_loss = loss.where(loss > 1e-9, other=np.nan)
-                rs = gain / safe_loss
-                daily_rsi = 100 - (100 / (1 + rs))
-
-                # Fill NaN raw_value and btc_price with daily equivalents
-                nan_mask = df["raw_value"].isna()
-                df.loc[nan_mask, "raw_value"] = daily_rsi.loc[nan_mask]
-                df.loc[nan_mask, "btc_price"] = daily_close.loc[nan_mask]
-        except Exception:
-            pass  # Fallback silently if daily fetch fails
-
+        df = df.reindex(daily_idx).ffill()
+        assert isinstance(df, pd.DataFrame)
         df.index.name = 'date'
         df.reset_index(inplace=True)
+        
+        # Format back to ISO string format to match DB layout (T-format matches bitview_client.py)
         df["date"] = df["date"].dt.strftime("%Y-%m-%dT00:00:00Z")
 
         # Filter for delta if not full_rebuild

@@ -27,7 +27,8 @@ class LthSthSoprRatioComponent(BaseComponent):
         return df
 
     def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["raw_value"] = df["value_lth"] / df["value_sth"]
+        df = df.sort_values("date").reset_index(drop=True)
+        df["raw_value"] = (df["value_lth"] / df["value_sth"]).rolling(window=14, min_periods=1).mean()
         df["btc_price"] = df["value_price"]
         
         df["normalized_value"] = df["raw_value"].apply(
