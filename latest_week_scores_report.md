@@ -17,7 +17,7 @@ The table below aggregates the daily final scores and positions for all four pro
 | **2026-07-18** | $64,590.78 | 1.8126 | -0.4257 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
 | **2026-07-19** | $64,572.22 | 1.3916 | -0.3590 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
 | **2026-07-20** | $65,260.24 | 1.3995 | -0.4124 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
-| **2026-07-21** | $65,304.09 | 1.5885 | -0.3145 (BEAR) | -0.9980 (Pos: 0) | -0.9990 (Neutral, Pos: 0) |
+| **2026-07-21** | $66,281.97 | 1.5941 | -0.3354 (BEAR) | -0.9980 (Pos: 0) | -0.9989 (Neutral, Pos: 0) |
 
 > *Note: The active day (2026-07-21) may not yet be completed/closed, so some systems (e.g. Ichimoku) may show N/A for today's bar until daily close.*
 

@@ -219,13 +219,15 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
         prev_state = state
         state = "NEUTRAL"
 
-        # Check transition out of SELL zone (hysteresis: exit only if comp_t1 > -0.8)
+        # Check transition out of SELL zone (hysteresis: exit only if comp_t1 <= -0.3)
+        # We enter SELL_DCA at -0.5, so offset of 0.2 means we exit only if score goes above -0.3
         in_sell_zone = False
         if prev_state in ("SELL_ALL", "SELL_DCA"):
-            if comp_t1 <= -0.8:
+            if comp_t1 <= -0.3:
                 in_sell_zone = True
 
-        # Check transition out of BUY zone (hysteresis: exit only if comp_t1 < 0.8)
+        # Check transition out of BUY zone (hysteresis: exit only if comp_t1 >= 0.8)
+        # We enter BUY_DCA at 1.0, so offset of 0.2 means we exit only if score goes below 0.8
         in_buy_zone = False
         if prev_state in ("BUY_ALL", "BUY_DCA"):
             if comp_t1 >= 0.8:
@@ -236,20 +238,20 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             buy_all_fired = False
 
         # 1. SELL_ALL Conditions (Highest priority exit)
-        # Triple-gate: comp <= -1.5, ratio < 2.0, drawdown >= 20%
-        sell_all_trigger = (comp_t1 <= -1.5 and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
-        # Safety net: comp <= -1.0 and price < MA200 (ratio < 1.0)
-        safety_net_trigger = (comp_t1 <= -1.0 and ratio_t1 < 1.0)
+        # Triple-gate: comp <= -1.0 (recalibrated from -1.5), ratio < 2.0, drawdown >= 20%
+        sell_all_trigger = (comp_t1 <= -1.0 and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
+        # Safety net: comp <= -1.5 (recalibrated from -1.0) and price < MA200 (ratio < 1.0)
+        safety_net_trigger = (comp_t1 <= -1.5 and ratio_t1 < 1.0)
 
         if sell_all_trigger or safety_net_trigger:
             state = "SELL_ALL"
-        # 2. SELL_DCA Conditions
-        elif (comp_t1 <= -1.0 and ratio_t1 < 2.0) or (in_sell_zone and prev_state == "SELL_DCA"):
+        # 2. SELL_DCA Conditions (Recalibrated threshold from -1.0 to -0.5)
+        elif (comp_t1 <= -0.5 and ratio_t1 < 2.0) or (in_sell_zone and prev_state == "SELL_DCA"):
             state = "SELL_DCA"
-        # 3. BUY_ALL Condition (Breakout bottom ending)
-        elif comp_t1 >= 1.0 and cross_above_ma200 and not buy_all_fired:
+        # 3. BUY_ALL Condition (Breakout bottom ending, recalibrated from 1.0 to 1.8)
+        elif comp_t1 >= 1.8 and cross_above_ma200 and not buy_all_fired:
             state = "BUY_ALL"
-        # 4. BUY_DCA Condition (Bottom confirmed)
+        # 4. BUY_DCA Condition (Bottom confirmed, recalibrated from 1.0 to 1.0)
         elif (comp_t1 >= 1.0 and ratio_t1 < 1.0) or (in_buy_zone and prev_state == "BUY_DCA"):
             state = "BUY_DCA"
         # 5. Fallback to NEUTRAL
