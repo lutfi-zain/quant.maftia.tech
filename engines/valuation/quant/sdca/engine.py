@@ -15,32 +15,22 @@ class DailyRecord:
 # --- Thresholds ---
 
 DEFAULT_SDCA_THRESHOLDS = {
-    "buy_threshold": 0.5,
-    "sell_threshold": -1.5,
-    "price_pct_buy": 30.0,
-    "price_pct_sell": 75.0,
-    "extended_discount_days": 25,
+    "buy_dca": 0.5,
+    "buy_all": 1.0,
+    "sell_dca": -1.0,
+    "sell_all": -1.5,
+    "buy_exit": 0.3,
+    "sell_exit": -0.8,
 }
 
 def merge_thresholds(overrides: Optional[Dict[str, float]] = None) -> Dict[str, float]:
     if not overrides:
         return DEFAULT_SDCA_THRESHOLDS.copy()
-    
+
     t = DEFAULT_SDCA_THRESHOLDS.copy()
-    if "buy_threshold" in overrides:
-        t["buy_threshold"] = max(0.0, min(2.0, overrides["buy_threshold"]))
-    if "sell_threshold" in overrides:
-        t["sell_threshold"] = max(-2.0, min(0.0, overrides["sell_threshold"]))
-    if "price_pct_buy" in overrides:
-        t["price_pct_buy"] = max(10.0, min(50.0, overrides["price_pct_buy"]))
-    if "price_pct_sell" in overrides:
-        t["price_pct_sell"] = max(50.0, min(95.0, overrides["price_pct_sell"]))
-    if "extended_discount_days" in overrides:
-        try:
-            t["extended_discount_days"] = max(10, min(60, int(overrides["extended_discount_days"])))
-        except (ValueError, TypeError):
-            pass
-    
+    for k in DEFAULT_SDCA_THRESHOLDS:
+        if k in overrides:
+            t[k] = float(overrides[k])
     return t
 
 # --- Core Logic ---
@@ -171,11 +161,14 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
     """Compute SDCA signals for entire dataset with FSM chronological state tracking."""
     from datetime import datetime
     signals = []
-    
+
+    # Merge dynamic thresholds
+    t = merge_thresholds(thresholds)
+
     # FSM State variables
     state = "NEUTRAL"
     buy_all_fired = False
-    
+
     for i in range(len(data)):
         day = data[i]
         date_str = day.date
@@ -183,14 +176,14 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
         comp = day.valuation_composite
         ratio = getattr(day, 'price_ma200_ratio', 1.0)
         drawdown = getattr(day, 'ath_drawdown', 0.0)
-        
+
         # Parse today's weekday
         try:
             dt = datetime.strptime(date_str, "%Y-%m-%d")
             is_monday = dt.weekday() == 0
         except Exception:
             is_monday = False
-            
+
         # Get yesterday's values (t-1 causal lookup)
         if i > 0:
             prev_day = data[i - 1]
@@ -198,7 +191,7 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             price_t1 = prev_day.close
             ratio_t1 = getattr(prev_day, 'price_ma200_ratio', 1.0)
             drawdown_t1 = getattr(prev_day, 'ath_drawdown', 0.0)
-            
+
             # Check price/MA200 crossover for BUY_ALL
             if i > 1:
                 prev_prev_day = data[i - 2]
@@ -213,24 +206,22 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             ratio_t1 = 1.0
             drawdown_t1 = 0.0
             cross_above_ma200 = False
-            
+
         # FSM State Transitions
         # Maintain previous state to implement transition hysteresis
         prev_state = state
         state = "NEUTRAL"
 
-        # Check transition out of SELL zone (hysteresis: exit only if comp_t1 <= -0.3)
-        # We enter SELL_DCA at -0.5, so offset of 0.2 means we exit only if score goes above -0.3
+        # Check transition out of SELL zone
         in_sell_zone = False
         if prev_state in ("SELL_ALL", "SELL_DCA"):
-            if comp_t1 <= -0.3:
+            if comp_t1 <= t["sell_exit"]:
                 in_sell_zone = True
 
-        # Check transition out of BUY zone (hysteresis: exit only if comp_t1 >= 0.8)
-        # We enter BUY_DCA at 1.0, so offset of 0.2 means we exit only if score goes below 0.8
+        # Check transition out of BUY zone
         in_buy_zone = False
         if prev_state in ("BUY_ALL", "BUY_DCA"):
-            if comp_t1 >= 0.8:
+            if comp_t1 >= t["buy_exit"]:
                 in_buy_zone = True
 
         # Reset buy_all_fired when composite goes negative (enters overvalued area)
@@ -238,21 +229,19 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             buy_all_fired = False
 
         # 1. SELL_ALL Conditions (Highest priority exit)
-        # Triple-gate: comp <= -1.0 (recalibrated from -1.5), ratio < 2.0, drawdown >= 20%
-        sell_all_trigger = (comp_t1 <= -1.0 and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
-        # Safety net: comp <= -1.5 (recalibrated from -1.0) and price < MA200 (ratio < 1.0)
-        safety_net_trigger = (comp_t1 <= -1.5 and ratio_t1 < 1.0)
+        sell_all_trigger = (comp_t1 <= t["sell_all"] and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
+        safety_net_trigger = (comp_t1 <= (t["sell_all"] - 0.5) and ratio_t1 < 1.0)
 
         if sell_all_trigger or safety_net_trigger:
             state = "SELL_ALL"
-        # 2. SELL_DCA Conditions (Recalibrated threshold from -1.0 to -0.5)
-        elif (comp_t1 <= -0.5 and ratio_t1 < 2.0) or (in_sell_zone and prev_state == "SELL_DCA"):
+        # 2. SELL_DCA Conditions
+        elif (comp_t1 <= t["sell_dca"] and ratio_t1 < 2.0) or (in_sell_zone and prev_state == "SELL_DCA"):
             state = "SELL_DCA"
-        # 3. BUY_ALL Condition (Breakout bottom ending, recalibrated from 1.0 to 1.8)
-        elif comp_t1 >= 1.8 and cross_above_ma200 and not buy_all_fired:
+        # 3. BUY_ALL Condition (Breakout bottom ending)
+        elif comp_t1 >= t["buy_all"] and cross_above_ma200 and not buy_all_fired:
             state = "BUY_ALL"
-        # 4. BUY_DCA Condition (Bottom confirmed, recalibrated from 1.0 to 1.0)
-        elif (comp_t1 >= 1.0 and ratio_t1 < 1.0) or (in_buy_zone and prev_state == "BUY_DCA"):
+        # 4. BUY_DCA Condition (Bottom confirmed)
+        elif (comp_t1 >= t["buy_dca"] and ratio_t1 < 1.0) or (in_buy_zone and prev_state == "BUY_DCA"):
             state = "BUY_DCA"
         # 5. Fallback to NEUTRAL
         elif -0.5 < comp_t1 < 0.5:
