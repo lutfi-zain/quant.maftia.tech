@@ -20,7 +20,7 @@ This change introduces adaptive, volatility-adjusted normalization thresholds an
 * `adaptive-threshold-normalization`: Dynamic calibration of normalization bounds for fundamental indicators based on market volatility and structural illiquidity shifts.
 
 ### Modified Capabilities
-* `valuation-composite`: Update the requirement for compiling and scaling the `valuation_composite` to incorporate cumulative IIP Penalty adjustments and volatility-adjusted indicator inputs.
+* `quant-engines-unification`: Update the requirement for compiling and scaling the `valuation_composite` to incorporate cumulative IIP Penalty adjustments and volatility-adjusted indicator inputs.
 
 ## Impact
 
