@@ -53,6 +53,7 @@ def fetch_valuation_composite_data():
         WHERE normalized_value IS NOT NULL
           AND metric_name NOT IN ('aviv_nupl', 'williams_r', 'fear_greed_cmc')
         GROUP BY date
+        HAVING COUNT(normalized_value) >= 10
         ORDER BY date ASC
     """).fetchall()
     conn.close()
