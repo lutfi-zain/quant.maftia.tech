@@ -192,6 +192,10 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             ratio_t1 = getattr(prev_day, 'price_ma200_ratio', 1.0)
             drawdown_t1 = getattr(prev_day, 'ath_drawdown', 0.0)
 
+            # Causal 30-day Price moving average
+            sma_window = [data[idx].close for idx in range(max(0, i - 30), i)]
+            sma30_t1 = sum(sma_window) / len(sma_window) if sma_window else price_t1
+
             # Check price/MA200 crossover for BUY_ALL
             if i > 1:
                 prev_prev_day = data[i - 2]
@@ -205,6 +209,7 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             price_t1 = 0.0
             ratio_t1 = 1.0
             drawdown_t1 = 0.0
+            sma30_t1 = 0.0
             cross_above_ma200 = False
 
         # FSM State Transitions
@@ -229,13 +234,13 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
             buy_all_fired = False
 
         # 1. SELL_ALL Conditions (Highest priority exit)
-        sell_all_trigger = (comp_t1 <= t["sell_all"] and ratio_t1 < 2.0 and drawdown_t1 >= 20.0)
+        sell_all_trigger = (comp_t1 <= t["sell_all"] and ratio_t1 < 2.0 and drawdown_t1 >= 20.0 and price_t1 < sma30_t1)
         safety_net_trigger = (comp_t1 <= (t["sell_all"] - 0.5) and ratio_t1 < 1.0)
 
         if sell_all_trigger or safety_net_trigger:
             state = "SELL_ALL"
         # 2. SELL_DCA Conditions
-        elif (comp_t1 <= t["sell_dca"] and ratio_t1 < 2.0) or (in_sell_zone and prev_state == "SELL_DCA"):
+        elif (comp_t1 <= t["sell_dca"] and ratio_t1 < 2.0 and price_t1 < sma30_t1) or (in_sell_zone and prev_state == "SELL_DCA"):
             state = "SELL_DCA"
         # 3. BUY_ALL Condition (Breakout bottom ending)
         elif comp_t1 >= t["buy_all"] and cross_above_ma200 and not buy_all_fired:

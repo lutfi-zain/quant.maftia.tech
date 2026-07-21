@@ -442,11 +442,14 @@ export function computeSdcaSignals(
 		let ratio_t1 = 1.0;
 		let drawdown_t1 = 0.0;
 		let cross_above_ma200 = false;
+		let sma30_t1 = 0.0;
 
 		if (i > 0) {
 			comp_t1 = composites[i - 1];
 			ratio_t1 = ratioList[i - 1];
 			drawdown_t1 = drawdownList[i - 1];
+			const smaWindow = pricesList.slice(Math.max(0, i - 30), i);
+			sma30_t1 = smaWindow.reduce((a, b) => a + b, 0) / smaWindow.length;
 			if (i > 1) {
 				const ratio_t2 = ratioList[i - 2];
 				cross_above_ma200 = ratio_t2 < 1.0 && ratio_t1 >= 1.0;
@@ -462,12 +465,12 @@ export function computeSdcaSignals(
 
 		// 1. SELL_ALL
 		const sell_all_trigger =
-			comp_t1 <= -1.5 && ratio_t1 < 2.0 && drawdown_t1 >= 20.0;
+			comp_t1 <= -1.5 && ratio_t1 < 2.0 && drawdown_t1 >= 20.0 && data[i - 1].close < sma30_t1;
 		const safety_net_trigger = comp_t1 <= -1.0 && ratio_t1 < 1.0;
 
 		if (sell_all_trigger || safety_net_trigger) {
 			state = "SELL_ALL";
-		} else if (comp_t1 <= -1.0 && ratio_t1 < 2.0) {
+		} else if (comp_t1 <= -1.0 && ratio_t1 < 2.0 && data[i - 1].close < sma30_t1) {
 			state = "SELL_DCA";
 		} else if (comp_t1 >= 1.0 && cross_above_ma200 && !buy_all_fired) {
 			state = "BUY_ALL";

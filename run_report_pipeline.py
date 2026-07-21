@@ -132,7 +132,7 @@ def fetch_valuation_composite_data():
             multiplier = 1.0 + cvsc_factor + vol_factor
 
             if raw_val < 0:
-                raw_val = raw_val * multiplier - iip_penalty_val
+                raw_val = raw_val * multiplier - (iip_penalty_val * abs(raw_val))
 
         # Hard clamp between -2.0 and 2.0
         if raw_val is not None:
