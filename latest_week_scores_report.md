@@ -11,13 +11,13 @@ The table below aggregates the daily final scores and positions for all four pro
 
 | Date | BTC Price ($) | [Valuation](file:///home/ubuntu/projects/quant.maftia.tech/engines/valuation) Score | [LTTD](file:///home/ubuntu/projects/quant.maftia.tech/engines/lttd) Score | [MTTD](file:///home/ubuntu/projects/quant.maftia.tech/engines/mttd) Score (IMO) | [Ichimoku](file:///home/ubuntu/projects/quant.maftia.tech/engines/ichimoku) Score (IMO) |
 |---|---|---|---|---|---|
-| **2026-07-15** | $64,648.57 | 1.7268 | N/A | -0.9981 (Pos: 0) | -0.9988 (Neutral, Pos: 0) |
-| **2026-07-16** | $63,922.06 | 1.6031 | -0.4752 (BEAR) | -0.9983 (Pos: 0) | -0.9990 (Neutral, Pos: 0) |
-| **2026-07-17** | $63,850.62 | 1.6921 | -0.4479 (BEAR) | -0.9984 (Pos: 0) | -0.9991 (Neutral, Pos: 0) |
-| **2026-07-18** | $64,590.78 | 1.7787 | -0.4257 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
-| **2026-07-19** | $64,584.18 | 1.5471 | -0.3590 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
-| **2026-07-20** | $65,260.24 | 1.6450 | -0.4124 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
-| **2026-07-21** | $0.00 | 2.0000 | N/A | N/A | N/A |
+| **2026-07-15** | $64,648.57 | 1.3266 | N/A | -0.9981 (Pos: 0) | -0.9988 (Neutral, Pos: 0) |
+| **2026-07-16** | $63,902.48 | 1.3483 | -0.4752 (BEAR) | -0.9983 (Pos: 0) | -0.9990 (Neutral, Pos: 0) |
+| **2026-07-17** | $63,846.17 | 1.5017 | -0.4479 (BEAR) | -0.9984 (Pos: 0) | -0.9991 (Neutral, Pos: 0) |
+| **2026-07-18** | $64,590.78 | 1.8126 | -0.4257 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
+| **2026-07-19** | $64,572.22 | 1.3916 | -0.3590 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
+| **2026-07-20** | $65,260.24 | 1.3995 | -0.4124 (BEAR) | -0.9983 (Pos: 0) | -0.9992 (Neutral, Pos: 0) |
+| **2026-07-21** | $65,304.09 | 1.5885 | -0.3145 (BEAR) | -0.9980 (Pos: 0) | -0.9990 (Neutral, Pos: 0) |
 
 > *Note: The active day (2026-07-21) may not yet be completed/closed, so some systems (e.g. Ichimoku) may show N/A for today's bar until daily close.*
 

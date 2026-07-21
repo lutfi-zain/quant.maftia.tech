@@ -47,23 +47,31 @@ def fetch_valuation_composite_data():
     if not os.path.exists(db_metrics_path):
         return val_data, val_btc
     conn = get_wal_connection(db_metrics_path)
-    comp_params = None
-    try:
-        row = conn.execute("SELECT raw_p2_5, raw_p50, raw_p97_5 FROM audit_composite_params ORDER BY run_date DESC LIMIT 1").fetchone()
-        if row:
-            comp_params = {'p2_5': float(row[0]), 'p50': float(row[1]), 'p97_5': float(row[2])}
-    except Exception:
-        pass
-    
+    # Fetch individual component scores for Pearson cluster consolidation
     rows = conn.execute("""
-        SELECT date, AVG(normalized_value) as comp, MAX(btc_price) as btc
+        SELECT date, metric_name, normalized_value, btc_price
         FROM timeseries_metrics
-        WHERE normalized_value IS NOT NULL 
-          AND metric_name NOT IN ('aviv_nupl', 'williams_r', 'fear_greed_cmc')
-        GROUP BY date
+        WHERE normalized_value IS NOT NULL
         ORDER BY date ASC
     """).fetchall()
     conn.close()
+
+    # Group metrics and prices by date in Python
+    from collections import defaultdict
+    date_metrics = defaultdict(dict)
+    date_prices = {}
+    for r in rows:
+        dt = pd.to_datetime(r[0]).strftime("%Y-%m-%d")
+        metric_name = r[1]
+        norm_val = r[2]
+        btc_price = r[3]
+
+        date_metrics[dt][metric_name] = norm_val
+        if btc_price is not None:
+            date_prices[dt] = btc_price
+
+    # Order distinct dates chronologically
+    sorted_dates = sorted(list(date_metrics.keys()))
 
     # Apply Volatility Regime Multiplier
     try:
@@ -98,19 +106,39 @@ def fetch_valuation_composite_data():
         iip_dict = {}
 
     prices_list_vol = []
+    raw_comp_history = []
 
-    for r in rows:
-        dt = pd.to_datetime(r[0]).strftime("%Y-%m-%d")
-        try:
-            price = float(r[2]) if r[2] is not None else 0.0
-        except (ValueError, TypeError):
-            price = 0.0
+    # Correlation clusters for indicator grouping
+    metric_clusters = {
+        'cost_basis': ['aviv_nupl', 'aviv_ratio', 'mvrv_z'],
+        'trend_ma': ['cvdd_ratio', 'two_year_ma', 'terminal_price_ratio', 'unrealized_sell_risk'],
+        'sentiment': ['fear_greed_cmc', 'fear_greed_og']
+    }
+    cluster_metric_names = set(m for list_m in metric_clusters.values() for m in list_m)
 
+    for dt in sorted_dates:
+        price = date_prices.get(dt, 0.0)
         prices_list_vol.append(price)
 
-        try:
-            raw_val = float(r[1]) if r[1] is not None else None
-        except (ValueError, TypeError):
+        # Compute clustered composite to prevent duplicate weight of highly correlated indicators
+        metrics_dict = date_metrics[dt]
+        cluster_scores = []
+        used_metrics = set()
+
+        for cluster_name, metric_names in metric_clusters.items():
+            vals = [metrics_dict[m] for m in metric_names if m in metrics_dict]
+            if vals:
+                cluster_scores.append(sum(vals) / len(vals))
+                used_metrics.update(metric_names)
+
+        # Append independent indicators
+        for m, val in metrics_dict.items():
+            if m not in used_metrics:
+                cluster_scores.append(val)
+
+        if cluster_scores:
+            raw_val = sum(cluster_scores) / len(cluster_scores)
+        else:
             raw_val = None
 
         # Volatility Calculation
@@ -144,9 +172,19 @@ def fetch_valuation_composite_data():
         if raw_val is not None:
             raw_val = max(-2.0, min(2.0, raw_val))
 
+        # Append raw value to running history for causal expanding percentiles rescaling
+        if raw_val is not None:
+            raw_comp_history.append(raw_val)
+
+        # Causal Rescaling (expanding window percentiles with min 180 days history for stability)
         rescaled_val = raw_val
-        if comp_params and raw_val is not None:
-            p2_5, p50, p97_5 = comp_params['p2_5'], comp_params['p50'], comp_params['p97_5']
+        if len(raw_comp_history) >= 180 and raw_val is not None:
+            import numpy as np
+            hist_vals = raw_comp_history[:-1]
+            p2_5 = float(np.percentile(hist_vals, 2.5))
+            p50 = float(np.percentile(hist_vals, 50.0))
+            p97_5 = float(np.percentile(hist_vals, 97.5))
+
             if raw_val <= p2_5:
                 rescaled_val = -2.0
             elif raw_val >= p97_5:
@@ -157,11 +195,8 @@ def fetch_valuation_composite_data():
             else:
                 denom = p97_5 - p50
                 rescaled_val = 2.0 if abs(denom) < 1e-9 else 0.0 + 2.0 * (raw_val - p50) / denom
+
         val_data[dt] = rescaled_val
-        try:
-            price = float(r[2]) if r[2] is not None else 0.0
-        except (ValueError, TypeError):
-            price = 0.0
         val_btc[dt] = price
         if price > 0:
             prices_list.append(price)
