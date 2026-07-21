@@ -1,14 +1,5 @@
 ## ADDED Requirements
 
-### Requirement: Valuation PCA Compression Layer
-
-The system SHALL apply Principal Component Analysis (PCA) to the 17 normalized indicator scores before computing the `ValuationComposite` mean, to mitigate signal inflation from multicollinear indicators (pairwise Pearson r > 0.85).
-
-#### Scenario: PCA Pre-Processing of Component Scores
-
-- **WHEN** the `run_report_pipeline.py` orchestration triggers the `ValuationComposite` calculation
-- **THEN** the system MUST collect the 17 normalized scores from `unified_component_signals` for each date, fit PCA on the rolling 365-day training window excluding dates with >50% NaN components, project scores onto principal components, discard any component with explained variance ratio < 5%, and compute the composite as the equally-weighted mean of the retained principal components, scaled back to `[-2.0, +2.0]` via min-max normalization.
-
 ### Requirement: Williams %R Full-Range Threshold Correction
 
 The threshold configuration for `williams_r` SHALL be recalibrated so that its native `[-100, 0]` oscillator range maps linearly to the full `[-2.0, +2.0]` normalization band instead of being truncated at `[0, +2.0]`.

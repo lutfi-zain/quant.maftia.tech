@@ -2,12 +2,12 @@
 
 ### Requirement: Valuation Backend Calculations
 
-The `quant-btc-valuation-system` Python engine SHALL perform all core valuation calculations, including continuous SDCA (Dollar Cost Averaging) strategy ledgers, mathematically symmetrical piecewise linear interpolations, PCA-based multicollinearity reduction, and data imputation for failing components.
+The `quant-btc-valuation-system` Python engine SHALL perform all core valuation calculations, including continuous SDCA (Dollar Cost Averaging) strategy ledgers, mathematically symmetrical piecewise linear interpolations for the 14 active indicators, and data imputation for failing components.
 
 #### Scenario: Server-Side Processing of Valuation Metrics
 
 - **WHEN** the `run_report_pipeline.py` orchestration script triggers the valuation pipeline
-- **THEN** the system MUST strictly compute the `ValuationComposite` score via the PCA compression layer, apply the SDCA transaction ledger calculation directly against `MasterOHLCV`, maintain a $t-1$ causal filter, impute missing components using the fallback protocol, and persist the results to `maftia_quant.db` using SQLite WAL mode.
+- **THEN** the system MUST strictly compute the `ValuationComposite` score via the equal-weighted average of the active indicators (excluding `aviv_nupl`, `williams_r`, and `fear_greed_cmc`), apply the SDCA transaction ledger calculation directly against `MasterOHLCV`, maintain a $t-1$ causal filter, impute missing components using the fallback protocol, and persist the results to `maftia_quant.db` using SQLite WAL mode.
 
 ### Requirement: Valuation API Delivery
 
