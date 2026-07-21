@@ -116,36 +116,31 @@ Furthermore, once in the "AGGRESSIVE DCA" or "BUY_DCA" state, the system SHALL r
 - **THEN** action SHALL be "HOLD" (trend not confirmed — composite still falling from deeper discount)
 
 ### Requirement: DCA Exit Rule
-The system SHALL signal "STOP DCA & SELL" when ANY of the following conditions are met:
-1. `valuation_composite` crosses below -0.5 from above AND price > 75th percentile
-2. `valuation_composite` crosses below -1.0 (aggressive exit — entering deep euphoria / overvaluation)
-3. Composite has been < -0.5 for > 25 consecutive days (extended euphoria)
-Furthermore, once in the "SELL_DCA" or "SELL_ALL" state, the system SHALL remain in that selling state until `valuation_composite` falls below +0.3, enforcing a 0.2 hysteresis buffer before reverting to NEUTRAL/HOLD.
 
-#### Scenario: Gradual exit signal
-- **WHEN** previous day `valuation_composite` was -0.4
-- **AND** current day `valuation_composite` is -0.6
-- **AND** price percentile is 85%
-- **THEN** action SHALL be "REDUCE_POSITION"
-- **AND** recommended allocation SHALL be sell amount equal to weekly DCA allocation (not % of holdings)
+The system SHALL signal "STOP DCA & SELL" (e.g. `SELL_ALL` or `SELL_DCA`) based on FSM states. The `SELL_ALL` (Total Exit) trigger MUST require that: (1) `ValuationComposite` is extremely overvalued (score <= -1.5), (2) price/MA200 ratio is compressed (< 2.0), (3) price drawdown from ATH is >= 20%, and (4) the short-term price trend is not positive (to prevent selling during a strong upward breakout). The `SELL_DCA` (Gradual Exit) trigger MUST execute only on Mondays when `ValuationComposite` is <= -0.5 and the short-term price trend is not positive.
 
-#### Scenario: Aggressive exit signal
-- **WHEN** `valuation_composite` is -1.2
-- **AND** price percentile is 92%
+#### Scenario: Gradual exit signal with trend confirmation
+
+- **WHEN** the FSM evaluates the `SELL_DCA` trigger on Monday
+- **AND** the composite is <= -0.5
+- **AND** the short-term price trend (e.g. price relative to 30-day moving average or 7d vs 30d composite trend) is non-positive
+- **THEN** action SHALL be "SELL_DCA"
+- **AND** the multiplier SHALL be set to exit gradually (-0.08x or -0.15x)
+
+#### Scenario: Aggressive exit signal with trend confirmation
+
+- **WHEN** the FSM evaluates the `SELL_ALL` trigger
+- **AND** the composite is <= -1.5
+- **AND** the price drawdown from ATH is >= 20%
+- **AND** the short-term price trend is non-positive (not rising)
 - **THEN** action SHALL be "SELL_ALL"
-- **AND** recommended allocation SHALL be sell all BTC holdings
+- **AND** the multiplier SHALL be set to exit all remaining holdings (-1.0x)
 
-#### Scenario: Extended euphoria exit
-- **WHEN** `valuation_composite` has been < -0.5 for 30 consecutive days
-- **AND** price percentile is 78%
-- **THEN** action SHALL be "REDUCE_POSITION"
-- **AND** recommended allocation SHALL be sell 1.5x weekly DCA allocation amount
+#### Scenario: Sell delayed during upward breakout
 
-#### Scenario: Sell amount clarification
-- **WHEN** action is "REDUCE_POSITION" and multiplier is -0.5x
-- **AND** weekly DCA amount is $100
-- **THEN** sell amount SHALL be $50 worth of BTC (50% of weekly allocation)
-- **AND** NOT 50% of total BTC holdings
+- **WHEN** the composite is <= -1.5 and drawdown is >= 20%
+- **AND** the short-term price trend is positive (e.g., price is currently climbing and above its 30-day average)
+- **THEN** action SHALL remain "HOLD" or "SELL_DCA" (gradual only) to prevent premature liquidation during a breakout.
 
 ### Requirement: Causal Filtering
 
