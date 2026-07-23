@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
@@ -34,7 +34,6 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {} from "../../lib/studioBacktest";
 import type { SdcaSignal } from "../../lib/sdcaEngine";
-import { SdcaPanel } from "./SdcaPanel";
 import { SdcaChart } from "./SdcaChart";
 import { SdcaPhaseTimeline } from "./SdcaPhaseTimeline";
 import type { PortfolioState } from "../../lib/sdcaPortfolio";
@@ -239,6 +238,7 @@ export const ValuationStudio: React.FC = () => {
 	}>({ candle: null, cumStrat: null, cumMarket: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
+	const markersPrimitiveRef = useRef<any>(null);
 
 	const [backtestResult, setBacktestResult] = useState<any>({
 		cumStrat: [],
@@ -263,162 +263,124 @@ export const ValuationStudio: React.FC = () => {
 		markers: [],
 	});
 
-	useEffect(() => {
-		let isMounted = true;
-		const fetchBacktest = async () => {
+	const handleSdcaRecalculate = useCallback(
+		async (thresholds?: any) => {
 			try {
-				const data = await quantClient.getSdcaBacktest();
+				const data = await quantClient.postSdcaBacktest({
+					thresholds,
+					start_date: startDate,
+					end_date: endDate,
+				});
 
-				if (!isMounted || !data.dailyRecords) return;
+				if (!data || !data.equity_curve) return;
 
-				const cumStrat = data.dailyRecords.map((r: any) => ({
+				const cumStrat = data.equity_curve.map((r: any) => ({
 					time: r.date,
-					value: r.stratEquity,
+					value: r.sdca,
 				}));
-				const cumMarket = data.dailyRecords.map((r: any) => ({
+				const cumMarket = data.equity_curve.map((r: any) => ({
 					time: r.date,
-					value: r.marketEquity,
+					value: r.buyHold,
 				}));
-				const markers = data.dailyRecords
-					.filter((r: any) => r.action)
-					.map((r: any) => ({
-						time: r.date,
-						position: r.action.startsWith("BUY") ? "belowBar" : "aboveBar",
-						color: r.action.startsWith("BUY") ? "#10B981" : "#EF4444",
-						shape: r.action.startsWith("BUY") ? "arrowUp" : "arrowDown",
-						text: r.action,
-					}));
+				const rawMarkers =
+					data.signals && data.signals.length > 0
+						? data.signals
+								.filter((s: any) => s.action && s.action !== "HOLD")
+								.map((s: any) => ({
+									time: s.date,
+									position:
+										s.action.includes("BUY") || s.action === "ALL_IN"
+											? "belowBar"
+											: "aboveBar",
+									color:
+										s.action.includes("BUY") || s.action === "ALL_IN"
+											? "#10B981"
+											: "#EF4444",
+									shape:
+										s.action.includes("BUY") || s.action === "ALL_IN"
+											? "arrowUp"
+											: "arrowDown",
+									text: s.action.replace(/_/g, " "),
+								}))
+						: (data.trade_log || []).map((r: any) => ({
+								time: r.date,
+								position:
+									r.action.startsWith("BUY") || r.action === "ALL_IN"
+										? "belowBar"
+										: "aboveBar",
+								color:
+									r.action.startsWith("BUY") || r.action === "ALL_IN"
+										? "#10B981"
+										: "#EF4444",
+								shape:
+									r.action.startsWith("BUY") || r.action === "ALL_IN"
+										? "arrowUp"
+										: "arrowDown",
+								text: r.action,
+							}));
 
-				// Filter to startDate - endDate range and sort ascending for Lightweight Charts
-				const rawStrat = cumStrat
+				const stratMap = new Map<string, number>();
+				const marketMap = new Map<string, number>();
+
+				for (const r of data.equity_curve || []) {
+					stratMap.set(r.date, r.sdca);
+					marketMap.set(r.date, r.buyHold);
+				}
+
+				let baseStrat = 1;
+				let baseMarket = 1;
+				for (const p of dailyData) {
+					if (p.date >= startDate && p.date <= endDate && stratMap.has(p.date)) {
+						baseStrat = stratMap.get(p.date) || 1;
+						baseMarket = marketMap.get(p.date) || 1;
+						break;
+					}
+				}
+
+				let lastStratVal = 1;
+				let lastMarketVal = 1;
+
+				const filteredStrat = dailyData.map((p) => {
+					if (p.date >= startDate && p.date <= endDate && stratMap.has(p.date)) {
+						lastStratVal = (stratMap.get(p.date) || 1) / (baseStrat || 1);
+					} else if (p.date < startDate) {
+						lastStratVal = 1.0;
+					}
+					return {
+						time: p.date,
+						value: lastStratVal,
+					};
+				});
+
+				const filteredMarket = dailyData.map((p) => {
+					if (p.date >= startDate && p.date <= endDate && marketMap.has(p.date)) {
+						lastMarketVal = (marketMap.get(p.date) || 1) / (baseMarket || 1);
+					} else if (p.date < startDate) {
+						lastMarketVal = 1.0;
+					}
+					return {
+						time: p.date,
+						value: lastMarketVal,
+					};
+				});
+
+				const filteredMarkers = rawMarkers
 					.filter((r: any) => r.time >= startDate && r.time <= endDate)
 					.sort((a: any, b: any) => a.time.localeCompare(b.time));
-				const rawMarket = cumMarket
-					.filter((r: any) => r.time >= startDate && r.time <= endDate)
-					.sort((a: any, b: any) => a.time.localeCompare(b.time));
 
-				// Re-index equity curves to start at 1.0 at the sliced startDate
-				const baseStrat = rawStrat.length > 0 ? rawStrat[0].value : 1;
-				const baseMarket = rawMarket.length > 0 ? rawMarket[0].value : 1;
-				const filteredStrat = rawStrat.map((r: any) => ({
-					time: r.time,
-					value: baseStrat > 0 ? r.value / baseStrat : 1,
-				}));
-				const filteredMarket = rawMarket.map((r: any) => ({
-					time: r.time,
-					value: baseMarket > 0 ? r.value / baseMarket : 1,
-				}));
-
-				const filteredMarkers = markers
-					.filter((r: any) => r.time >= startDate && r.time <= endDate)
-					.sort((a: any, b: any) => a.time.localeCompare(b.time));
-				const filteredTrades = (data.trades || [])
+				const filteredTrades = (data.trade_log || [])
 					.filter((r: any) => r.date >= startDate && r.date <= endDate)
-					.sort((a: any, b: any) => b.date.localeCompare(a.date)) // newest first for table
+					.sort((a: any, b: any) => b.date.localeCompare(a.date))
 					.map((r: any, idx: number) => ({
-						...r,
-						id: `TXN-${(data.trades.length - idx).toString().padStart(4, "0")}`,
-						returnPct: r.profitPct ?? 0,
+						id: `TXN-${((data.trade_log?.length || 0) - idx).toString().padStart(4, "0")}`,
+						date: r.date,
+						action: r.action,
+						price: r.btc_price ?? r.price ?? 0,
+						amount: r.amount_usd ?? r.amount ?? 0,
+						multiplier: r.multiplier ?? 0,
+						netPnlUsd: r.net_pnl_usd ?? r.netPnlUsd ?? 0,
+						returnPct: r.profit_pct ?? r.returnPct ?? 0,
 					}));
-
-				// Compute dynamic metrics from filtered data (statistics only, no compounding)
-				const stratValues = filteredStrat.map((r: any) => r.value);
-				const marketValues = filteredMarket.map((r: any) => r.value);
-				const n = stratValues.length;
-
-				const totalReturnStrat =
-					n >= 2 ? (stratValues[n - 1] / stratValues[0] - 1) * 100 : 0;
-				const totalReturnMarket =
-					n >= 2 ? (marketValues[n - 1] / marketValues[0] - 1) * 100 : 0;
-
-				// Daily returns for volatility/sharpe
-				const dailyRets: number[] = [];
-				for (let i = 1; i < n; i++) {
-					if (stratValues[i - 1] > 0) {
-						dailyRets.push(
-							(stratValues[i] - stratValues[i - 1]) / stratValues[i - 1],
-						);
-					}
-				}
-				const marketDailyRets: number[] = [];
-				for (let i = 1; i < n; i++) {
-					if (marketValues[i - 1] > 0) {
-						marketDailyRets.push(
-							(marketValues[i] - marketValues[i - 1]) / marketValues[i - 1],
-						);
-					}
-				}
-
-				const meanRet =
-					dailyRets.reduce((a, b) => a + b, 0) / (dailyRets.length || 1);
-				const variance =
-					dailyRets.reduce((a, b) => a + (b - meanRet) ** 2, 0) /
-					(dailyRets.length || 1);
-				const annVol = Math.sqrt(variance) * Math.sqrt(365) * 100;
-				const annRet = meanRet * 365 * 100;
-				const sharpe = annVol > 0 ? annRet / annVol : 0;
-
-				const meanMarketRet =
-					marketDailyRets.reduce((a, b) => a + b, 0) /
-					(marketDailyRets.length || 1);
-				const marketVariance =
-					marketDailyRets.reduce((a, b) => a + (b - meanMarketRet) ** 2, 0) /
-					(marketDailyRets.length || 1);
-				const annVolMarket = Math.sqrt(marketVariance) * Math.sqrt(365) * 100;
-				const annRetMarket = meanMarketRet * 365 * 100;
-				const sharpeMarket = annVolMarket > 0 ? annRetMarket / annVolMarket : 0;
-
-				// Max drawdown from filtered equity
-				let peak = stratValues[0] || 1;
-				let maxDd = 0;
-				for (const v of stratValues) {
-					if (v > peak) peak = v;
-					const dd = (peak - v) / peak;
-					if (dd > maxDd) maxDd = dd;
-				}
-				let peakM = marketValues[0] || 1;
-				let maxDdM = 0;
-				for (const v of marketValues) {
-					if (v > peakM) peakM = v;
-					const dd = (peakM - v) / peakM;
-					if (dd > maxDdM) maxDdM = dd;
-				}
-
-				const winTrades = filteredTrades.filter(
-					(t: any) => (t.returnPct || t.profit_pct || 0) > 0,
-				);
-				const lossTrades = filteredTrades.filter(
-					(t: any) => (t.returnPct || t.profit_pct || 0) <= 0,
-				);
-				const winRate =
-					filteredTrades.length > 0
-						? (winTrades.length / filteredTrades.length) * 100
-						: 0;
-				const grossProfit = winTrades.reduce(
-					(a: number, t: any) => a + Math.abs(t.returnPct || t.profit_pct || 0),
-					0,
-				);
-				const grossLoss = lossTrades.reduce(
-					(a: number, t: any) => a + Math.abs(t.returnPct || t.profit_pct || 0),
-					0,
-				);
-				const profitFactor =
-					grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 999 : 0;
-
-				const years = n / 365.25;
-				const cagr =
-					years > 0 && stratValues[0] > 0
-						? ((stratValues[n - 1] / stratValues[0]) ** (1 / years) - 1) * 100
-						: 0;
-
-				const avgCostBasisArr = filteredTrades
-					.filter((t: any) => t.action && t.action.startsWith("BUY"))
-					.map((t: any) => t.btc_price || t.price || 0);
-				const avgCostBasis =
-					avgCostBasisArr.length > 0
-						? avgCostBasisArr.reduce((a: number, b: number) => a + b, 0) /
-							avgCostBasisArr.length
-						: (data.metrics?.avgCostBasis ?? 0);
 
 				setBacktestResult({
 					cumStrat: filteredStrat,
@@ -426,31 +388,32 @@ export const ValuationStudio: React.FC = () => {
 					trades: filteredTrades,
 					markers: filteredMarkers,
 					metrics: {
-						winRate,
-						profitFactor,
-						totalTrades: filteredTrades.length,
-						sharpeRatio: sharpe,
-						sharpeRatioMarket: sharpeMarket,
-						annReturnStrat: cagr,
-						annReturnMarket: totalReturnMarket,
-						annVolatilityStrat: annVol,
-						annVolatilityMarket: annVolMarket,
-						maxDrawdown: maxDd * 100,
-						maxDrawdownMarket: maxDdM * 100,
-						totalReturnStrat,
-						totalReturnMarket,
-						avgCostBasis,
+						winRate: Number(data.metrics?.winRate ?? 0),
+						profitFactor: Number(data.metrics?.profitFactor ?? 0),
+						totalTrades: Number(data.metrics?.totalTrades ?? 0),
+						sharpeRatio: Number(data.metrics?.sharpeRatio ?? 0),
+						sharpeRatioMarket: Number(data.metrics?.sharpeRatioMarket ?? 0.85),
+						annReturnStrat: Number(data.metrics?.cagr ?? 0),
+						annReturnMarket: Number(data.metrics?.annualizedReturnMarket ?? 0),
+						annVolatilityStrat: Number(data.metrics?.annualizedVolatility ?? 0),
+						annVolatilityMarket: Number(data.metrics?.annualizedVolatilityMarket ?? 0),
+						maxDrawdown: Number(data.metrics?.maxDrawdown ?? 0),
+						maxDrawdownMarket: Number(data.metrics?.maxDrawdownMarket ?? 83.4),
+						totalReturnStrat: Number(data.metrics?.totalReturn ?? 0),
+						totalReturnMarket: Number(data.metrics?.annualizedReturnMarket ?? 0),
+						avgCostBasis: Number(data.metrics?.avgCostBasis ?? 0),
 					},
 				});
 			} catch (err) {
-				console.error("Failed to fetch SDCA backtest", err);
+				console.error("Failed to recalculate SDCA backtest", err);
 			}
-		};
-		fetchBacktest();
-		return () => {
-			isMounted = false;
-		};
-	}, [startDate, endDate]);
+		},
+		[startDate, endDate],
+	);
+
+	useEffect(() => {
+		handleSdcaRecalculate();
+	}, [handleSdcaRecalculate]);
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
@@ -459,13 +422,15 @@ export const ValuationStudio: React.FC = () => {
 		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
 			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 		}
-		if (seriesRef.current.candle && backtestResult.markers.length) {
-			createSeriesMarkers(
-				seriesRef.current.candle,
-				backtestResult.markers as any,
-			);
-		} else if (seriesRef.current.candle) {
-			createSeriesMarkers(seriesRef.current.candle, []);
+		if (seriesRef.current.candle) {
+			if (markersPrimitiveRef.current) {
+				markersPrimitiveRef.current.setMarkers(backtestResult.markers as any);
+			} else {
+				markersPrimitiveRef.current = createSeriesMarkers(
+					seriesRef.current.candle,
+					backtestResult.markers as any,
+				);
+			}
 		}
 	}, [backtestResult]);
 
@@ -1293,12 +1258,6 @@ export const ValuationStudio: React.FC = () => {
 						</div>
 					</div>
 
-					{/* SDCA Strategy Panel */}
-					<SdcaPanel
-						signal={sdcaSignal}
-						currentPrice={displayPoint?.close || 0}
-					/>
-
 					{/* Interactive Backtest Controls & Metrics Bar */}
 					<div
 						className="glass-card"
@@ -1862,34 +1821,34 @@ export const ValuationStudio: React.FC = () => {
 															borderRadius: "4px",
 															fontSize: "10px",
 															background:
-																t.action && t.action.startsWith("BUY")
+																t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
 																	? "rgba(34,197,94,0.1)"
 																	: "rgba(239,68,68,0.1)",
 															color:
-																t.action && t.action.startsWith("BUY")
+																t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
 																	? "var(--signal-bull)"
 																	: "var(--signal-bear)",
 														}}
 													>
-														{t.action}
+														{t.action ? t.action.replace(/_/g, " ") : "-"}
 													</span>
 												</td>
 												<td style={{ padding: "8px" }}>
 													$
-													{(t.price || 0).toLocaleString(undefined, {
+													{Number(t.price ?? t.btc_price ?? 0).toLocaleString(undefined, {
 														minimumFractionDigits: 2,
 														maximumFractionDigits: 2,
 													})}
 												</td>
 												<td style={{ padding: "8px" }}>
 													$
-													{(t.amount || 0).toLocaleString(undefined, {
+													{Number(t.amount ?? t.amount_usd ?? 0).toLocaleString(undefined, {
 														minimumFractionDigits: 2,
 														maximumFractionDigits: 2,
 													})}
 												</td>
 												<td style={{ padding: "8px" }}>
-													{t.multiplier ? `${t.multiplier.toFixed(1)}x` : "-"}
+													{t.multiplier ? `${Number(t.multiplier).toFixed(1)}x` : "-"}
 												</td>
 												<td
 													style={{
@@ -1897,18 +1856,16 @@ export const ValuationStudio: React.FC = () => {
 														textAlign: "right",
 														fontWeight: 700,
 														color:
-															t.action && t.action.startsWith("BUY")
+															t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
 																? "var(--text-muted)"
-																: t.returnPct >= 0
+																: Number(t.netPnlUsd ?? t.net_pnl_usd ?? t.returnPct ?? 0) >= 0
 																	? "var(--signal-bull)"
 																	: "var(--signal-bear)",
 													}}
 												>
-													{t.action && t.action.startsWith("BUY")
+													{t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
 														? "-"
-														: t.returnPct >= 0
-															? `+${t.returnPct.toFixed(2)}%`
-															: `${t.returnPct.toFixed(2)}%`}
+														: `${Number(t.netPnlUsd ?? t.net_pnl_usd ?? 0) >= 0 ? "+" : ""}$${Math.abs(Number(t.netPnlUsd ?? t.net_pnl_usd ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${Number(t.returnPct ?? t.profit_pct ?? 0) >= 0 ? "+" : ""}${Number(t.returnPct ?? t.profit_pct ?? 0).toFixed(1)}%)`}
 												</td>
 											</tr>
 										))

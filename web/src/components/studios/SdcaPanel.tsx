@@ -38,31 +38,43 @@ const SDCA_PRESET_KEY = "sdca_preset_selection";
 // ─── Preset Definitions ─────────────────────────────────────────────
 
 interface SdcaPreset {
-	buy_threshold: number;
-	sell_threshold: number;
+	dca_in_start?: number;
+	all_in_val?: number;
+	dca_out_start?: number;
+	all_out_val?: number;
+	buy_threshold?: number;
+	sell_threshold?: number;
 	description: string;
 }
 
 const SDCA_PRESETS: Record<string, SdcaPreset> = {
 	optimized: {
-		buy_threshold: 0.5,
-		sell_threshold: -1.5,
-		description: "Grid search optimized (default)",
+		dca_in_start: 1.8,
+		all_in_val: 1.5,
+		dca_out_start: -1.5,
+		all_out_val: 0.0,
+		description: "Cycle Hysteresis Default (+41,282% Ret, Sharpe 1.20)",
+	},
+	high_sharpe: {
+		dca_in_start: 1.8,
+		all_in_val: 1.5,
+		dca_out_start: -1.5,
+		all_out_val: -0.5,
+		description: "High Sharpe Focus (+53,919% Ret, Sharpe 1.28)",
+	},
+	max_yield: {
+		dca_in_start: 1.8,
+		all_in_val: 1.5,
+		dca_out_start: -1.5,
+		all_out_val: 0.5,
+		description: "Maximum Yield Focus (+86,409% Ret, Sharpe 1.25)",
 	},
 	conservative: {
-		buy_threshold: 0.5,
-		sell_threshold: -1.5,
-		description: "Lower drawdown focus",
-	},
-	moderate: {
-		buy_threshold: 1.0,
-		sell_threshold: -1.0,
-		description: "Balanced risk/return",
-	},
-	aggressive: {
-		buy_threshold: 1.5,
-		sell_threshold: -0.5,
-		description: "Higher risk, higher return",
+		dca_in_start: 1.5,
+		all_in_val: 1.0,
+		dca_out_start: -1.0,
+		all_out_val: -0.5,
+		description: "Lower Drawdown Focus",
 	},
 };
 
@@ -133,6 +145,13 @@ interface SdcaPanelProps {
 	signal: SdcaSignal | null;
 	/** Current BTC price */
 	currentPrice: number;
+	/** Callback to trigger strategy recalculation on save */
+	onRecalculate?: (thresholds: {
+		dca_in_start: number;
+		all_in_val: number;
+		dca_out_start: number;
+		all_out_val: number;
+	}) => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -140,6 +159,7 @@ interface SdcaPanelProps {
 export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 	signal,
 	currentPrice,
+	onRecalculate,
 }) => {
 	const [collapsed, setCollapsed] = useState(() => {
 		try {
@@ -156,6 +176,50 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 			return "optimized";
 		}
 	});
+
+	const [thresholds, setThresholds] = useState({
+		dca_in_start: 1.8,
+		all_in_val: 1.5,
+		dca_out_start: -1.5,
+		all_out_val: 0.0,
+	});
+
+	const [configOpen, setConfigOpen] = useState(false);
+	const [isRecalculating, setIsRecalculating] = useState(false);
+
+	const handleApplyPreset = (key: string) => {
+		setSelectedPreset(key);
+		try {
+			localStorage.setItem(SDCA_PRESET_KEY, key);
+		} catch {
+			// Ignore
+		}
+		if (SDCA_PRESETS[key]) {
+			const p = SDCA_PRESETS[key];
+			const newT = {
+				dca_in_start: p.dca_in_start ?? 1.8,
+				all_in_val: p.all_in_val ?? 1.5,
+				dca_out_start: p.dca_out_start ?? -1.5,
+				all_out_val: p.all_out_val ?? 0.0,
+			};
+			setThresholds(newT);
+			onRecalculate?.(newT);
+		}
+	};
+
+	const isValid =
+		thresholds.all_in_val <= thresholds.dca_in_start &&
+		thresholds.all_out_val >= thresholds.dca_out_start;
+
+	const handleSaveAndRecalculate = async () => {
+		if (!isValid) return;
+		setIsRecalculating(true);
+		try {
+			await onRecalculate?.(thresholds);
+		} finally {
+			setIsRecalculating(false);
+		}
+	};
 
 	// Backtest metrics from API (set by parent or fetched internally)
 	const [backtestMetrics, _setBacktestMetrics] = useState<{
@@ -395,14 +459,7 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 					{!collapsed && (
 						<select
 							value={selectedPreset}
-							onChange={(e) => {
-								setSelectedPreset(e.target.value);
-								try {
-									localStorage.setItem(SDCA_PRESET_KEY, e.target.value);
-								} catch {
-									// Ignore
-								}
-							}}
+							onChange={(e) => handleApplyPreset(e.target.value)}
 							style={{
 								background: "rgba(59, 130, 246, 0.15)",
 								border: "1px solid rgba(59, 130, 246, 0.3)",
@@ -425,6 +482,29 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 					{!collapsed && (
 						<>
+							<button
+								type="button"
+								onClick={(e) => {
+									e.stopPropagation();
+									setConfigOpen(!configOpen);
+								}}
+								style={{
+									background: configOpen
+										? "rgba(59, 130, 246, 0.4)"
+										: "rgba(59, 130, 246, 0.2)",
+									border: "1px solid rgba(59, 130, 246, 0.4)",
+									borderRadius: "4px",
+									padding: "4px 8px",
+									color: "#93C5FD",
+									cursor: "pointer",
+									fontSize: "10px",
+									display: "flex",
+									alignItems: "center",
+									gap: "4px",
+								}}
+							>
+								⚙️ Strategy Config
+							</button>
 							<button
 								type="button"
 								onClick={(e) => {
@@ -467,14 +547,167 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 							</button>
 						</>
 					)}
-					<ChevronDown
-						size={16}
+				<ChevronDown
+					size={16}
+					style={{
+						transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+						transition: "transform 0.2s ease",
+					}}
+				/>
+			</div>
+
+			{!collapsed && configOpen && (
+				<div
+					style={{
+						padding: "12px 16px",
+						background: "rgba(15, 23, 42, 0.95)",
+						borderBottom: "1px solid rgba(30, 41, 59, 0.8)",
+						display: "grid",
+						gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+						gap: "12px",
+					}}
+				>
+					<div>
+						<label
+							style={{
+								color: "#94A3B8",
+								fontSize: "10px",
+								display: "block",
+								marginBottom: "4px",
+							}}
+						>
+							Start DCA In (≥ {thresholds.dca_in_start.toFixed(2)})
+						</label>
+						<input
+							type="range"
+							min="1.0"
+							max="2.0"
+							step="0.05"
+							value={thresholds.dca_in_start}
+							onChange={(e) =>
+								setThresholds({
+									...thresholds,
+									dca_in_start: parseFloat(e.target.value),
+								})
+							}
+							style={{ width: "100%" }}
+						/>
+					</div>
+					<div>
+						<label
+							style={{
+								color: "#94A3B8",
+								fontSize: "10px",
+								display: "block",
+								marginBottom: "4px",
+							}}
+						>
+							All In (≤ {thresholds.all_in_val.toFixed(2)})
+						</label>
+						<input
+							type="range"
+							min="0.0"
+							max="1.8"
+							step="0.05"
+							value={thresholds.all_in_val}
+							onChange={(e) =>
+								setThresholds({
+									...thresholds,
+									all_in_val: parseFloat(e.target.value),
+								})
+							}
+							style={{ width: "100%" }}
+						/>
+					</div>
+					<div>
+						<label
+							style={{
+								color: "#94A3B8",
+								fontSize: "10px",
+								display: "block",
+								marginBottom: "4px",
+							}}
+						>
+							Start DCA Out (≤ {thresholds.dca_out_start.toFixed(2)})
+						</label>
+						<input
+							type="range"
+							min="-2.0"
+							max="-0.5"
+							step="0.05"
+							value={thresholds.dca_out_start}
+							onChange={(e) =>
+								setThresholds({
+									...thresholds,
+									dca_out_start: parseFloat(e.target.value),
+								})
+							}
+							style={{ width: "100%" }}
+						/>
+					</div>
+					<div>
+						<label
+							style={{
+								color: "#94A3B8",
+								fontSize: "10px",
+								display: "block",
+								marginBottom: "4px",
+							}}
+						>
+							All Out (≥ {thresholds.all_out_val.toFixed(2)})
+						</label>
+						<input
+							type="range"
+							min="-1.5"
+							max="0.5"
+							step="0.05"
+							value={thresholds.all_out_val}
+							onChange={(e) =>
+								setThresholds({
+									...thresholds,
+									all_out_val: parseFloat(e.target.value),
+								})
+							}
+							style={{ width: "100%" }}
+						/>
+					</div>
+					<div
 						style={{
-							transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
-							transition: "transform 0.2s",
+							gridColumn: "1 / -1",
+							display: "flex",
+							justifyContent: "space-between",
+							alignItems: "center",
 						}}
-					/>
+					>
+						{!isValid ? (
+							<span style={{ color: "#EF4444", fontSize: "10px" }}>
+								⚠️ Invalid ordering: All In must be ≤ Start DCA In, All Out must be ≥ Start DCA Out
+							</span>
+						) : (
+							<span style={{ color: "#10B981", fontSize: "10px" }}>
+								✓ Valid Hysteresis Configuration
+							</span>
+						)}
+						<button
+							type="button"
+							disabled={!isValid || isRecalculating}
+							onClick={handleSaveAndRecalculate}
+							style={{
+								background: isValid ? "#10B981" : "#475569",
+								color: "#000",
+								border: "none",
+								borderRadius: "4px",
+								padding: "6px 14px",
+								fontWeight: 600,
+								fontSize: "11px",
+								cursor: isValid ? "pointer" : "not-allowed",
+							}}
+						>
+							{isRecalculating ? "Recalculating..." : "💾 Save & Recalculate Strategy"}
+						</button>
+					</div>
 				</div>
+			)}
 			</div>
 
 			{/* Collapsed Summary */}

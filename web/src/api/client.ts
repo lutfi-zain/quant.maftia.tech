@@ -63,6 +63,16 @@ export const quantClient = {
 		return res.json();
 	},
 
+	async postSdcaBacktest(params?: any): Promise<any> {
+		const res = await fetch(`${API_BASE}/api/v1/sdca/backtest`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(params || {}),
+		});
+		if (!res.ok) throw new Error(`SDCA backtest recalculation failed: ${res.statusText}`);
+		return res.json();
+	},
+
 	async getDailyAnalytics(limit?: number): Promise<DailyAnalyticsPoint[]> {
 		const url = new URL(
 			`${API_BASE}/api/v1/quant/daily`,

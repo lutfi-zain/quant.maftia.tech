@@ -71,6 +71,14 @@ export interface SdcaThresholds {
 	price_pct_sell?: number;
 	/** Days of extended undervaluation before reduce (default: 25, range: 10-60) */
 	extended_discount_days?: number;
+	/** Hysteresis threshold to start DCA IN (default: +1.80, range: +1.0 to +2.0) */
+	dca_in_start?: number;
+	/** Hysteresis threshold to trigger ALL IN (default: +1.50, range: 0.0 to +1.80) */
+	all_in_val?: number;
+	/** Hysteresis threshold to start DCA OUT (default: -1.50, range: -2.0 to -0.50) */
+	dca_out_start?: number;
+	/** Hysteresis threshold to trigger ALL OUT (default: 0.00, range: -1.50 to +0.50) */
+	all_out_val?: number;
 }
 
 /** Default optimized thresholds (Phase B — grid search optimized) */
@@ -80,6 +88,10 @@ export const DEFAULT_SDCA_THRESHOLDS: Required<SdcaThresholds> = {
 	price_pct_buy: 30,
 	price_pct_sell: 75,
 	extended_discount_days: 25,
+	dca_in_start: 1.8,
+	all_in_val: 1.5,
+	dca_out_start: -1.5,
+	all_out_val: 0.0,
 };
 
 /** Validate threshold parameters */
@@ -103,6 +115,31 @@ export function validateThresholds(t: SdcaThresholds): SdcaThresholds {
 			Math.min(60, t.extended_discount_days),
 		);
 	}
+	if (t.dca_in_start !== undefined) {
+		validated.dca_in_start = Math.max(1.0, Math.min(2.0, t.dca_in_start));
+	}
+	if (t.all_in_val !== undefined) {
+		validated.all_in_val = Math.max(0.0, Math.min(2.0, t.all_in_val));
+	}
+	if (t.dca_out_start !== undefined) {
+		validated.dca_out_start = Math.max(-2.0, Math.min(-0.5, t.dca_out_start));
+	}
+	if (t.all_out_val !== undefined) {
+		validated.all_out_val = Math.max(-1.5, Math.min(0.5, t.all_out_val));
+	}
+
+	// Logical order validation
+	if (validated.dca_in_start !== undefined && validated.all_in_val !== undefined) {
+		if (validated.all_in_val > validated.dca_in_start) {
+			validated.all_in_val = validated.dca_in_start;
+		}
+	}
+	if (validated.dca_out_start !== undefined && validated.all_out_val !== undefined) {
+		if (validated.all_out_val < validated.dca_out_start) {
+			validated.all_out_val = validated.dca_out_start;
+		}
+	}
+
 	return validated;
 }
 
@@ -124,6 +161,14 @@ export function mergeThresholds(
 		extended_discount_days:
 			validated.extended_discount_days ??
 			DEFAULT_SDCA_THRESHOLDS.extended_discount_days,
+		dca_in_start:
+			validated.dca_in_start ?? DEFAULT_SDCA_THRESHOLDS.dca_in_start,
+		all_in_val:
+			validated.all_in_val ?? DEFAULT_SDCA_THRESHOLDS.all_in_val,
+		dca_out_start:
+			validated.dca_out_start ?? DEFAULT_SDCA_THRESHOLDS.dca_out_start,
+		all_out_val:
+			validated.all_out_val ?? DEFAULT_SDCA_THRESHOLDS.all_out_val,
 	};
 }
 
@@ -132,7 +177,7 @@ export function mergeThresholds(
 /**
  * Maps valuation_composite to DCA allocation multiplier.
  *
- * Sign convention: positive composite = undervalued (BUY zone), negative composite = overvalued (SELL zone).
+ * Sign convention: positive composite = undervalued (buy), negative composite = overvalued (sell).
  *
  * OPTIMIZED MULTIPLIER TABLE (Phase B):
  * | Composite Range | Multiplier | Phase        | Action          |
@@ -381,20 +426,19 @@ export function regimeConfidence(
 // ─── Full SDCA Signal Computation ───────────────────────────────────────────
 
 /**
- * Compute SDCA signal for a given day using strict t-1 causal filtering.
+ * Compute SDCA signals for entire dataset (vectorized, t-1 causal).
  *
  * @param data - Array of daily records (chronologically sorted)
- * @param dayIndex - Index of the day to compute signal for
- * @returns SDCA signal for the day
+ * @returns Array of SDCA signals for each day
  */
 export function computeSdcaSignals(
 	data: DailyRecord[],
 	_thresholds?: SdcaThresholds,
 ): SdcaSignal[] {
 	const signals: SdcaSignal[] = [];
+	const t = mergeThresholds(_thresholds);
 
-	let state = "NEUTRAL";
-	let buy_all_fired = false;
+	let currentMacroState: "OUT_ALL" | "DCA_IN" | "ALL_IN" | "DCA_OUT" = "OUT_ALL";
 
 	const composites = data.map((d) => d.valuation_composite ?? 0);
 
@@ -439,86 +483,71 @@ export function computeSdcaSignals(
 		}
 
 		let comp_t1 = 0.0;
-		let ratio_t1 = 1.0;
-		let drawdown_t1 = 0.0;
-		let cross_above_ma200 = false;
-		let sma30_t1 = 0.0;
-
 		if (i > 0) {
 			comp_t1 = composites[i - 1];
-			ratio_t1 = ratioList[i - 1];
-			drawdown_t1 = drawdownList[i - 1];
-			const smaWindow = pricesList.slice(Math.max(0, i - 30), i);
-			sma30_t1 = smaWindow.reduce((a, b) => a + b, 0) / smaWindow.length;
-			if (i > 1) {
-				const ratio_t2 = ratioList[i - 2];
-				cross_above_ma200 = ratio_t2 < 1.0 && ratio_t1 >= 1.0;
+		}
+
+		const prevState = currentMacroState;
+
+		// State machine transition evaluation using t-1 causal composite
+		if (currentMacroState === "OUT_ALL") {
+			if (comp_t1 >= t.dca_in_start) {
+				currentMacroState = "DCA_IN";
 			}
-		}
-
-		if (comp_t1 < 0.0) {
-			buy_all_fired = false;
-		}
-
-		// Reset state to NEUTRAL every day to avoid sticky state lock-in
-		state = "NEUTRAL";
-
-		// 1. SELL_ALL
-		const sell_all_trigger =
-			comp_t1 <= -1.5 &&
-			ratio_t1 < 2.0 &&
-			drawdown_t1 >= 20.0 &&
-			data[i - 1].close < sma30_t1;
-		const safety_net_trigger = comp_t1 <= -1.0 && ratio_t1 < 1.0;
-
-		if (sell_all_trigger || safety_net_trigger) {
-			state = "SELL_ALL";
-		} else if (
-			comp_t1 <= -1.0 &&
-			ratio_t1 < 2.0 &&
-			data[i - 1].close < sma30_t1
-		) {
-			state = "SELL_DCA";
-		} else if (comp_t1 >= 1.0 && cross_above_ma200 && !buy_all_fired) {
-			state = "BUY_ALL";
-		} else if (comp_t1 >= 1.0 && ratio_t1 < 1.0) {
-			state = "BUY_DCA";
-		} else if (comp_t1 > -0.5 && comp_t1 < 0.5) {
-			state = "NEUTRAL";
+		} else if (currentMacroState === "DCA_IN") {
+			if (comp_t1 <= t.all_in_val) {
+				currentMacroState = "ALL_IN";
+			}
+		} else if (currentMacroState === "ALL_IN") {
+			if (comp_t1 <= t.dca_out_start) {
+				currentMacroState = "DCA_OUT";
+			}
+		} else if (currentMacroState === "DCA_OUT") {
+			if (comp_t1 >= t.all_out_val) {
+				currentMacroState = "OUT_ALL";
+			}
 		}
 
 		let action: SdcaAction = "HOLD";
 		let multiplier = 0.0;
+		let phase: SdcaPhase = "neutral";
 
-		if (state === "SELL_ALL") {
-			action = "SELL_ALL";
-			multiplier = -1.0;
-		} else if (state === "SELL_DCA") {
-			if (isMonday) {
+		const isTransition = currentMacroState !== prevState;
+
+		if (currentMacroState === "ALL_IN") {
+			phase = "buy_all";
+			if (isTransition) {
+				action = "BUY_ALL";
+				multiplier = 999.0;
+			} else {
+				action = "HOLD";
+				multiplier = 0.0;
+			}
+		} else if (currentMacroState === "DCA_IN") {
+			phase = "buy_dca";
+			if (isTransition || isMonday) {
+				action = "BUY_DCA";
+				multiplier = 2.0;
+			} else {
+				action = "HOLD";
+				multiplier = 0.0;
+			}
+		} else if (currentMacroState === "DCA_OUT") {
+			phase = "sell_dca";
+			if (isTransition || isMonday) {
 				action = "SELL_DCA";
-				multiplier = comp_t1 <= -1.5 ? -0.15 : -0.08;
+				multiplier = -0.15;
 			} else {
 				action = "HOLD";
 				multiplier = 0.0;
 			}
-		} else if (state === "BUY_ALL") {
-			action = "BUY_ALL";
-			multiplier = 999.0;
-			buy_all_fired = true;
-			state = "NEUTRAL";
-		} else if (state === "BUY_DCA") {
-			if (isMonday) {
-				action = "BUY_DCA";
-				multiplier = comp_t1 >= 1.5 ? 3.0 : comp_t1 >= 1.0 ? 2.0 : 1.5;
+		} else if (currentMacroState === "OUT_ALL") {
+			if (isTransition) {
+				phase = "sell_all";
+				action = "SELL_ALL";
+				multiplier = -1.0;
 			} else {
-				action = "HOLD";
-				multiplier = 0.0;
-			}
-		} else if (state === "NEUTRAL") {
-			if (isMonday && comp_t1 >= 0.5) {
-				action = "BUY_DCA";
-				multiplier = 1.0;
-			} else {
+				phase = "neutral";
 				action = "HOLD";
 				multiplier = 0.0;
 			}
@@ -527,7 +556,7 @@ export function computeSdcaSignals(
 		signals.push({
 			date: dateStr,
 			multiplier,
-			phase: state.toLowerCase() as SdcaPhase,
+			phase,
 			action,
 			confidence: "HIGH",
 			pricePercentile: ratio * 100.0,

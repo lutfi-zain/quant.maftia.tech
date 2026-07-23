@@ -233,13 +233,13 @@ describe("computeSdcaSignal", () => {
 
 	it("enforces t-1 causal filtering", () => {
 		const data: DailyRecord[] = [
-			{ date: "2024-01-06", close: 50000, valuation_composite: 1.5 },
-			{ date: "2024-01-07", close: 45000, valuation_composite: 1.5 },
+			{ date: "2024-01-06", close: 50000, valuation_composite: 1.0 },
+			{ date: "2024-01-07", close: 45000, valuation_composite: 1.9 },
 			{ date: "2024-01-08", close: 52000, valuation_composite: -1.5 },
 		];
 
 		const signal = computeSdcaSignal(data, 2);
-		expect(signal.multiplier).toBe(3.0);
+		expect(signal.phase).toBe("buy_dca");
 	});
 });
 
@@ -258,5 +258,30 @@ describe("computeSdcaSignals", () => {
 		signals.forEach((s) => {
 			expect(s.phase).toBe("neutral");
 		});
+	});
+});
+
+describe("Hysteresis State Machine", () => {
+	it("executes state transitions OUT_ALL -> DCA_IN -> ALL_IN -> DCA_OUT -> OUT_ALL", () => {
+		const data: DailyRecord[] = [
+			{ date: "2024-01-01", close: 50000, valuation_composite: 0.0 },
+			{ date: "2024-01-02", close: 40000, valuation_composite: 1.9 }, // comp >= 1.8 -> DCA_IN
+			{ date: "2024-01-03", close: 35000, valuation_composite: 1.4 }, // comp <= 1.5 -> ALL_IN
+			{ date: "2024-01-04", close: 60000, valuation_composite: -1.6 }, // comp <= -1.5 -> DCA_OUT
+			{ date: "2024-01-05", close: 55000, valuation_composite: 0.2 }, // comp >= 0.0 -> OUT_ALL
+		];
+
+		const signals = computeSdcaSignals(data, {
+			dca_in_start: 1.8,
+			all_in_val: 1.5,
+			dca_out_start: -1.5,
+			all_out_val: 0.0,
+		});
+
+		expect(signals[0].phase).toBe("neutral"); // OUT_ALL
+		expect(signals[1].phase).toBe("neutral"); // t-1 was 0.0
+		expect(signals[2].phase).toBe("buy_dca"); // t-1 was 1.9 (DCA_IN)
+		expect(signals[3].phase).toBe("buy_all"); // t-1 was 1.4 (ALL_IN)
+		expect(signals[4].phase).toBe("sell_dca"); // t-1 was -1.6 (DCA_OUT)
 	});
 });
