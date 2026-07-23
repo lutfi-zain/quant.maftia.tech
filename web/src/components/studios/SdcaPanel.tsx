@@ -6,7 +6,7 @@
  */
 
 import type React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
 	ChevronDown,
 	Download,
@@ -177,20 +177,72 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 		}
 	});
 
-	const [thresholds, setThresholds] = useState({
-		dca_in_start: 1.8,
-		all_in_val: 1.5,
-		dca_out_start: -1.5,
-		all_out_val: 0.0,
+	// Initialize thresholds from localStorage or defaults
+	const [thresholds, setThresholds] = useState(() => {
+		try {
+			const saved = localStorage.getItem("sdca_custom_thresholds");
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				return {
+					dca_in_start: parsed.dca_in_start ?? 1.8,
+					all_in_val: parsed.all_in_val ?? 1.5,
+					dca_out_start: parsed.dca_out_start ?? -1.5,
+					all_out_val: parsed.all_out_val ?? 0.0,
+				};
+			}
+		} catch {
+			/* ignore */
+		}
+		return {
+			dca_in_start: 1.8,
+			all_in_val: 1.5,
+			dca_out_start: -1.5,
+			all_out_val: 0.0,
+		};
 	});
 
 	const [configOpen, setConfigOpen] = useState(false);
 	const [isRecalculating, setIsRecalculating] = useState(false);
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// Check if current thresholds diverge from all presets → "Custom"
+	const isCustomPreset = useMemo(() => {
+		const current = JSON.stringify(thresholds);
+		return !Object.values(SDCA_PRESETS).some((p) => {
+			const pStr = JSON.stringify({
+				dca_in_start: p.dca_in_start ?? 1.8,
+				all_in_val: p.all_in_val ?? 1.5,
+				dca_out_start: p.dca_out_start ?? -1.5,
+				all_out_val: p.all_out_val ?? 0.0,
+			});
+			return pStr === current;
+		});
+	}, [thresholds]);
+
+	// Save thresholds to localStorage with 300ms debounce + auto-recalculate
+	const handleThresholdChange = (key: string, value: number) => {
+		const newT = { ...thresholds, [key]: value };
+		setThresholds(newT);
+		setSelectedPreset("custom");
+
+		// Debounce localStorage save + recalculate
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(() => {
+			try {
+				localStorage.setItem("sdca_custom_thresholds", JSON.stringify(newT));
+				localStorage.removeItem(SDCA_PRESET_KEY);
+			} catch {
+				/* ignore */
+			}
+			onRecalculate?.(newT);
+		}, 300);
+	};
 
 	const handleApplyPreset = (key: string) => {
 		setSelectedPreset(key);
 		try {
 			localStorage.setItem(SDCA_PRESET_KEY, key);
+			localStorage.removeItem("sdca_custom_thresholds");
 		} catch {
 			// Ignore
 		}
@@ -302,6 +354,13 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 			// Ignore
 		}
 	}, [collapsed]);
+
+	// Cleanup debounce timer on unmount
+	useEffect(() => {
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, []);
 
 	const metrics = useMemo(
 		() => computeMetrics(portfolio, currentPrice),
@@ -471,6 +530,9 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 								fontFamily: "Geist Mono, monospace",
 							}}
 						>
+							{isCustomPreset && (
+								<option value="custom">⚙ Custom Configuration</option>
+							)}
 							{Object.entries(SDCA_PRESETS).map(([key, preset]) => (
 								<option key={key} value={key}>
 									{preset.description}
@@ -547,167 +609,170 @@ export const SdcaPanel: React.FC<SdcaPanelProps> = ({
 							</button>
 						</>
 					)}
-				<ChevronDown
-					size={16}
-					style={{
-						transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
-						transition: "transform 0.2s ease",
-					}}
-				/>
-			</div>
+					<ChevronDown
+						size={16}
+						style={{
+							transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+							transition: "transform 0.2s ease",
+						}}
+					/>
+				</div>
 
-			{!collapsed && configOpen && (
-				<div
-					style={{
-						padding: "12px 16px",
-						background: "rgba(15, 23, 42, 0.95)",
-						borderBottom: "1px solid rgba(30, 41, 59, 0.8)",
-						display: "grid",
-						gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-						gap: "12px",
-					}}
-				>
-					<div>
-						<label
-							style={{
-								color: "#94A3B8",
-								fontSize: "10px",
-								display: "block",
-								marginBottom: "4px",
-							}}
-						>
-							Start DCA In (≥ {thresholds.dca_in_start.toFixed(2)})
-						</label>
-						<input
-							type="range"
-							min="1.0"
-							max="2.0"
-							step="0.05"
-							value={thresholds.dca_in_start}
-							onChange={(e) =>
-								setThresholds({
-									...thresholds,
-									dca_in_start: parseFloat(e.target.value),
-								})
-							}
-							style={{ width: "100%" }}
-						/>
-					</div>
-					<div>
-						<label
-							style={{
-								color: "#94A3B8",
-								fontSize: "10px",
-								display: "block",
-								marginBottom: "4px",
-							}}
-						>
-							All In (≤ {thresholds.all_in_val.toFixed(2)})
-						</label>
-						<input
-							type="range"
-							min="0.0"
-							max="1.8"
-							step="0.05"
-							value={thresholds.all_in_val}
-							onChange={(e) =>
-								setThresholds({
-									...thresholds,
-									all_in_val: parseFloat(e.target.value),
-								})
-							}
-							style={{ width: "100%" }}
-						/>
-					</div>
-					<div>
-						<label
-							style={{
-								color: "#94A3B8",
-								fontSize: "10px",
-								display: "block",
-								marginBottom: "4px",
-							}}
-						>
-							Start DCA Out (≤ {thresholds.dca_out_start.toFixed(2)})
-						</label>
-						<input
-							type="range"
-							min="-2.0"
-							max="-0.5"
-							step="0.05"
-							value={thresholds.dca_out_start}
-							onChange={(e) =>
-								setThresholds({
-									...thresholds,
-									dca_out_start: parseFloat(e.target.value),
-								})
-							}
-							style={{ width: "100%" }}
-						/>
-					</div>
-					<div>
-						<label
-							style={{
-								color: "#94A3B8",
-								fontSize: "10px",
-								display: "block",
-								marginBottom: "4px",
-							}}
-						>
-							All Out (≥ {thresholds.all_out_val.toFixed(2)})
-						</label>
-						<input
-							type="range"
-							min="-1.5"
-							max="0.5"
-							step="0.05"
-							value={thresholds.all_out_val}
-							onChange={(e) =>
-								setThresholds({
-									...thresholds,
-									all_out_val: parseFloat(e.target.value),
-								})
-							}
-							style={{ width: "100%" }}
-						/>
-					</div>
+				{!collapsed && configOpen && (
 					<div
 						style={{
-							gridColumn: "1 / -1",
-							display: "flex",
-							justifyContent: "space-between",
-							alignItems: "center",
+							padding: "12px 16px",
+							background: "rgba(15, 23, 42, 0.95)",
+							borderBottom: "1px solid rgba(30, 41, 59, 0.8)",
+							display: "grid",
+							gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+							gap: "12px",
 						}}
 					>
-						{!isValid ? (
-							<span style={{ color: "#EF4444", fontSize: "10px" }}>
-								⚠️ Invalid ordering: All In must be ≤ Start DCA In, All Out must be ≥ Start DCA Out
-							</span>
-						) : (
-							<span style={{ color: "#10B981", fontSize: "10px" }}>
-								✓ Valid Hysteresis Configuration
-							</span>
-						)}
-						<button
-							type="button"
-							disabled={!isValid || isRecalculating}
-							onClick={handleSaveAndRecalculate}
+						<div>
+							<label
+								style={{
+									color: "#94A3B8",
+									fontSize: "10px",
+									display: "block",
+									marginBottom: "4px",
+								}}
+							>
+								Start DCA In (≥ {thresholds.dca_in_start.toFixed(2)})
+							</label>
+							<input
+								type="range"
+								min="1.0"
+								max="2.0"
+								step="0.05"
+								value={thresholds.dca_in_start}
+								onChange={(e) =>
+									handleThresholdChange(
+										"dca_in_start",
+										parseFloat(e.target.value),
+									)
+								}
+								style={{ width: "100%" }}
+							/>
+						</div>
+						<div>
+							<label
+								style={{
+									color: "#94A3B8",
+									fontSize: "10px",
+									display: "block",
+									marginBottom: "4px",
+								}}
+							>
+								All In (≤ {thresholds.all_in_val.toFixed(2)})
+							</label>
+							<input
+								type="range"
+								min="0.0"
+								max="1.8"
+								step="0.05"
+								value={thresholds.all_in_val}
+								onChange={(e) =>
+									handleThresholdChange(
+										"all_in_val",
+										parseFloat(e.target.value),
+									)
+								}
+								style={{ width: "100%" }}
+							/>
+						</div>
+						<div>
+							<label
+								style={{
+									color: "#94A3B8",
+									fontSize: "10px",
+									display: "block",
+									marginBottom: "4px",
+								}}
+							>
+								Start DCA Out (≤ {thresholds.dca_out_start.toFixed(2)})
+							</label>
+							<input
+								type="range"
+								min="-2.0"
+								max="-0.5"
+								step="0.05"
+								value={thresholds.dca_out_start}
+								onChange={(e) =>
+									handleThresholdChange(
+										"dca_out_start",
+										parseFloat(e.target.value),
+									)
+								}
+								style={{ width: "100%" }}
+							/>
+						</div>
+						<div>
+							<label
+								style={{
+									color: "#94A3B8",
+									fontSize: "10px",
+									display: "block",
+									marginBottom: "4px",
+								}}
+							>
+								All Out (≥ {thresholds.all_out_val.toFixed(2)})
+							</label>
+							<input
+								type="range"
+								min="-1.5"
+								max="0.5"
+								step="0.05"
+								value={thresholds.all_out_val}
+								onChange={(e) =>
+									handleThresholdChange(
+										"all_out_val",
+										parseFloat(e.target.value),
+									)
+								}
+								style={{ width: "100%" }}
+							/>
+						</div>
+						<div
 							style={{
-								background: isValid ? "#10B981" : "#475569",
-								color: "#000",
-								border: "none",
-								borderRadius: "4px",
-								padding: "6px 14px",
-								fontWeight: 600,
-								fontSize: "11px",
-								cursor: isValid ? "pointer" : "not-allowed",
+								gridColumn: "1 / -1",
+								display: "flex",
+								justifyContent: "space-between",
+								alignItems: "center",
 							}}
 						>
-							{isRecalculating ? "Recalculating..." : "💾 Save & Recalculate Strategy"}
-						</button>
+							{!isValid ? (
+								<span style={{ color: "#EF4444", fontSize: "10px" }}>
+									⚠️ Invalid ordering: All In must be ≤ Start DCA In, All Out
+									must be ≥ Start DCA Out
+								</span>
+							) : (
+								<span style={{ color: "#10B981", fontSize: "10px" }}>
+									✓ Valid Hysteresis Configuration
+								</span>
+							)}
+							<button
+								type="button"
+								disabled={!isValid || isRecalculating}
+								onClick={handleSaveAndRecalculate}
+								style={{
+									background: isValid ? "#10B981" : "#475569",
+									color: "#000",
+									border: "none",
+									borderRadius: "4px",
+									padding: "6px 14px",
+									fontWeight: 600,
+									fontSize: "11px",
+									cursor: isValid ? "pointer" : "not-allowed",
+								}}
+							>
+								{isRecalculating
+									? "Recalculating..."
+									: "💾 Save & Recalculate Strategy"}
+							</button>
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 			</div>
 
 			{/* Collapsed Summary */}

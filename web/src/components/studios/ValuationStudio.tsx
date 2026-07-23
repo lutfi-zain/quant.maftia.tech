@@ -33,8 +33,14 @@ import { exportChartsToPng } from "../../lib/exportPng";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {} from "../../lib/studioBacktest";
-import type { SdcaSignal } from "../../lib/sdcaEngine";
+import type {
+	SdcaSignal,
+	SdcaPhase,
+	SdcaAction,
+	RegimeConfidence,
+} from "../../lib/sdcaEngine";
 import { SdcaChart } from "./SdcaChart";
+import { SdcaPanel } from "./SdcaPanel";
 import { SdcaPhaseTimeline } from "./SdcaPhaseTimeline";
 import type { PortfolioState } from "../../lib/sdcaPortfolio";
 import {
@@ -330,7 +336,11 @@ export const ValuationStudio: React.FC = () => {
 				let baseStrat = 1;
 				let baseMarket = 1;
 				for (const p of dailyData) {
-					if (p.date >= startDate && p.date <= endDate && stratMap.has(p.date)) {
+					if (
+						p.date >= startDate &&
+						p.date <= endDate &&
+						stratMap.has(p.date)
+					) {
 						baseStrat = stratMap.get(p.date) || 1;
 						baseMarket = marketMap.get(p.date) || 1;
 						break;
@@ -341,7 +351,11 @@ export const ValuationStudio: React.FC = () => {
 				let lastMarketVal = 1;
 
 				const filteredStrat = dailyData.map((p) => {
-					if (p.date >= startDate && p.date <= endDate && stratMap.has(p.date)) {
+					if (
+						p.date >= startDate &&
+						p.date <= endDate &&
+						stratMap.has(p.date)
+					) {
 						lastStratVal = (stratMap.get(p.date) || 1) / (baseStrat || 1);
 					} else if (p.date < startDate) {
 						lastStratVal = 1.0;
@@ -353,7 +367,11 @@ export const ValuationStudio: React.FC = () => {
 				});
 
 				const filteredMarket = dailyData.map((p) => {
-					if (p.date >= startDate && p.date <= endDate && marketMap.has(p.date)) {
+					if (
+						p.date >= startDate &&
+						p.date <= endDate &&
+						marketMap.has(p.date)
+					) {
 						lastMarketVal = (marketMap.get(p.date) || 1) / (baseMarket || 1);
 					} else if (p.date < startDate) {
 						lastMarketVal = 1.0;
@@ -396,11 +414,15 @@ export const ValuationStudio: React.FC = () => {
 						annReturnStrat: Number(data.metrics?.cagr ?? 0),
 						annReturnMarket: Number(data.metrics?.annualizedReturnMarket ?? 0),
 						annVolatilityStrat: Number(data.metrics?.annualizedVolatility ?? 0),
-						annVolatilityMarket: Number(data.metrics?.annualizedVolatilityMarket ?? 0),
+						annVolatilityMarket: Number(
+							data.metrics?.annualizedVolatilityMarket ?? 0,
+						),
 						maxDrawdown: Number(data.metrics?.maxDrawdown ?? 0),
 						maxDrawdownMarket: Number(data.metrics?.maxDrawdownMarket ?? 83.4),
 						totalReturnStrat: Number(data.metrics?.totalReturn ?? 0),
-						totalReturnMarket: Number(data.metrics?.annualizedReturnMarket ?? 0),
+						totalReturnMarket: Number(
+							data.metrics?.annualizedReturnMarket ?? 0,
+						),
 						avgCostBasis: Number(data.metrics?.avgCostBasis ?? 0),
 					},
 				});
@@ -1821,11 +1843,15 @@ export const ValuationStudio: React.FC = () => {
 															borderRadius: "4px",
 															fontSize: "10px",
 															background:
-																t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
+																t.action &&
+																(t.action.startsWith("BUY") ||
+																	t.action === "ALL_IN")
 																	? "rgba(34,197,94,0.1)"
 																	: "rgba(239,68,68,0.1)",
 															color:
-																t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
+																t.action &&
+																(t.action.startsWith("BUY") ||
+																	t.action === "ALL_IN")
 																	? "var(--signal-bull)"
 																	: "var(--signal-bear)",
 														}}
@@ -1835,20 +1861,28 @@ export const ValuationStudio: React.FC = () => {
 												</td>
 												<td style={{ padding: "8px" }}>
 													$
-													{Number(t.price ?? t.btc_price ?? 0).toLocaleString(undefined, {
-														minimumFractionDigits: 2,
-														maximumFractionDigits: 2,
-													})}
+													{Number(t.price ?? t.btc_price ?? 0).toLocaleString(
+														undefined,
+														{
+															minimumFractionDigits: 2,
+															maximumFractionDigits: 2,
+														},
+													)}
 												</td>
 												<td style={{ padding: "8px" }}>
 													$
-													{Number(t.amount ?? t.amount_usd ?? 0).toLocaleString(undefined, {
-														minimumFractionDigits: 2,
-														maximumFractionDigits: 2,
-													})}
+													{Number(t.amount ?? t.amount_usd ?? 0).toLocaleString(
+														undefined,
+														{
+															minimumFractionDigits: 2,
+															maximumFractionDigits: 2,
+														},
+													)}
 												</td>
 												<td style={{ padding: "8px" }}>
-													{t.multiplier ? `${Number(t.multiplier).toFixed(1)}x` : "-"}
+													{t.multiplier
+														? `${Number(t.multiplier).toFixed(1)}x`
+														: "-"}
 												</td>
 												<td
 													style={{
@@ -1856,14 +1890,22 @@ export const ValuationStudio: React.FC = () => {
 														textAlign: "right",
 														fontWeight: 700,
 														color:
-															t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
+															t.action &&
+															(t.action.startsWith("BUY") ||
+																t.action === "ALL_IN")
 																? "var(--text-muted)"
-																: Number(t.netPnlUsd ?? t.net_pnl_usd ?? t.returnPct ?? 0) >= 0
+																: Number(
+																			t.netPnlUsd ??
+																				t.net_pnl_usd ??
+																				t.returnPct ??
+																				0,
+																		) >= 0
 																	? "var(--signal-bull)"
 																	: "var(--signal-bear)",
 													}}
 												>
-													{t.action && (t.action.startsWith("BUY") || t.action === "ALL_IN")
+													{t.action &&
+													(t.action.startsWith("BUY") || t.action === "ALL_IN")
 														? "-"
 														: `${Number(t.netPnlUsd ?? t.net_pnl_usd ?? 0) >= 0 ? "+" : ""}$${Math.abs(Number(t.netPnlUsd ?? t.net_pnl_usd ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${Number(t.returnPct ?? t.profit_pct ?? 0) >= 0 ? "+" : ""}${Number(t.returnPct ?? t.profit_pct ?? 0).toFixed(1)}%)`}
 												</td>
@@ -1875,6 +1917,31 @@ export const ValuationStudio: React.FC = () => {
 						</div>
 					</div>
 
+					<SdcaPanel
+						signal={
+							dailyData.length > 0
+								? {
+										date: dailyData[dailyData.length - 1].date as string,
+										multiplier: (dailyData[dailyData.length - 1]
+											.sdca_multiplier ?? 0) as number,
+										phase: (dailyData[dailyData.length - 1].sdca_phase ??
+											"fair") as SdcaPhase,
+										action: (dailyData[dailyData.length - 1].sdca_action ??
+											"HOLD") as SdcaAction,
+										confidence: (dailyData[dailyData.length - 1]
+											.sdca_confidence ?? "HIGH") as RegimeConfidence,
+										pricePercentile: 50 as number,
+										trendPositive: true as boolean,
+									}
+								: null
+						}
+						currentPrice={
+							dailyData.length > 0
+								? (dailyData[dailyData.length - 1].close as number)
+								: 0
+						}
+						onRecalculate={handleSdcaRecalculate}
+					/>
 					<SdcaPhaseTimeline
 						data={dailyData.map((d: any) => ({
 							date: d.date,
