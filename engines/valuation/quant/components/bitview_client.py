@@ -11,6 +11,24 @@ class BitviewClientError(Exception):
     """Custom exception class for Bitview API client errors."""
     pass
 
+_cvsc_cache: dict[str, float] | None = None
+
+def fetch_cvsc() -> pd.DataFrame:
+    """
+    Fetches the Cointime Value Stored Cumulative (CVSC) series from bitview.space.
+    CVSC is the total cumulative cointime value stored in the Bitcoin network,
+    used as a network-scaling denominator for DR-immune indicators.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        logger.info("Fetching CVSC series from bitview.space...")
+        return fetch_series("cointime_value_stored_cumulative")
+    except Exception as e:
+        logger.error(f"Failed to fetch CVSC: {e}")
+        return pd.DataFrame()
+
+
 def fetch_series(series_name: str, index: str = "day1", start_date: str | None = None) -> pd.DataFrame:
     """
     Fetches time-series data from bitview.space API and returns a pandas DataFrame.

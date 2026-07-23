@@ -6,7 +6,7 @@ from quant.components.normalization import normalize_metric
 
 class SharpeRatio52wComponent(BaseComponent):
     METRIC_NAME = "sharpe_ratio_52w"
-    DESCRIPTION = "Rolling 52-Week Sharpe Ratio"
+    DESCRIPTION = "[DEPRECATED] Rolling 52-Week Sharpe Ratio"
     CATEGORY = "technical"
 
     def fetch_data(self, full_rebuild: bool = False) -> pd.DataFrame:

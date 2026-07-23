@@ -7,7 +7,7 @@ from quant.components.normalization import normalize_metric
 
 class DvrsiComponent(BaseComponent):
     METRIC_NAME = "dvrsi"
-    DESCRIPTION = "Dynamic Volume RSI (DVRSI) with Daily RSI Fallback"
+    DESCRIPTION = "[DEPRECATED] Dynamic Volume RSI (DVRSI) with Daily RSI Fallback"
     CATEGORY = "technical"
 
     def fetch_data(self, full_rebuild: bool = False) -> pd.DataFrame:

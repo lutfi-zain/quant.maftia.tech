@@ -5,7 +5,7 @@ from quant.components.normalization import normalize_metric
 
 class CvddRatioComponent(BaseComponent):
     METRIC_NAME = "cvdd_ratio"
-    DESCRIPTION = "CVDD Ratio"
+    DESCRIPTION = "[DEPRECATED] CVDD Ratio"
     CATEGORY = "fundamental"
 
     def fetch_data(self, full_rebuild: bool = False) -> pd.DataFrame:

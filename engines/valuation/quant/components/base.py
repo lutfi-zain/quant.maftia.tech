@@ -130,9 +130,18 @@ class BaseComponent(ABC):
         finally:
             conn.close()
 
+    def rescale(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Optional rescaling step applied after normalize and before store.
+        Override this in subclasses to apply expanding-window percentile rescaling.
+        Default is no-op.
+        """
+        return df
+
     def _default_run_pipeline(self, full_rebuild: bool = False) -> dict:
         """
         Helper method providing default run_pipeline implementation.
+        Pipeline: fetch_data -> normalize -> rescale -> store
         """
         try:
             df = self.fetch_data(full_rebuild=full_rebuild)
@@ -148,7 +157,8 @@ class BaseComponent(ABC):
                 }
 
             df_norm = self.normalize(df)
-            rows_stored = self.store(df_norm)
+            df_rescaled = self.rescale(df_norm)
+            rows_stored = self.store(df_rescaled)
 
             return {
                 "metric_name": self.METRIC_NAME,

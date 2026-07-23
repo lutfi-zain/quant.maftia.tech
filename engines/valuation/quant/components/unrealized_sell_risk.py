@@ -5,7 +5,7 @@ from quant.components.normalization import normalize_metric
 
 class UnrealizedSellRiskComponent(BaseComponent):
     METRIC_NAME = "unrealized_sell_risk"
-    DESCRIPTION = "Unrealized Sell-Side Risk Ratio"
+    DESCRIPTION = "[DEPRECATED] Unrealized Sell-Side Risk Ratio"
     CATEGORY = "fundamental"
 
     def fetch_data(self, full_rebuild: bool = False) -> pd.DataFrame:

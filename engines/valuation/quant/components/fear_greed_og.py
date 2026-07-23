@@ -7,7 +7,7 @@ from quant.components.normalization import normalize_metric
 
 class FearGreedOgComponent(BaseComponent):
     METRIC_NAME = "fear_greed_og"
-    DESCRIPTION = "Alternative.me Crypto Fear & Greed Index"
+    DESCRIPTION = "[DEPRECATED] Alternative.me Crypto Fear & Greed Index"
     CATEGORY = "sentiment"
 
     def fetch_data(self, full_rebuild: bool = False) -> pd.DataFrame:

@@ -52,6 +52,7 @@ graph TD
 ```
 
 ### 2.1 Desain Modul (*Domain-Driven Design Principles*)
+
 1. **Isolated Component Playgrounds (`quant/components/*.py`)**:
    Setiap indikator diimplementasikan sebagai skrip Python independen yang mewarisi kelas dasar `BaseComponent`. Modul ini bertanggung jawab atas dua metode utama: `fetch_data()` (pengambilan atau kalkulasi data mentah) dan `normalize()` (pemetaan ke skala `-2` s.d `+2`).
 2. **Orkestrator Pipeline (`quant/run_all.py`)**:
@@ -65,52 +66,38 @@ graph TD
 
 Sistem mengkategorikan 17 komponen kuantitatif ke dalam tiga pilar utama:
 
-### A. Pilar Fundamental (*On-Chain & Network Valuation*)
-Mengukur valuasi intrinsik jaringan berdasarkan perilaku *holder*, profitabilitas *chain*, dan rasio pasar terhadap modal terealisasi.
-| No | Indikator | Kode Modul | Rentang Normalisasi | Interpretasi Utama |
-|---|---|---|---|---|
-| 1 | **MVRV Z-Score** | `mvrv.py` | `[-2, +2]` | Mengukur standar deviasi kapitalisasi pasar dari kapitalisasi terealisasi (*Realized Cap*). |
-| 2 | **NUPL (Net Unrealized Profit/Loss)** | `nupl.py` | `[-2, +2]` | Proporsi total keuntungan bersih yang belum terealisasi dalam jaringan. |
-| 3 | **Puell Multiple** | `puell.py` | `[-2, +2]` | Profitabilitas *miner*: rasio penerbitan harian BTC terhadap rata-rata bergerak 365 hari. |
-| 4 | **Reserve Risk** | `reserve_risk.py` | `[-2, +2]` | Tingkat kepercayaan *long-term holder* dibandingkan dengan insentif untuk menjual. |
-| 5 | **RHODL Ratio** | `rhodl.py` | `[-2, +2]` | Rasio *Realized Value HODL Waves* koin usia 1 minggu vs 1-2 tahun. |
-| 6 | **True Market Mean Deviation** | `true_market.py` | `[-2, +2]` | Deviasi harga dari harga rata-rata aktif/true market base. |
-| 7 | **Thermocap Ratio** | `thermocap.py` | `[-2, +2]` | Valuasi pasar relatif terhadap total biaya keamanan jaringan terakumulasi. |
+### A. Pilar Cointime-Adjusted Valuation (*DR-Immune Indicators*)
 
-### B. Pilar Teknikal (*Price Action & Trend Momentum*)
-Mengukur penyimpangan harga historis dan struktur tren makro.
-| No | Indikator | Kode Modul | Rentang Normalisasi | Interpretasi Utama |
-|---|---|---|---|---|
-| 8 | **200-Week SMA Heatmap / Extension** | `ma_200w.py` | `[-2, +2]` | Ekstensi harga saat ini di atas rata-rata bergerak 200 minggu (*cycle floor historical*). |
-| 9 | **Mayer Multiple** | `mayer.py` | `[-2, +2]` | Rasio harga saat ini terhadap 200-day Simple Moving Average (SMA). |
-| 10 | **Logarithmic Growth Curves** | `log_growth.py` | `[-2, +2]` | Posisi harga di dalam saluran regresi regresi power-law / logaritmik jangka panjang. |
-| 11 | **Pi Cycle Top Indicator** | `pi_cycle.py` | `[-2, +2]` | Proximity persilangan antara 111-day SMA dan 2 × 350-day SMA. |
-| 12 | **Stock-to-Flow Model Deviation** | `s2f.py` | `[-2, +2]` | Deviasi harga dari rasio *kelangkaan* pasokan (berbasis siklus *halving*). |
+Mengukur valuasi intrinsik jaringan menggunakan cointime-adjustment (pembagian dengan Cointime Value Stored Cumulative/CVSC) untuk menghasilkan osilator stasioner yang kebal terhadap *diminishing returns* antar siklus.
 
-### C. Pilar Sentimen (*Market Psychology & Behavior*)
-Mengukur ekstremitas ketakutan (*fear*) dan keserakahan (*greed*) para pelaku pasar.
 | No | Indikator | Kode Modul | Rentang Normalisasi | Interpretasi Utama |
 |---|---|---|---|---|
-| 13 | **Fear & Greed Index** | `fear_greed.py` | `[-2, +2]` | Komposit volatilitas, momentum pasar, media sosial, dan dominasi BTC. |
-| 14 | **Google Trends (Search Volume)** | `google_trends.py` | `[-2, +2]` | Intensitas minat ritel publik global terhadap kata kunci "Bitcoin". |
-| 15 | **Funding Rates Comparison** | `funding_rates.py` | `[-2, +2]` | Tingkat *leverage* dan agresivitas *positioning* di pasar derivatif *perpetual*. |
-| 16 | **CDD (Coin Days Destroyed)** | `cdd.py` | `[-2, +2]` | Aktivitas pergerakan koin tua/lama oleh *OG holders*. |
-| 17 | **Realized Cap HODL Waves** | `hodl_waves.py` | `[-2, +2]` | Proporsi distribusi kekayaan on-chain berdasarkan usia koin. |
+| 1 | **AVIV Ratio** | `aviv_ratio.py` | `[-2, +2]` | MVRV yang disesuaikan dengan *cointime value stored* (cointime-adjusted). Satu-satunya metrik yang secara alami DR-immune tanpa transformasi. |
+| 2 | **MVRV Z-Score / CVSC** | `mvrv_z_cvsc.py` | `[-2, +2]` | MVRV Z-Score klasik dibagi CVSC_norm = log10(CVSC). Denominator tumbuh seiring jaringan, menghilangkan diminishing returns. |
+| 3 | **Pi Cycle Top / CVSC** | `pi_cycle_top_cvsc.py` | `[-2, +2]` | Rasio Pi Cycle (111d SMA / 2×350d SMA) dibagi CVSC_norm. Mempertahankan sinyal puncak yang konsisten di semua siklus. |
+| 4 | **Risk Metrics / CVSC** | `risk_metrics_cvsc.py` | `[-2, +2]` | Risk Metrics (deviasi harga dari realized cap) dibagi CVSC_norm. |
+| 5 | **Two-Year MA / CVSC** | `two_year_ma_rcap.py` | `[-2, +2]` | Rata-rata bergerak 2 tahun harga dibagi CVSC_norm. Mengidentifikasi akumulasi/diskon struktural. |
+| 6 | **AHR999 / CVSC** | `ahr999_cvsc.py` | `[-2, +2]` | Indeks akumulasi AHR999 dibagi CVSC_norm. Sinyal *bottom fishing* yang konsisten. |
+| 7 | **VPLI / CVSC** | `vpli_cvsc.py` | `[-2, +2]` | Deviasi harga dari SMA 255 hari dibagi CVSC_norm. Sinyal tren teknikal yang distasionerkan. |
 
 ---
 
 ## 4. Analisis Fitur Utama & Keunggulan
 
 ### 4.1 Master Composite Valuation Oscillator
+
 Sistem menghitung nilai rata-rata aritmatika (*arithmetic mean*) dari seluruh indikator aktif pada setiap *timestamp* harian:
 $$CompositeValue_t = \frac{1}{N} \sum_{i=1}^{N} NormalizedScore_{i,t} \quad \text{dimana } NormalizedScore \in [+2.0, -2.0]$$
 $$CompositeValue_t = \frac{1}{N} \sum_{i=1}^{N} NormalizedScore_{i,t} \quad \text{dimana } NormalizedScore \in [-2.0, +2.0]$$
+
 - **Ambang Batas Kritis:**
   - `Composite <= -1.50`: **Sangat Overvalued** (*Red Zone / Macro Top Warning*).
   - `Composite >= +1.00`: **Sangat Undervalued** (*Green Zone / Generation Accumulation Opportunity*).
 
 ### 4.2 Interpolasi HSL Dynamic Color System
+
 Pada level *frontend*, skor normalisasi dipetakan langsung ke warna visual menggunakan sistem interpolasi HSL (*Hue, Saturation, Lightness*):
+
 - `-2.0` (Sangat Overvalued): **Bright Red / Crimson (`hsl(0, 84%, 60%)`)**
 - `-1.0` (Overvalued): **Orange/Amber (`hsl(32, 95%, 53%)`)**
 - `0.0` (Fair Value): **Neutral Gray/White (`hsl(0, 0%, 80%)`)**
@@ -118,7 +105,9 @@ Pada level *frontend*, skor normalisasi dipetakan langsung ke warna visual mengg
 - `+2.0` (Sangat Undervalued): **Bright Green / Lime (`hsl(142, 71%, 45%)`)**
 
 ### 4.3 Tampilan Detail Ter-Sinkronisasi (*Three-Pane Synced View*)
+
 Fitur visualisasi mendalam yang menampilkan tiga *subplot* bertingkat dalam satu layar dengan *crosshair* dan sumbu waktu yang tersinkronisasi sempurna menggunakan **TradingView Lightweight Charts**:
+
 1. **Subplot Atas:** Grafik Candlestick OHLC harga Bitcoin logaritmik/linear.
 2. **Subplot Tengah:** Nilai metrik mentah (*Raw Metric Value*) dilengkapi garis ambang batas historis yang dapat dikonfigurasi (*Custom Threshold Configuration*).
 3. **Subplot Bawah:** Skor normalisasi osilator `-2` hingga `+2` dengan warna pengisian bergradasi sesuai status valuasi.
@@ -136,6 +125,8 @@ Fitur visualisasi mendalam yang menampilkan tiga *subplot* bertingkat dalam satu
 ---
 
 ## 6. Peran Kritis dalam Ekosistem Terpadu (Unified System)
+
 Dalam ekosistem strategi yang dijalankan oleh `run_report_pipeline.py`, **Valuation System berfungsi sebagai Filter Makro & Circuit Breaker Utama**:
+
 1. **Pengaman Eksekusi LTTD:** Sistem LTTD memeriksa skor komposit valuasi di `http://localhost:3000/api/composite`. Jika harga BTC mengalami diskon ekstrem (`Composite < -1.0`) atau gelembung ekstrem (`Composite > +1.5`), parameter *leverage* dan eksekusi pada strategi tren berjangka panjang diatur agar tidak melawan probabilitas kebalikan siklus makro.
 2. **Konteks Siklus Pasar:** Memberikan bobot fundamental bagi strategi teknikal/statistik (MTTD dan Ichimoku) agar tidak terjebak *whipsaw* pada akhir fase pasar (*market exhaustion*).

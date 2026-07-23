@@ -1,5 +1,46 @@
 import math
 import sqlite3
+import pandas as pd
+
+_cvsc_cache: dict[str, float] | None = None
+
+def load_cvsc_cache(db_path: str | None = None):
+    """Loads CVSC data into global cache. Fetches from bitview.space."""
+    global _cvsc_cache
+    if _cvsc_cache is not None:
+        return
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from quant.components.bitview_client import fetch_series
+        df = fetch_series("cointime_value_stored_cumulative")
+        if not df.empty:
+            df['date_str'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
+            _cvsc_cache = dict(zip(df['date_str'], df['value']))
+            logger.info(f"CVSC cache loaded: {len(_cvsc_cache)} days")
+    except Exception as e:
+        logger.warning(f"Failed to load CVSC cache: {e}")
+        _cvsc_cache = {}
+
+
+def compute_cvsc_norm(date: str) -> float:
+    """
+    Computes CVSC normalization factor: log10(max(cvsc_value, 1)).
+    Returns 1.0 as fallback if CVSC data is unavailable.
+    """
+    global _cvsc_cache
+    if _cvsc_cache is None:
+        load_cvsc_cache()
+    if _cvsc_cache and date in _cvsc_cache:
+        cvsc_val = _cvsc_cache.get(date, 0.0)
+        if cvsc_val and cvsc_val > 0:
+            try:
+                import math
+                return math.log10(max(float(cvsc_val), 1.0))
+            except (ValueError, TypeError):
+                return 1.0
+    return 1.0
+
 
 def safe_div(num: float, denom: float) -> float:
     """Helper to perform division safely and avoid ZeroDivisionError."""
@@ -102,6 +143,55 @@ def normalize(raw_value: float, t_plus_2: float | None, t_plus_1: float | None, 
                 return -2.0 + safe_div(raw_value - t_minus_2, t_minus_1 - t_minus_2)
 
 _vol_ratio_cache = {}
+
+
+def load_rescale_method(metric_name: str, db_path: str = "database/metrics.db") -> str:
+    """Reads rescale_method from metric_config for a given metric. Returns 'none' as default."""
+    import sys
+    if "/home/ubuntu/projects" not in sys.path:
+        sys.path.insert(0, "/home/ubuntu/projects")
+    from db_connector import get_wal_connection
+    try:
+        conn = get_wal_connection(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT rescale_method FROM metric_config WHERE metric_name = ?", (metric_name,))
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[0]:
+            return str(row[0])
+    except Exception:
+        pass
+    return "none"
+
+
+def expanding_window_rescale(series: pd.Series) -> pd.Series:
+    """
+    Applies causal expanding-window percentile rescaling to a normalized score series.
+    For each point t, uses only data up to t-1 to compute p2.5, p50, p97.5,
+    then maps raw value to [-2, +2] via piecewise linear interpolation.
+    """
+    result = pd.Series(index=series.index, dtype=float)
+    for i in range(len(series)):
+        if i < 180:
+            result.iloc[i] = series.iloc[i]
+            continue
+        raw_val = series.iloc[i]
+        hist = series.iloc[:i]
+        p2_5 = float(hist.quantile(0.025))
+        p50 = float(hist.quantile(0.50))
+        p97_5 = float(hist.quantile(0.975))
+        
+        if raw_val <= p2_5:
+            result.iloc[i] = -2.0
+        elif raw_val >= p97_5:
+            result.iloc[i] = 2.0
+        elif raw_val < p50:
+            denom = p50 - p2_5
+            result.iloc[i] = -2.0 if abs(denom) < 1e-12 else -2.0 + 2.0 * (raw_val - p2_5) / denom
+        else:
+            denom = p97_5 - p50
+            result.iloc[i] = 0.0 if abs(denom) < 1e-12 else 0.0 + 2.0 * (raw_val - p50) / denom
+    return result
 
 def load_vol_ratios(db_path: str):
     """Computes rolling 1-year price volatility causally and caches vol ratios."""

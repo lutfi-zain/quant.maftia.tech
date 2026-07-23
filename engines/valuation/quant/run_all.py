@@ -8,6 +8,13 @@ logger = logging.getLogger(__name__)
 
 def run_all(db_path: str = "database/metrics.db", rebuild: bool = False, metric_name: str = None) -> list[dict]:
     """Runs all registered component pipelines sequentially with exception isolation."""
+    # Pre-load CVSC cache for DR-immune indicator components
+    try:
+        from quant.components.normalization import load_cvsc_cache
+        load_cvsc_cache()
+    except Exception as e:
+        logger.warning(f"Failed to pre-load CVSC cache: {e}")
+    
     # First, run the BTC OHLC pipeline to update our price reference table if not targetting a specific metric
     if not metric_name:
         try:

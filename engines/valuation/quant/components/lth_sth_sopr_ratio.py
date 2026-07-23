@@ -5,7 +5,7 @@ from quant.components.normalization import normalize_metric
 
 class LthSthSoprRatioComponent(BaseComponent):
     METRIC_NAME = "lth_sth_sopr_ratio"
-    DESCRIPTION = "LTH/STH SOPR Ratio"
+    DESCRIPTION = "[DEPRECATED] LTH/STH SOPR Ratio"
     CATEGORY = "fundamental"
 
     def fetch_data(self, full_rebuild: bool = False) -> pd.DataFrame:
