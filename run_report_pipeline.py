@@ -51,10 +51,7 @@ def fetch_valuation_composite_data():
         SELECT date, AVG(normalized_value) as comp, MAX(btc_price) as btc
         FROM timeseries_metrics
         WHERE normalized_value IS NOT NULL
-          AND metric_name NOT IN ('aviv_nupl', 'williams_r', 'fear_greed_cmc',
-              'lth_sth_sopr_ratio', 'sharpe_ratio_52w', 'fear_greed_og',
-              'dvrsi', 'cvdd_ratio', 'unrealized_sell_risk',
-              'seller_exhaustion', 'terminal_price_ratio')
+          AND metric_name NOT IN ('fear_greed_og', 'fear_greed_cmc', 'williams_r', 'dvrsi', 'sharpe_ratio_52w', 'sharpe_52w')
         GROUP BY date
         HAVING COUNT(normalized_value) >= 5
         ORDER BY date ASC

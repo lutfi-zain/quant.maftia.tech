@@ -7,57 +7,47 @@ DB_PATH = 'database/metrics.db'
 # Format: (metric_name, t_plus_2, t_plus_1, t_zero, t_minus_1, t_minus_2, rescale_method)
 # We seed both the component names and any alternative spec names to ensure maximum compatibility.
 SEED_DATA = [
-    # Fundamental
-    ('aviv_ratio', -2.0, -1.0, None, 1.0, 2.0, 'expanding_window'),
-    ('aviv_ratio_z', -2.0, -1.0, None, 1.0, 2.0, 'expanding_window'),
+    # Fundamental (Macro Valuation)
+    ('aviv_ratio', -2.0, -1.0, None, 1.0, 2.0, 'expanding_window', 'macro_valuation'),
+    ('aviv_ratio_z', -2.0, -1.0, None, 1.0, 2.0, 'expanding_window', 'macro_valuation'),
+    ('aviv_nupl', -0.6, -0.3, None, 0.3, 0.5, 'none', 'macro_valuation'),
+    ('cvdd_ratio', 1.0, 2.0, None, 15.0, 25.0, 'none', 'macro_valuation'),
+    ('mvrv_z', 0.15, 0.17, None, 4.6, 6.65, 'none', 'macro_valuation'),
+    ('lth_sth_sopr_ratio', 0.73, 0.99, None, 3.2, 6.9, 'none', 'macro_valuation'),
+    ('terminal_price_ratio', -0.8367, -0.7242, None, -0.3230, 1.1426, 'expanding_window', 'macro_valuation'),
+    ('unrealized_sell_risk', 0.7, 0.85, None, 1.8, 2.2, 'none', 'macro_valuation'),
     
-    ('aviv_nupl', -0.6, -0.3, None, 0.3, 0.5, 'none'),
+    # Technical (Tactical Sentiment & Macro Technicals)
+    ('sharpe_ratio_52w', -2.0, -1.0, None, 2.0, 3.0, 'none', 'tactical_sentiment'),
+    ('sharpe_52w', -2.0, -1.0, None, 2.0, 3.0, 'none', 'tactical_sentiment'),
     
-    ('cvdd_ratio', 1.0, 2.0, None, 15.0, 25.0, 'none'),
+    ('pi_cycle_top', 0.35, 0.45, None, 0.7, 0.95, 'none', 'macro_valuation'),
+    ('pi_cycle_top_ratio', 0.35, 0.45, None, 0.7, 0.95, 'none', 'macro_valuation'),
     
-    ('mvrv_z', 0.15, 0.17, None, 4.6, 6.65, 'none'),
+    ('vpli', 45.0, 50.0, None, 70.0, 80.0, 'none', 'macro_valuation'),
+    ('risk_metrics', 0.13, 0.33, None, 0.75, 0.85, 'none', 'macro_valuation'),
     
-    ('lth_sth_sopr_ratio', 0.73, 0.99, None, 3.2, 6.9, 'none'),
+    ('dvrsi', 42.0, 50.0, None, 65.0, 73.0, 'none', 'tactical_sentiment'),
+    ('williams_r', -100.0, -80.0, None, -20.0, 0.0, 'none', 'tactical_sentiment'),
     
-    ('terminal_price_ratio', 1.0, 0.75, None, 0.25, 0.17, 'none'),
+    ('two_year_ma', 0.7, 1.0, None, 3.0, 4.2, 'none', 'macro_valuation'),
+    ('two_year_ma_ratio', 0.7, 1.0, None, 3.0, 4.2, 'none', 'macro_valuation'),
+    ('ahr999', 0.45, 0.7, None, 2.9, 5.47, 'none', 'macro_valuation'),
     
-    ('unrealized_sell_risk', 0.7, 0.85, None, 1.8, 2.2, 'none'),
+    # Sentiment (Tactical Sentiment)
+    ('fear_greed_og', 30.0, 50.0, None, 60.0, 70.0, 'none', 'tactical_sentiment'),
+    ('fear_greed_cmc', 20.0, 40.0, None, 60.0, 80.0, 'none', 'tactical_sentiment'),
     
-    # Technical
-    ('sharpe_ratio_52w', -2.0, -1.0, None, 2.0, 3.0, 'none'),
-    ('sharpe_52w', -2.0, -1.0, None, 2.0, 3.0, 'none'),
-    
-    ('pi_cycle_top', 0.35, 0.45, None, 0.7, 0.95, 'none'),
-    ('pi_cycle_top_ratio', 0.35, 0.45, None, 0.7, 0.95, 'none'),
-    
-    ('vpli', 45.0, 50.0, None, 70.0, 80.0, 'none'),
-    
-    ('risk_metrics', 0.13, 0.33, None, 0.75, 0.85, 'none'),
-    
-    ('dvrsi', 42.0, 50.0, None, 65.0, 73.0, 'none'),
-    
-    ('williams_r', -100.0, -80.0, None, -20.0, 0.0, 'none'),
-    
-    ('two_year_ma', 0.7, 1.0, None, 3.0, 4.2, 'none'),
-    ('two_year_ma_ratio', 0.7, 1.0, None, 3.0, 4.2, 'none'),
-    
-    ('ahr999', 0.45, 0.7, None, 2.9, 5.47, 'none'),
-    
-    # Sentiment
-    ('fear_greed_og', 30.0, 50.0, None, 60.0, 70.0, 'none'),
-    
-    ('fear_greed_cmc', 20.0, 40.0, None, 60.0, 80.0, 'none'),
-    
-    # Cointime-Adjusted (DR-Immune) Indicators
-    ('mvrv_z_cvsc', -0.01904188, 0.01190121, None, 0.1368715, 0.4428151, 'expanding_window'),
-    ('pi_cycle_top_cvsc', 0.02022542, 0.03113206, None, 0.06272494, 0.1327491, 'expanding_window'),
-    ('risk_metrics_cvsc', -0.01509178, 0.01839362, None, 0.07947216, 0.3225641, 'expanding_window'),
-    ('two_year_ma_rcap', 0.0, 11.40355, None, 1795.291, 5122.773, 'expanding_window'),
-    ('ahr999_cvsc', 0.004401681, 0.00750219, None, 0.02143929, 0.3693588, 'expanding_window'),
-    ('vpli_cvsc', -3.131786, -0.8605572, None, 3.830948, 43.6952, 'expanding_window'),
+    # Cointime-Adjusted (DR-Immune) Indicators (Macro Valuation)
+    ('mvrv_z_cvsc', -0.01904188, 0.01190121, None, 0.1368715, 0.4428151, 'expanding_window', 'macro_valuation'),
+    ('pi_cycle_top_cvsc', 0.02022542, 0.03113206, None, 0.06272494, 0.1327491, 'expanding_window', 'macro_valuation'),
+    ('risk_metrics_cvsc', -0.01509178, 0.01839362, None, 0.07947216, 0.3225641, 'expanding_window', 'macro_valuation'),
+    ('two_year_ma_rcap', -0.4520, 0.0538, None, 1.3918, 15.0359, 'expanding_window', 'macro_valuation'),
+    ('ahr999_cvsc', 0.004401681, 0.00750219, None, 0.02143929, 0.3693588, 'expanding_window', 'macro_valuation'),
+    ('vpli_cvsc', -3.131786, -0.8605572, None, 3.830948, 43.6952, 'expanding_window', 'macro_valuation'),
     
     # Bitview-native metrics
-    ('seller_exhaustion', 0.3, 0.2, None, 0.05, 0.02, 'expanding_window'),
+    ('seller_exhaustion', 0.3, 0.2, None, 0.05, 0.02, 'expanding_window', 'macro_valuation'),
 ]
 
 def seed_db(db_path: str = DB_PATH):
@@ -83,11 +73,16 @@ def seed_db(db_path: str = DB_PATH):
             t_zero REAL,
             t_plus_1 REAL,
             t_plus_2 REAL,
-            rescale_method TEXT DEFAULT 'none'
+            rescale_method TEXT DEFAULT 'none',
+            category_layer TEXT DEFAULT 'macro_valuation'
         )
     ''')
     try:
         cursor.execute("ALTER TABLE metric_config ADD COLUMN rescale_method TEXT DEFAULT 'none'")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE metric_config ADD COLUMN category_layer TEXT DEFAULT 'macro_valuation'")
     except Exception:
         pass
 
@@ -103,8 +98,8 @@ def seed_db(db_path: str = DB_PATH):
     for row in SEED_DATA:
         cursor.execute('''
             INSERT OR REPLACE INTO metric_config
-            (metric_name, t_plus_2, t_plus_1, t_zero, t_minus_1, t_minus_2, rescale_method)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (metric_name, t_plus_2, t_plus_1, t_zero, t_minus_1, t_minus_2, rescale_method, category_layer)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', row)
         
     conn.commit()

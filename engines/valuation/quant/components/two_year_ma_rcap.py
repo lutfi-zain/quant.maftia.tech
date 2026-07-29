@@ -21,9 +21,8 @@ class TwoYearMaRcapComponent(BaseComponent):
         # Compute 2-year MA of price
         df["two_year_ma"] = df["close"].rolling(window=730, min_periods=365).mean()
 
-        # Divide by CVSC_norm (same cointime-adjustment as other DR-immune indicators)
-        df["cvsc_norm"] = df["date"].apply(lambda d: compute_cvsc_norm(d))
-        df["raw_value"] = df["two_year_ma"] / df["cvsc_norm"]
+        # Dimensionless percentage deviation: (close - two_year_ma) / two_year_ma
+        df["raw_value"] = (df["close"] - df["two_year_ma"]) / df["two_year_ma"].replace(0, float("nan"))
         df["btc_price"] = df["close"]
 
         if not full_rebuild:

@@ -42,9 +42,9 @@ class TerminalPriceRatioComponent(BaseComponent):
         # Terminal Price = Transferred Price * 21
         df["terminal_price"] = df["transferred_price"] * 21.0
         
-        # Raw value = price / terminal_price
+        # Raw value = (price - terminal_price) / terminal_price
         df["raw_value"] = df.apply(
-            lambda row: row["value_p"] / row["terminal_price"] if row["terminal_price"] > 0 else 0.0,
+            lambda row: (row["value_p"] - row["terminal_price"]) / row["terminal_price"] if row["terminal_price"] > 0 else 0.0,
             axis=1
         )
         df["btc_price"] = df["value_p"]

@@ -50,7 +50,7 @@ def fit_rescaling_params(db_path: str, run_date: str) -> Dict[str, Any]:
         SELECT date, AVG(normalized_value) as raw_composite
         FROM timeseries_metrics
         WHERE normalized_value IS NOT NULL
-          AND metric_name NOT IN ('aviv_nupl', 'williams_r', 'fear_greed_cmc')
+          AND metric_name NOT IN ('fear_greed_og', 'fear_greed_cmc', 'williams_r', 'dvrsi', 'sharpe_ratio_52w', 'sharpe_52w')
         GROUP BY date
         HAVING COUNT(normalized_value) >= 10
         ORDER BY date ASC

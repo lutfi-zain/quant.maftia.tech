@@ -1,0 +1,136 @@
+{
+  "runId": "8173cf80",
+  "agent": "scout",
+  "task": "You are a **Local Codebase Scout** investigating the Valuation Composite score calculation architecture.\n\n## Context\nThis is a quantitative Bitcoin valuation platform at `/home/ubuntu/projects/quant.maftia.tech`. The Valuation Composite Score is calculated from 17 onchain/technical/sentiment indicators, each normalized to [-2, +2] via piecewise linear interpolation, then averaged.\n\n## Your Mission\nInvestigate the FULL calculation pipeline of the Valuation Composite Score. Specifically:\n\n1. **Read `engines/valuation/quant/components/registry.py`** to understand which components are registered and how they map to the composite\n2. **Read `engines/valuation/quant/components/base.py`** to understand the BaseComponent class and its `normalize()` method\n3. **Read `engines/valuation/quant/audit/composite.py`** to understand how the composite is calculated\n4. **Read `engines/valuation/quant/run_all.py`** to understand the orchestration\n5. **Read `engines/valuation/quant/components/normalization.py`** fully (all 193 lines) to understand piecewise interpolation\n6. **Check `data/maftia_quant.db`** metric_config table - query ALL rows to see the exact threshold values for each indicator\n7. **Read `data/metric_thresholds.json`** if it exists - to understand threshold configurations\n8. **Query `data/maftia_quant.db`** for `indicator_scores` table - check what data is there and schema\n9. **Read `engines/valuation/quant/components/mvrv_z.py`** as a representative component to understand the full fetch→normalize flow\n10. **Check `scripts/audit_valuation.py`** for how audits are run\n\n## Key Question to Answer\nWHY does the composite score cap at approximately -0.27 in Oct/Nov 2025 when BTC price was at $124K ATH? Is it because:\n- The thresholds are calibrated per-cycle (expanding window)?\n- Some indicators are returning NaN/partial values?\n- The normalization caps at -2.0 per indicator but the average of 17 indicators rarely reaches extreme values?\n- The indicators use historical standard deviation windows that haven't caught up to 2025 prices?\n\n## Output Format\nReturn a structured report with:\n- **Component Registry**: Full list of active components, their raw metric names, and whether they're inverted\n- **Normalization Logic**: Exact algorithm description with threshold source\n- **Composite Calculation**: Formula, weighting, handling of NaN/missing values\n- **Threshold Configuration**: All metric_config values from the database\n- **Likely Root Cause**: Your best hypothesis for why composite doesn't reach -2.0 in 2025\n- **File Paths & Line Numbers**: For every finding\n\nConfidence: HIGH (direct code reading)\n\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/ubuntu/projects/quant.maftia.tech/.pi-subagents/artifacts/outputs/8173cf80/context.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 156669,
+    "output": 16993,
+    "cacheRead": 900224,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 21
+  },
+  "model": "opencode/mimo-v2.5-free:low",
+  "attemptedModels": [
+    "opencode/mimo-v2.5-free:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "opencode/mimo-v2.5-free:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 156669,
+        "output": 16993,
+        "cacheRead": 900224,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 21
+      }
+    }
+  ],
+  "durationMs": 297362,
+  "toolCount": 44,
+  "acceptance": {
+    "status": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete findings with file paths, line numbers, and severity levels for all 10 investigation targets. Key root cause identified: the -0.27 composite on Oct 6, 2025 is mathematically correct — raw composite was +0.153, but the causal expanding-window percentile rescaling (historical median p50=+0.34) maps it to -0.27."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "python3 -c 'from quant.components.registry import discover_components; ...'",
+          "result": "passed",
+          "summary": "Verified 17 components discovered from dynamic registry scan"
+        },
+        {
+          "command": "python3 -c 'SELECT * FROM metric_config ORDER BY metric_name'",
+          "result": "passed",
+          "summary": "Retrieved all 21 rows from metric_config table including threshold values for all indicators"
+        },
+        {
+          "command": "python3 -c 'SELECT AVG(normalized_value) from timeseries_metrics ...'",
+          "result": "passed",
+          "summary": "Computed raw composite distribution: min=-1.46, max=+1.54, median=+0.34 across 4961 days"
+        },
+        {
+          "command": "python3 -c 'SELECT date, valuation_composite, btc_price FROM unified_daily_analytics WHERE date LIKE 2025-1%...'",
+          "result": "passed",
+          "summary": "Confirmed rescaled composite ranges from -0.27 (Oct 6 at $124K ATH) to +0.86 (Dec 20) in 2025"
+        }
+      ],
+      "validationOutput": [
+        "Verified 2025-10-06 composite: raw=+0.153, rescaled=-0.272, BTC=$124,658 — matches question exactly",
+        "Verified cvdd_ratio returns NULL when raw_value(3.0) > t_plus_1(1.6) in bottom-only config",
+        "Verified unrealized_sell_risk returns NULL when raw_value(1.0) < t_minus_1(1.8) in top-only config",
+        "Verified williams_r returns NULL in 2025 because raw values (-5 to -40) > t_plus_1(-70) in bottom-only config",
+        "Verified vol-adjusted thresholds expand MVRV negative range during low-vol periods"
+      ],
+      "residualRisks": [
+        "cvdd_ratio and unrealized_sell_risk metrics are effectively dead (NULL) during most bull market conditions — their thresholds may need recalibration for 2025+ price regime",
+        "williams_r is excluded from composite AND returns NULL during bull markets — double waste of a metric slot",
+        "The expanding-window rescaling means the composite becomes increasingly stable/hard to move as more history accumulates — may under-react to genuine regime changes",
+        "metric_thresholds.json contains alternative mvrv_z config but is never loaded by code — potential dead config or intended future use"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "No code changes — investigation-only task",
+      "reviewFindings": [
+        "Architecture finding: composite score is a TWO-STAGE process (raw average → asymmetric modifiers → causal expanding percentile rescaling) which is non-obvious from documentation",
+        "Design issue: cvdd_ratio threshold range [1.3, 1.6] is too narrow — raw value was 3.0 during 2025 ATH, producing NULL. Thresholds appear calibrated to a different price era",
+        "Design issue: unrealized_sell_risk threshold range [1.8, 2.2] only produces valid scores during 2021 ATH conditions (ratio=1.8-2.0). In 2025, ratio=1.0-1.3 → NULL",
+        "Metric exclusion: 3 metrics hardcoded as excluded (aviv_nupl, williams_r, fear_greed_cmc) + 2 effectively dead (cvdd_ratio, unrealized_sell_risk) = only 12 of 17 metrics contribute to the composite on typical days"
+      ],
+      "manualNotes": "The question's premise is partially incorrect: the composite does NOT cap at -0.27 as a maximum. The rescaled composite ranges from -1.28 (Jan 2025) to +1.71 (Jul 2026). The -0.27 on Oct 6, 2025 was the composite value at the BTC ATH, which is correct per the system's design. The raw average was +0.153, but the expanding-window percentile rescaling correctly identifies this as below the historical median."
+    }
+  },
+  "transcriptPath": "/home/ubuntu/projects/quant.maftia.tech/.pi-subagents/artifacts/8173cf80_scout_0_transcript.jsonl",
+  "timestamp": 1784763475629
+}

@@ -1,0 +1,137 @@
+{
+  "runId": "0ce75e73",
+  "agent": "researcher",
+  "task": "You are a **Data Science Researcher** performing correlation mining and matrix analysis on Bitcoin valuation metrics across all historical cycles.\n\n## Context\nWe have a SQLite database at `/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db` with these tables:\n- `unified_daily_analytics`: 47 columns including date, btc_price, valuation_composite, lttd_regime, lttd_score, mttd_imo, ichimoku_imo, mvo_pillar_fundamental/technical/sentiment, etc.\n- `indicator_scores`: Individual indicator normalized scores (date, metric_name, raw_value, normalized_score)\n- `onchain_metrics`: Raw onchain metric values\n- `metric_config`: 21 rows of threshold configurations\n- `master_ohlcv`: Daily OHLCV price data\n\nThe Valuation Composite is the average of ~14 indicators (17 total minus 3 excluded: aviv_nupl, williams_r, fear_greed_cmc), each normalized to [-2, +2], then rescaled via expanding-window percentile method.\n\n## Your Mission — Write and Execute Analysis Scripts\n\n### Step 1: Database Schema Discovery\nWrite a Python script to `/home/ubuntu/projects/quant.maftia.tech/tmp/schema_discovery.py` that:\n```python\nimport sqlite3\nimport pandas as pd\n\ndb = sqlite3.connect('/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db')\n\n# 1. Show all tables\ntables = db.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()\nprint(\"=== TABLES ===\")\nfor t in tables: print(t[0])\n\n# 2. For each table, show schema and row count\nfor t in tables:\n    name = t[0]\n    cols = db.execute(f\"PRAGMA table_info({name})\").fetchall()\n    count = db.execute(f\"SELECT COUNT(*) FROM {name}\").fetchone()[0]\n    print(f\"\\n=== {name} ({count} rows) ===\")\n    for c in cols: print(f\"  {c[1]} ({c[2]})\")\n\n# 3. indicator_scores: unique metrics, date ranges, completeness\nprint(\"\\n=== INDICATOR SCORES INVENTORY ===\")\ndf_is = pd.read_sql(\"SELECT * FROM indicator_scores\", db)\nprint(f\"Total rows: {len(df_is)}\")\nprint(f\"Columns: {list(df_is.columns)}\")\nif 'metric_name' in df_is.columns:\n    inventory = df_is.groupby('metric_name').agg(\n        count=('date', 'count'),\n        min_date=('date', 'min'),\n        max_date=('date', 'max'),\n        null_count=('normalized_score', lambda x: x.isna().sum())\n    ).sort_values('count', ascending=False)\n    print(inventory)\n\n# 4. unified_daily_analytics: sample and range\nprint(\"\\n=== UNIFIED DAILY ANALYTICS ===\")\ndf_uda = pd.read_sql(\"SELECT * FROM unified_daily_analytics ORDER BY date LIMIT 3\", db)\nprint(f\"Columns: {list(df_uda.columns)}\")\ndate_range = db.execute(\"SELECT MIN(date), MAX(date), COUNT(*) FROM unified_daily_analytics\").fetchone()\nprint(f\"Date range: {date_range[0]} to {date_range[1]}, {date_range[2]} rows\")\n\ndb.close()\n```\n\nRun this script and report results.\n\n### Step 2: Cycle Peak/Bottom Fingerprint Analysis\nWrite and run `/home/ubuntu/projects/quant.maftia.tech/tmp/cycle_fingerprints.py`:\n```python\nimport sqlite3\nimport pandas as pd\n\ndb = sqlite3.connect('/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db')\n\n# Load indicator scores\ndf_is = pd.read_sql(\"SELECT * FROM indicator_scores WHERE normalized_score IS NOT NULL\", db)\n\n# Find cycle peak dates (highest price per cycle)\ncycle_peaks = {\n    '2013': ('2013-11-29', 1150),\n    '2017': ('2017-12-16', 19800),\n    '2021a': ('2021-04-14', 64800),\n    '2021b': ('2021-11-10', 69000),\n    '2024': ('2024-03-13', 73000),\n    '2025': ('2025-10-06', 124658),\n}\n\ncycle_bottoms = {\n    '2015': ('2015-01-14', 200),\n    '2018': ('2018-12-15', 3200),\n    '2022': ('2022-11-21', 15781),\n}\n\nprint(\"=== CYCLE PEAK FINGERPRINTS ===\")\nfor cycle, (date, price) in cycle_peaks.items():\n    print(f\"\\n--- {cycle} Peak ({date}, ${price:,.0f}) ---\")\n    day_scores = df_is[df_is['date'] == date]\n    if day_scores.empty:\n        # Try nearby dates\n        day_scores = df_is[(df_is['date'] >= date) & (df_is['date'] <= date[:8] + '20')]\n        if not day_scores.empty:\n            date = day_scores['date'].iloc[0]\n            day_scores = df_is[df_is['date'] == date]\n            print(f\"  (using nearby date: {date})\")\n    \n    if not day_scores.empty:\n        for _, row in day_scores.iterrows():\n            print(f\"  {row['metric_name']:30s} raw={row.get('raw_value', 'N/A'):>10} norm={row['normalized_score']:>8.3f}\")\n    else:\n        print(\"  No indicator scores found for this date\")\n\nprint(\"\\n=== CYCLE BOTTOM FINGERPRINTS ===\")\nfor cycle, (date, price) in cycle_bottoms.items():\n    print(f\"\\n--- {cycle} Bottom ({date}, ${price:,.0f}) ---\")\n    day_scores = df_is[df_is['date'] == date]\n    if day_scores.empty:\n        day_scores = df_is[(df_is['date'] >= date) & (df_is['date'] <= date[:8] + '20')]\n        if not day_scores.empty:\n            date = day_scores['date'].iloc[0]\n            day_scores = df_is[df_is['date'] == date]\n            print(f\"  (using nearby date: {date})\")\n    if not day_scores.empty:\n        for _, row in day_scores.iterrows():\n            print(f\"  {row['metric_name']:30s} raw={row.get('raw_value', 'N/A'):>10} norm={row['normalized_score']:>8.3f}\")\n\ndb.close()\n```\n\n### Step 3: Correlation Matrix Mining\nWrite and run `/home/ubuntu/projects/quant.maftia.tech/tmp/correlation_matrix.py`:\n```python\nimport sqlite3\nimport pandas as pd\nimport numpy as np\n\ndb = sqlite3.connect('/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db')\n\n# Load all indicator scores\ndf_is = pd.read_sql(\"SELECT date, metric_name, normalized_score FROM indicator_scores WHERE normalized_score IS NOT NULL\", db)\n\n# Pivot to wide format\npivot = df_is.pivot_table(index='date', columns='metric_name', values='normalized_score', aggfunc='first')\nprint(f\"Pivot shape: {pivot.shape}\")\nprint(f\"Metrics: {list(pivot.columns)}\")\nprint(f\"Date range: {pivot.index.min()} to {pivot.index.max()}\")\nprint(f\"Completeness (% non-null per metric):\")\nprint((pivot.notna().mean() * 100).sort_values(ascending=False))\n\n# Correlation matrix\ncorr = pivot.corr()\nprint(\"\\n=== TOP 15 STRONGEST CORRELATIONS ===\")\n# Get upper triangle\nmask = np.triu(np.ones_like(corr, dtype=bool), k=1)\ncorr_pairs = corr.where(mask).stack().reset_index()\ncorr_pairs.columns = ['Metric_A', 'Metric_B', 'Correlation']\ncorr_pairs = corr_pairs.sort_values('Correlation', key=abs, ascending=False)\nprint(corr_pairs.head(15).to_string(index=False))\n\nprint(\"\\n=== TOP 10 NEGATIVE CORRELATIONS ===\")\nprint(corr_pairs.tail(10).to_string(index=False))\n\n# PCA on correlation matrix\nfrom sklearn.decomposition import PCA\nfrom sklearn.preprocessing import StandardScaler\n\n# Drop columns with too many NaNs\npivot_clean = pivot.dropna(axis=1, thresh=int(len(pivot)*0.5))\npivot_filled = pivot_clean.fillna(pivot_clean.median())\n\nscaler = StandardScaler()\nscaled = scaler.fit_transform(pivot_filled)\n\npca = PCA(n_components=min(10, len(pivot_clean.columns)))\npca.fit(scaled)\n\nprint(\"\\n=== PCA COMPONENTS ===\")\nfor i, (var, cum) in enumerate(zip(pca.explained_variance_ratio_, np.cumsum(pca.explained_variance_ratio_))):\n    print(f\"PC{i+1}: {var:.3f} (cumulative: {cum:.3f})\")\n    # Top 3 loadings\n    loadings = pd.Series(pca.components_[i], index=pivot_clean.columns).abs().sort_values(ascending=False)\n    top3 = loadings.head(3)\n    for name, val in top3.items():\n        direction = \"+\" if pca.components_[i][pivot_clean.columns.get_loc(name)] > 0 else \"-\"\n        print(f\"  {direction} {name}: {val:.3f}\")\n\n# 2025 gap analysis\nprint(\"\\n=== 2025 GAP ANALYSIS ===\")\n# Compare 2024-03-13 peak (composite=-2.0) vs 2025-10-06 peak (composite=-0.27)\nfor label, target_date in [('2024-03-13 (comp=-2.0)', '2024-03-13'), ('2025-10-06 (comp=-0.27)', '2025-10-06')]:\n    print(f\"\\n--- {label} ---\")\n    # Get scores within ±3 days\n    scores = df_is[(df_is['date'] >= target_date[:8]+'10') & (df_is['date'] <= target_date[:8]+'20')]\n    if scores.empty:\n        scores = df_is[df_is['date'] == target_date]\n    if not scores.empty:\n        latest = scores.groupby('metric_name').last().reset_index()\n        for _, row in latest.iterrows():\n            print(f\"  {row['metric_name']:30s} norm={row['normalized_score']:>8.3f}\")\n    else:\n        print(f\"  No data near {target_date}\")\n\ndb.close()\n```\n\n### Step 4: Content Matrix Determinism\nWrite and run `/home/ubuntu/projects/quant.maftia.tech/tmp/content_matrix.py`:\n```python\nimport sqlite3\nimport pandas as pd\nimport numpy as np\n\ndb = sqlite3.connect('/home/ubuntu/projects/quant.maftia.tech/data/maftia_quant.db')\n\n# Load data\ndf_is = pd.read_sql(\"SELECT date, metric_name, normalized_score FROM indicator_scores WHERE normalized_score IS NOT NULL\", db)\npivot = df_is.pivot_table(index='date', columns='metric_name', values='normalized_score', aggfunc='first')\npivot_clean = pivot.dropna(axis=1, thresh=int(len(pivot)*0.5)).fillna(0)\n\n# Correlation matrix\ncorr = pivot_clean.corr()\n\n# Find \"determinism\" pairs — metrics where knowing A gives high confidence about B\nprint(\"=== CORRELATION DETERMINISM MATRIX ===\")\nprint(\"(If Metric A = extreme, what does Metric B look like?)\\n\")\n\nkey_metrics = ['mvrv_z', 'aviv_ratio', 'pi_cycle_top', 'fear_greed_og', \n               'ahr999', 'two_year_ma', 'vpli', 'lth_sth_sopr_ratio',\n               'terminal_price_ratio', 'risk_metrics', 'sharpe_ratio_52w', 'dvrsi']\navailable = [m for m in key_metrics if m in pivot_clean.columns]\n\nprint(f\"{'':30s}\", end='')\nfor m in available:\n    print(f\"{m[:12]:>14s}\", end='')\nprint()\n\nfor m1 in available:\n    print(f\"{m1:30s}\", end='')\n    for m2 in available:\n        if m1 == m2:\n            print(f\"{'---':>14s}\", end='')\n        else:\n            r = corr.loc[m1, m2]\n            print(f\"{r:>14.3f}\", end='')\n    print()\n\n# Cross-correlation lag analysis (which leads which)\nprint(\"\\n=== CROSS-CORRELATION LAG ANALYSIS ===\")\nprint(\"(Positive lag = Metric A leads Metric B)\\n\")\nfor m1 in available[:6]:\n    best_lag = 0\n    best_corr = 0\n    for lag in range(-30, 31):\n        shifted = pivot_clean[m1].shift(lag)\n        valid = pd.DataFrame({'a': shifted, 'b': pivot_clean[m2]}).dropna()\n        if len(valid) > 100:\n            r = valid['a'].corr(valid['b'])\n            if abs(r) > abs(best_corr):\n                best_corr = r\n                best_lag = lag\n    print(f\"  {m1:25s} best lag: {best_lag:+3d} days (r={best_corr:.3f})\")\n\n# Cycle-extreme correlation (only during top 10% and bottom 10% of price)\nprint(\"\\n=== CORRELATION AT CYCLE EXTREMES ===\")\ndf_ohlc = pd.read_sql(\"SELECT date, close FROM master_ohlcv\", db)\ndf_ohlc['date'] = pd.to_datetime(df_ohlc['date']).dt.strftime('%Y-%m-%dT00:00:00Z')\nmerged = pivot_clean.copy()\nmerged['date'] = merged.index\nmerged = merged.merge(df_ohlc, on='date', how='left')\n\nq90 = merged['close'].quantile(0.9)\nq10 = merged['close'].quantile(0.1)\n\ntop10 = merged[merged['close'] >= q90][available]\nbot10 = merged[merged['close'] <= q10][available]\n\nif len(top10) > 10:\n    corr_top = top10.corr()\n    corr_bot = bot10.corr() if len(bot10) > 10 else None\n    \n    print(f\"\\nTop 10% price ({len(top10)} days, price >= ${q90:,.0f}):\")\n    for m1 in available[:4]:\n        for m2 in available[4:8]:\n            if m1 != m2:\n                print(f\"  {m1} <-> {m2}: r={corr_top.loc[m1,m2]:.3f}\")\n    \n    if corr_bot is not None:\n        print(f\"\\nBottom 10% price ({len(bot10)} days, price <= ${q10:,.0f}):\")\n        for m1 in available[:4]:\n            for m2 in available[4:8]:\n                if m1 != m2:\n                    print(f\"  {m1} <-> {m2}: r={corr_bot.loc[m1,m2]:.3f}\")\n\ndb.close()\n```\n\nRun ALL FOUR scripts and report the complete output. This is critical data for building the video content matrix.\n\nConfidence: HIGH (direct database access + code execution)\n\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/ubuntu/projects/quant.maftia.tech/.pi-subagents/artifacts/outputs/0ce75e73/research.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 1,
+  "usage": {
+    "input": 157000,
+    "output": 19891,
+    "cacheRead": 1120064,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 26
+  },
+  "model": "opencode/mimo-v2.5-free:medium",
+  "attemptedModels": [
+    "opencode/mimo-v2.5-free:medium"
+  ],
+  "modelAttempts": [
+    {
+      "model": "opencode/mimo-v2.5-free:medium",
+      "success": false,
+      "exitCode": 1,
+      "error": "Agent 'researcher' requested unavailable child tools: web_search, fetch_content, get_search_content.\nThe `tools` field is a strict allowlist; it does not load extension code.\nFor extension tools, add the provider path to `subagentOnlyExtensions` (child-only), `extensions`, or as a path-like entry in `tools`, while keeping each registered tool name in `tools`.\nFor MCP tools, verify the MCP adapter configuration and selected tool names. For builtin tools, verify the name against the installed Pi version.",
+      "usage": {
+        "input": 157000,
+        "output": 19891,
+        "cacheRead": 1120064,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 26
+      }
+    }
+  ],
+  "durationMs": 314726,
+  "toolCount": 49,
+  "error": "Agent 'researcher' requested unavailable child tools: web_search, fetch_content, get_search_content.\nThe `tools` field is a strict allowlist; it does not load extension code.\nFor extension tools, add the provider path to `subagentOnlyExtensions` (child-only), `extensions`, or as a path-like entry in `tools`, while keeping each registered tool name in `tools`.\nFor MCP tools, verify the MCP adapter configuration and selected tool names. For builtin tools, verify the name against the installed Pi version.",
+  "acceptance": {
+    "status": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "4 analysis scripts written to correct paths with adapted DB schema. Comprehensive research brief documenting all findings from codebase analysis. Database architecture discovery documented with exact table/column mappings across 3 databases."
+        }
+      ],
+      "changedFiles": [
+        "tmp/schema_discovery.py",
+        "tmp/cycle_fingerprints.py",
+        "tmp/correlation_matrix.py",
+        "tmp/content_matrix.py"
+      ],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "python3 tmp/schema_discovery.py",
+          "result": "not-run",
+          "summary": "Script written but cannot be executed - no Python execution tool available in this subagent"
+        },
+        {
+          "command": "python3 tmp/cycle_fingerprints.py",
+          "result": "not-run",
+          "summary": "Script written but cannot be executed"
+        },
+        {
+          "command": "python3 tmp/correlation_matrix.py",
+          "result": "not-run",
+          "summary": "Script written but cannot be executed"
+        },
+        {
+          "command": "python3 tmp/content_matrix.py",
+          "result": "not-run",
+          "summary": "Script written but cannot be executed"
+        }
+      ],
+      "validationOutput": [
+        "Scripts adapted to correct 3-database architecture. Original task assumed single-DB with indicator_scores/onchain_metrics/metric_config in maftia_quant.db - corrected to metrics.db and lttd.db respectively. All column name mismatches resolved."
+      ],
+      "residualRisks": [
+        "Scripts not executed - need parent orchestrator or worker with code execution capability to run them",
+        "onchain_metrics table referenced in task does not exist in any database - task assumption incorrect",
+        "Cycle peak/bottom dates may have slight mismatches with actual DB records"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Created 4 Python analysis scripts in tmp/ directory adapted to correct multi-database architecture. Wrote comprehensive research brief documenting DB schema discoveries, cross-system correlation architecture, and all valuation/LTTD/MTTD/Ichimoku metric inventories.",
+      "reviewFindings": [
+        "blocker: Scripts cannot be executed - this subagent has no code execution tools (only read/write/intercom/contact_supervisor)",
+        "info: Task assumed indicator_scores/onchain_metrics/metric_config tables in maftia_quant.db - these actually live in metrics.db and lttd.db respectively",
+        "info: audit_correlation_matrix table in metrics.db contains pre-computed correlations that could shortcut Step 3"
+      ],
+      "manualNotes": "The 4 scripts are ready to run. Execute with: cd /home/ubuntu/projects/quant.maftia.tech && python3 tmp/schema_discovery.py && python3 tmp/cycle_fingerprints.py && python3 tmp/correlation_matrix.py && python3 tmp/content_matrix.py. The schema_discovery.py script should be run first to confirm all tables exist before running the others."
+    }
+  },
+  "transcriptPath": "/home/ubuntu/projects/quant.maftia.tech/.pi-subagents/artifacts/0ce75e73_researcher_0_transcript.jsonl",
+  "timestamp": 1784764030563
+}
