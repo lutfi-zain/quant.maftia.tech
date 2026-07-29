@@ -2,44 +2,128 @@ import math
 import sqlite3
 import pandas as pd
 
+from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 _cvsc_cache: dict[str, float] | None = None
 
-def load_cvsc_cache(db_path: str | None = None):
-    """Loads CVSC data into global cache. Fetches from bitview.space."""
-    global _cvsc_cache
-    if _cvsc_cache is not None:
+
+def _load_cvsc_from_sqlite(db_path: str = "database/metrics.db") -> dict[str, float]:
+    """Reads the cvsc_cache SQLite table into a dict."""
+    import sys
+    if "/home/ubuntu/projects" not in sys.path:
+        sys.path.insert(0, "/home/ubuntu/projects")
+    from db_connector import get_wal_connection
+    try:
+        conn = get_wal_connection(db_path)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS cvsc_cache (date TEXT PRIMARY KEY, cvsc_value REAL, fetched_at TEXT)")
+        cursor.execute("SELECT date, cvsc_value FROM cvsc_cache")
+        rows = cursor.fetchall()
+        conn.close()
+        return {row[0]: float(row[1]) for row in rows if row[0] and row[1] is not None}
+    except Exception as e:
+        logger.warning(f"Failed to load CVSC from SQLite cache: {e}")
+        return {}
+
+
+def _save_cvsc_to_sqlite(cache: dict[str, float], db_path: str = "database/metrics.db"):
+    """Persists the in-memory CVSC cache to the SQLite cvsc_cache table."""
+    if not cache:
         return
-    import logging
-    logger = logging.getLogger(__name__)
+    import sys
+    if "/home/ubuntu/projects" not in sys.path:
+        sys.path.insert(0, "/home/ubuntu/projects")
+    from db_connector import get_wal_connection
+    try:
+        conn = get_wal_connection(db_path)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS cvsc_cache (date TEXT PRIMARY KEY, cvsc_value REAL, fetched_at TEXT)")
+        now_str = datetime.now(timezone.utc).isoformat()
+        rows = [(date_str, float(val), now_str) for date_str, val in cache.items() if val is not None]
+        cursor.executemany("INSERT OR REPLACE INTO cvsc_cache (date, cvsc_value, fetched_at) VALUES (?, ?, ?)", rows)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Failed to save CVSC cache to SQLite: {e}")
+
+
+def _compute_cvsc_approximation(date_str: str) -> float:
+    """Computes hardcoded CVSC approximation value based on historical Cointime growth model."""
+    logger.warning(f"Using CVSC approximation fallback for date {date_str}")
+    try:
+        dt = pd.to_datetime(date_str)
+        ref_dt = pd.to_datetime("2015-01-01")
+        years_since_2015 = (dt - ref_dt).days / 365.25
+    except Exception:
+        years_since_2015 = 11.5  # default to ~2026
+    
+    log10_val = max(10.0, 12.5 + 0.15 * years_since_2015)
+    return 10.0 ** log10_val
+
+
+def load_cvsc_cache(db_path: str = "database/metrics.db"):
+    """Loads CVSC data into global cache using a 3-tier fallback chain: SQLite -> bitview API -> in-memory fallback."""
+    global _cvsc_cache
+    if _cvsc_cache is not None and len(_cvsc_cache) > 0:
+        return
+    
+    # Tier 1: SQLite local cache
+    cached = _load_cvsc_from_sqlite(db_path)
+    if cached:
+        _cvsc_cache = cached
+        logger.info(f"CVSC cache loaded from SQLite: {len(_cvsc_cache)} days")
+        return
+
+    # Tier 2: bitview.space API with SQLite writeback
     try:
         from quant.components.bitview_client import fetch_series
         df = fetch_series("cointime_value_stored_cumulative")
         if not df.empty:
             df['date_str'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
             _cvsc_cache = dict(zip(df['date_str'], df['value']))
-            logger.info(f"CVSC cache loaded: {len(_cvsc_cache)} days")
+            logger.info(f"CVSC cache fetched from API: {len(_cvsc_cache)} days")
+            _save_cvsc_to_sqlite(_cvsc_cache, db_path)
+            return
     except Exception as e:
-        logger.warning(f"Failed to load CVSC cache: {e}")
-        _cvsc_cache = {}
+        logger.warning(f"Failed to fetch CVSC from API: {e}")
+
+    # Tier 3: In-memory fallback dict
+    _cvsc_cache = {}
 
 
-def compute_cvsc_norm(date: str) -> float:
+def compute_cvsc_norm(date: str, db_path: str = "database/metrics.db") -> float:
     """
     Computes CVSC normalization factor: log10(max(cvsc_value, 1)).
-    Returns 1.0 as fallback if CVSC data is unavailable.
+    Uses cache, SQLite, API, or hardcoded approximation. NEVER returns 1.0.
+    Returns a value >= 10.0.
     """
     global _cvsc_cache
     if _cvsc_cache is None:
-        load_cvsc_cache()
-    if _cvsc_cache and date in _cvsc_cache:
-        cvsc_val = _cvsc_cache.get(date, 0.0)
-        if cvsc_val and cvsc_val > 0:
-            try:
-                import math
-                return math.log10(max(float(cvsc_val), 1.0))
-            except (ValueError, TypeError):
-                return 1.0
-    return 1.0
+        load_cvsc_cache(db_path)
+    
+    if date and isinstance(date, str):
+        date_clean = date[:10]
+    else:
+        date_clean = str(date)[:10]
+
+    cvsc_val = None
+    if _cvsc_cache and date_clean in _cvsc_cache:
+        cvsc_val = _cvsc_cache.get(date_clean, 0.0)
+
+    if cvsc_val and cvsc_val > 0:
+        try:
+            norm_val = math.log10(max(float(cvsc_val), 1.0))
+            if norm_val >= 10.0:
+                return norm_val
+        except (ValueError, TypeError):
+            pass
+
+    # Fallback to approximation
+    approx_val = _compute_cvsc_approximation(date_clean)
+    norm_val = math.log10(max(float(approx_val), 1.0))
+    return max(norm_val, 10.0)
 
 
 def safe_div(num: float, denom: float) -> float:
@@ -181,7 +265,9 @@ def expanding_window_rescale(series: pd.Series) -> pd.Series:
         p50 = float(hist.quantile(0.50))
         p97_5 = float(hist.quantile(0.975))
         
-        if raw_val <= p2_5:
+        if abs(p97_5 - p2_5) < 1e-12:
+            result.iloc[i] = 0.0
+        elif raw_val <= p2_5:
             result.iloc[i] = -2.0
         elif raw_val >= p97_5:
             result.iloc[i] = 2.0

@@ -49,12 +49,12 @@ SEED_DATA = [
     ('fear_greed_cmc', 20.0, 40.0, None, 60.0, 80.0, 'none'),
     
     # Cointime-Adjusted (DR-Immune) Indicators
-    ('mvrv_z_cvsc', 0.15, 0.08, None, -0.03, -0.06, 'expanding_window'),
-    ('pi_cycle_top_cvsc', 0.0025, 0.0015, None, -0.0008, -0.0015, 'expanding_window'),
-    ('risk_metrics_cvsc', 6.5e-16, 3.0e-16, None, -1.5e-16, -3.0e-16, 'expanding_window'),
-    ('two_year_ma_rcap', 3.5, 2.5, None, 0.8, 0.5, 'expanding_window'),
-    ('ahr999_cvsc', 1.2e-15, 6.0e-16, None, -3.0e-16, -5.0e-16, 'expanding_window'),
-    ('vpli_cvsc', 2.0e-14, 1.0e-14, None, -5.0e-15, -1.0e-14, 'expanding_window'),
+    ('mvrv_z_cvsc', -0.01904188, 0.01190121, None, 0.1368715, 0.4428151, 'expanding_window'),
+    ('pi_cycle_top_cvsc', 0.02022542, 0.03113206, None, 0.06272494, 0.1327491, 'expanding_window'),
+    ('risk_metrics_cvsc', -0.01509178, 0.01839362, None, 0.07947216, 0.3225641, 'expanding_window'),
+    ('two_year_ma_rcap', 0.0, 11.40355, None, 1795.291, 5122.773, 'expanding_window'),
+    ('ahr999_cvsc', 0.004401681, 0.00750219, None, 0.02143929, 0.3693588, 'expanding_window'),
+    ('vpli_cvsc', -3.131786, -0.8605572, None, 3.830948, 43.6952, 'expanding_window'),
     
     # Bitview-native metrics
     ('seller_exhaustion', 0.3, 0.2, None, 0.05, 0.02, 'expanding_window'),
@@ -86,11 +86,23 @@ def seed_db(db_path: str = DB_PATH):
             rescale_method TEXT DEFAULT 'none'
         )
     ''')
+    try:
+        cursor.execute("ALTER TABLE metric_config ADD COLUMN rescale_method TEXT DEFAULT 'none'")
+    except Exception:
+        pass
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cvsc_cache (
+            date TEXT PRIMARY KEY,
+            cvsc_value REAL,
+            fetched_at TEXT
+        )
+    ''')
     
-    # Insert or ignore
+    # Insert or replace
     for row in SEED_DATA:
         cursor.execute('''
-            INSERT OR IGNORE INTO metric_config
+            INSERT OR REPLACE INTO metric_config
             (metric_name, t_plus_2, t_plus_1, t_zero, t_minus_1, t_minus_2, rescale_method)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', row)

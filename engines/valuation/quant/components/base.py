@@ -138,10 +138,42 @@ class BaseComponent(ABC):
         """
         return df
 
+    def _check_distribution_health(self) -> dict:
+        """
+        Queries timeseries_metrics for boundary-value percentages (-2.0 or +2.0)
+        and flags warnings if >95% of scores are stuck at a boundary.
+        """
+        import sys
+        if "/home/ubuntu/projects" not in sys.path:
+            sys.path.insert(0, "/home/ubuntu/projects")
+        from db_connector import get_wal_connection
+        try:
+            conn = get_wal_connection(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN normalized_value IN (-2.0, 2.0) THEN 1 ELSE 0 END) as boundary_cnt
+                FROM timeseries_metrics
+                WHERE metric_name = ?
+            ''', (self.METRIC_NAME,))
+            row = cursor.fetchone()
+            conn.close()
+            if row and row[0] and row[0] > 0:
+                total, boundary_cnt = row[0], row[1] or 0
+                boundary_pct = (boundary_cnt / total) * 100.0
+                warning = None
+                if boundary_pct > 95.0:
+                    warning = f"Degenerate distribution warning for '{self.METRIC_NAME}': {boundary_pct:.1f}% of scores at boundary [-2.0, +2.0]"
+                    logger.warning(warning)
+                return {"warning": warning, "boundary_pct": boundary_pct}
+        except Exception as e:
+            logger.warning(f"Distribution health check failed for {self.METRIC_NAME}: {e}")
+        return {"warning": None, "boundary_pct": 0.0}
+
     def _default_run_pipeline(self, full_rebuild: bool = False) -> dict:
         """
         Helper method providing default run_pipeline implementation.
-        Pipeline: fetch_data -> normalize -> rescale -> store
+        Pipeline: fetch_data -> normalize -> rescale -> store -> distribution_health
         """
         try:
             df = self.fetch_data(full_rebuild=full_rebuild)
@@ -153,19 +185,22 @@ class BaseComponent(ABC):
                     "rows_fetched": 0,
                     "rows_stored": 0,
                     "status": "success",
-                    "message": "No new data was available."
+                    "message": "No new data was available.",
+                    "distribution_health": {"warning": None, "boundary_pct": 0.0}
                 }
 
             df_norm = self.normalize(df)
             df_rescaled = self.rescale(df_norm)
             rows_stored = self.store(df_rescaled)
+            dist_health = self._check_distribution_health()
 
             return {
                 "metric_name": self.METRIC_NAME,
                 "rows_fetched": rows_fetched,
                 "rows_stored": rows_stored,
                 "status": "success",
-                "message": f"Successfully processed and stored {rows_stored} rows."
+                "message": f"Successfully processed and stored {rows_stored} rows.",
+                "distribution_health": dist_health
             }
         except Exception as e:
             logger.error(f"Error running pipeline for {self.METRIC_NAME}: {type(e).__name__}: {str(e)}")

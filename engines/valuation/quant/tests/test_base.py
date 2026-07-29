@@ -131,3 +131,47 @@ def test_base_component_pipeline_error():
     res = comp.run_pipeline()
     assert res["status"] == "error"
     assert "RuntimeError: API failure" in res["message"]
+
+
+def test_distribution_guard(tmp_path):
+    db_file = str(tmp_path / "test_dist.db")
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE timeseries_metrics (
+            date TEXT,
+            metric_name TEXT,
+            raw_value REAL,
+            normalized_value REAL,
+            btc_price REAL,
+            PRIMARY KEY (metric_name, date)
+        )
+    ''')
+    # Insert 100 rows with 98 at boundary -2.0 (>95%)
+    for i in range(100):
+        val = -2.0 if i < 98 else 0.5
+        cursor.execute("INSERT INTO timeseries_metrics VALUES (?, ?, ?, ?, ?)", (f"2025-01-{i+1:03d}", "bad_metric", 1.0, val, 50000.0))
+    # Insert 100 rows with 10 at boundary -2.0 (<95%)
+    for i in range(100):
+        val = -2.0 if i < 10 else 0.5
+        cursor.execute("INSERT INTO timeseries_metrics VALUES (?, ?, ?, ?, ?)", (f"2025-01-{i+1:03d}", "good_metric", 1.0, val, 50000.0))
+    conn.commit()
+    conn.close()
+
+    class BadComp(DummyComponent):
+        METRIC_NAME = "bad_metric"
+
+    class GoodComp(DummyComponent):
+        METRIC_NAME = "good_metric"
+
+    bad = BadComp(db_path=db_file)
+    bad_health = bad._check_distribution_health()
+    assert bad_health["boundary_pct"] == 98.0
+    assert bad_health["warning"] is not None
+    assert "Degenerate distribution warning" in bad_health["warning"]
+
+    good = GoodComp(db_path=db_file)
+    good_health = good._check_distribution_health()
+    assert good_health["boundary_pct"] == 10.0
+    assert good_health["warning"] is None
+

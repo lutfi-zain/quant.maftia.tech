@@ -190,3 +190,53 @@ def test_volatility_adjusted_normalization(tmp_path):
     val_adjusted = normalize_metric(db_file, "mvrv_z", 2.5, target_date)
     assert val_adjusted != val_unadjusted
 
+
+def test_cvsc_cache_fallback(tmp_path):
+    import quant.components.normalization as norm_mod
+    import pandas as pd
+    
+    # Test (b): approximation formula returns values in [12.0, 15.0] range for dates 2015-2026
+    for year in range(2015, 2027):
+        date_str = f"{year}-06-15"
+        approx_val = norm_mod._compute_cvsc_approximation(date_str)
+        norm_factor = math.log10(approx_val)
+        assert 12.0 <= norm_factor <= 15.0, f"Year {year} norm_factor {norm_factor} out of range"
+
+    # Test (a): cache loads from SQLite when API unavailable
+    db_file = str(tmp_path / "test_cvsc.db")
+    norm_mod._save_cvsc_to_sqlite({"2025-01-01": 1e14, "2025-01-02": 1.1e14}, db_file)
+    
+    norm_mod._cvsc_cache = None
+    norm_mod.load_cvsc_cache(db_file)
+    assert norm_mod._cvsc_cache is not None
+    assert norm_mod._cvsc_cache.get("2025-01-01") == pytest.approx(1e14)
+
+    # Test (c): compute_cvsc_norm() never returns 1.0
+    norm_1 = norm_mod.compute_cvsc_norm("2025-01-01", db_file)
+    assert norm_1 == pytest.approx(14.0)
+
+    # Test date not in cache uses approximation fallback and is >= 10.0, never 1.0
+    norm_uncached = norm_mod.compute_cvsc_norm("1999-01-01", db_file)
+    assert norm_uncached >= 10.0
+    assert norm_uncached != 1.0
+
+
+def test_rescale_degenerate_series():
+    import pandas as pd
+    import quant.components.normalization as norm_mod
+
+    # All -2.0 input series
+    series_all_neg2 = pd.Series([-2.0] * 300)
+    rescaled = norm_mod.expanding_window_rescale(series_all_neg2)
+    # Warmup period (< 180) keeps original values
+    assert rescaled.iloc[50] == -2.0
+    # After 180 days, zero variance returns 0.0
+    assert rescaled.iloc[200] == 0.0
+
+    # Mixed series: constant then varied
+    mixed = pd.Series([-2.0] * 200 + [float(i) for i in range(100)])
+    rescaled_mixed = norm_mod.expanding_window_rescale(mixed)
+    # At index 250, window has variance, so it calculates non-zero rescaled score
+    assert rescaled_mixed.iloc[250] != 0.0
+
+
