@@ -61,7 +61,7 @@ def fit_rescaling_params(db_path: str, run_date: str) -> Dict[str, Any]:
         conn.close()
         return {}
 
-    raw_composites = [row[1] for row in rows if row[1] is not None]
+    raw_composites = [row[1] for row in rows if row[1] is not None][-1460:]
 
     if not raw_composites:
         conn.close()

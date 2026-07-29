@@ -58,39 +58,6 @@ def fetch_valuation_composite_data():
     """).fetchall()
     conn.close()
 
-    # Apply Volatility Regime Multiplier
-    try:
-        from engines.valuation.quant.components.bitview_client import fetch_series
-        df_cvsc = fetch_series('cointime_value_stored_cumulative')
-        df_cvsc['date_dt'] = pd.to_datetime(df_cvsc['date']).dt.strftime('%Y-%m-%d')
-        cvsc_dict = dict(zip(df_cvsc['date_dt'], df_cvsc['value']))
-    except Exception as e:
-        print(f"Error fetching cvsc: {e}")
-        cvsc_dict = {}
-
-    # Apply Cumulative IIP Penalty
-    try:
-        from engines.valuation.quant.components.bitview_client import fetch_series
-        df_lth = fetch_series('lth_supply')
-        df_supply = fetch_series('supply')
-        df_lth['date_dt'] = pd.to_datetime(df_lth['date']).dt.strftime('%Y-%m-%d')
-        df_supply['date_dt'] = pd.to_datetime(df_supply['date']).dt.strftime('%Y-%m-%d')
-        df_iip = pd.merge(df_lth, df_supply, on='date_dt', suffixes=('_lth', '_sup'))
-        df_iip = df_iip.sort_values('date_dt').reset_index(drop=True)
-        df_iip['lth_ratio'] = df_iip['value_lth'] / df_iip['value_sup']
-        df_iip['active_ratio'] = 1.0 - df_iip['lth_ratio']
-        df_iip['illiquidity_factor'] = df_iip['lth_ratio'] / df_iip['active_ratio']
-        df_iip['illiquidity_cum_mean'] = df_iip['illiquidity_factor'].expanding(min_periods=365).mean()
-        # Shift to make it causal (baseline for date t is the cumulative mean up to day t-1)
-        df_iip['iip_multiplier'] = df_iip['illiquidity_factor'] / df_iip['illiquidity_cum_mean'].shift(1)
-        df_iip['iip_penalty'] = (df_iip['iip_multiplier']**2 - 1.0).clip(lower=0.0)
-        df_iip['iip_penalty'] = df_iip['iip_penalty'].fillna(0.0)
-        iip_dict = dict(zip(df_iip['date_dt'], df_iip['iip_penalty']))
-    except Exception as e:
-        print(f"Error fetching/calculating IIP Penalty: {e}")
-        iip_dict = {}
-
-    prices_list_vol = []
     raw_comp_history = []
 
     for r in rows:
@@ -100,53 +67,24 @@ def fetch_valuation_composite_data():
         except (ValueError, TypeError):
             price = 0.0
 
-        prices_list_vol.append(price)
-
         try:
             raw_val = float(r[1]) if r[1] is not None else None
         except (ValueError, TypeError):
             raw_val = None
 
-        # Volatility Calculation
-        vol_730d = 0.05
-        if len(prices_list_vol) >= 30:
-            prices_series = pd.Series(prices_list_vol)
-            returns = prices_series.pct_change()
-            vol_30d = returns.rolling(window=30).std()
-            vol_730d_series = vol_30d.rolling(window=730, min_periods=30).mean()
-            current_vol = vol_730d_series.iloc[-1]
-            if pd.notnull(current_vol) and current_vol > 0:
-                vol_730d = current_vol
-
-        cvsc_val = cvsc_dict.get(dt, 0.0)
-        iip_penalty_val = iip_dict.get(dt, 0.0)
-
-        # Apply asymmetric modifier and IIP Penalty only to the overvalued (negative) side
-        multiplier = 1.0
-        if raw_val is not None and cvsc_val > 0:
-            import numpy as np
-            log_cvsc = np.log10(cvsc_val)
-            cvsc_factor = max(0, log_cvsc - 13.0) * 0.2
-            vol_factor = max(0, (0.05 / vol_730d) - 1.0) * 0.1
-
-            multiplier = 1.0 + cvsc_factor + vol_factor
-
-            if raw_val < 0:
-                raw_val = raw_val * multiplier - (iip_penalty_val * abs(raw_val))
-
         # Hard clamp between -2.0 and 2.0
         if raw_val is not None:
             raw_val = max(-2.0, min(2.0, raw_val))
 
-        # Append raw value to running history for causal expanding percentiles rescaling
+        # Append raw value to running history for causal rolling percentiles rescaling
         if raw_val is not None:
             raw_comp_history.append(raw_val)
 
-        # Causal Rescaling (expanding window percentiles with min 180 days history for stability)
+        # Causal Rescaling (rolling 1460-day window percentiles with min 180 days history for stability)
         rescaled_val = raw_val
         if len(raw_comp_history) >= 180 and raw_val is not None:
             import numpy as np
-            hist_vals = raw_comp_history[:-1]
+            hist_vals = raw_comp_history[:-1][-1460:]
             p2_5 = float(np.percentile(hist_vals, 2.5))
             p50 = float(np.percentile(hist_vals, 50.0))
             p97_5 = float(np.percentile(hist_vals, 97.5))
