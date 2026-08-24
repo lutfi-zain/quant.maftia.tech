@@ -58,7 +58,7 @@ graph TD
     end
 
     subgraph Layer5 [Layer 5: Sizing & Regime Override]
-        Override{"Is P_Sideways > 0.60<br/>or valuation_composite >= +1.50?"}
+        Override{"Is P_Sideways > 0.60<br/>or valuation_composite <= -1.50?"}
         Sized["Position = P_Bull * FinalScore * VolTarget"]
         CB_Active["Target Exposure = 0.0<br/>(Sideways Regime / Bubble CB)"]
         

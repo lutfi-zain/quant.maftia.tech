@@ -13,7 +13,7 @@
 
 The **Valuation System** (located under [engines/valuation](file:///home/ubuntu/projects/quant.maftia.tech/engines/valuation)) measures Bitcoin's macro-economic cycle positioning. It ingests 17 indicators spanning fundamental, technical, and sentiment metrics, scaling them into a unified piecewise linear range of `[-2.0, +2.0]` to form the `ValuationComposite`.
 
-Its primary architectural role is serving as the **Macro Circuit Breaker** for the LTTD execution engine when valuations enter extreme bubbles (`score >= +1.50`) or deep discounts (`score <= -1.00`).
+Its primary architectural role is serving as the **Macro Circuit Breaker** for the LTTD execution engine when valuations enter extreme bubbles (`score <= -1.50`) or deep discounts (`score >= +1.00`).
 
 ---
 
@@ -47,7 +47,7 @@ graph TD
     end
 
     subgraph Layer4 [Layer 4: Circuit Breaker Evaluation]
-        CB{"valuation_composite >= +1.50?"}
+        CB{"valuation_composite <= -1.50?"}
         Composite --> CB
         CB -->|Yes| CB_Active["Set Circuit Breaker Active = 1<br/>(Caps LTTD Position)"]
         CB -->|No| CB_Inactive["Set Circuit Breaker Active = 0"]
@@ -97,10 +97,10 @@ The `ValuationComposite` is calculated from 17 indicators grouped into three pil
 
 ## 4. Macro Circuit Breaker Safeguards
 
-*   **Bubble Safeguard (`valuation_composite >= +1.50`):**
-    If the composite score exceeds `+1.50`, the system triggers an active circuit breaker flag (`circuit_breaker_active = 1`). This is written to the database and restricts the maximum target exposure of System 2 (LTTD) to `0.50` (or locks it out) regardless of bullish momentum signals, protecting capital from tail risk.
-*   **Discount Safeguard (`valuation_composite <= -1.00`):**
-    If the score drops below `-1.00`, the market is in a deep discount/capitulation zone. This boosts buying parameters, overriding temporary short/neutral LTTD signals to capture accumulation opportunities.
+*   **Bubble Safeguard (`valuation_composite <= -1.50`):**
+    If the composite score reaches `<= -1.50`, the system triggers an active circuit breaker flag (`circuit_breaker_active = 1`). This is written to the database and restricts the maximum target exposure of System 2 (LTTD) to `0.50` (or locks it out) regardless of bullish momentum signals, protecting capital from tail risk.
+*   **Discount Safeguard (`valuation_composite >= +1.00`):**
+    If the score reaches `>= +1.00`, the market is in a deep discount/capitulation zone. This boosts buying parameters, overriding temporary short/neutral LTTD signals to capture accumulation opportunities.
 
 ---
 

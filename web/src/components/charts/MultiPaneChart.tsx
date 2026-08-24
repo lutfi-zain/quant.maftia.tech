@@ -243,20 +243,20 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 			lineWidth: 2,
 		});
 		valSeries.createPriceLine({
-			price: 1.5,
-			color: "#EF4444",
-			lineWidth: 1,
-			lineStyle: LineStyle.Dashed,
-			axisLabelVisible: true,
-			title: "Bubble +1.50",
-		});
-		valSeries.createPriceLine({
-			price: -1.0,
+			price: 1.0,
 			color: "#22C55E",
 			lineWidth: 1,
 			lineStyle: LineStyle.Dashed,
 			axisLabelVisible: true,
-			title: "Discount -1.00",
+			title: "Discount +1.00",
+		});
+		valSeries.createPriceLine({
+			price: -1.5,
+			color: "#EF4444",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: true,
+			title: "Bubble -1.50",
 		});
 
 		// ── LTTD Chart ──
@@ -476,7 +476,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 		{
 			id: "val",
 			label:
-				"Valuation Composite [-2.0 → +2.0] · Bubble +1.50 / Discount -1.00",
+				"Valuation Composite [-2.0 → +2.0] · Discount +1.00 / Bubble -1.50",
 			containerRef: valContainerRef,
 			color: "var(--signal-quant)",
 		},

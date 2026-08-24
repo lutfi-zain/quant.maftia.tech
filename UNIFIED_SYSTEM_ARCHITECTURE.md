@@ -169,7 +169,7 @@ flowchart LR
     MTTD["3. MTTD SYSTEM v2<br/>Multi-Principle Strategy<br/><i>ER Gate & Entropy Noise</i>"]
     ICH["4. ICHIMOKU QUANT<br/>SuperSmoother Tanh<br/><i>5-Gate Stationary Signal</i>"]
 
-    VAL -->|"Circuit Breaker:<br/>If Score >= +1.50 (Macro Bubble)<br/>or Score <= -1.00 (Deep Discount)"| LTTD
+    VAL -->|"Circuit Breaker:<br/>If Score <= -1.50 (Macro Bubble)<br/>or Score >= +1.00 (Deep Discount)"| LTTD
     LTTD -->|"Macro Regime Filter:<br/>If HMM = SIDEWAYS (P_Sideways > 0.6)<br/>Force 0.0 Exposure Override"| MTTD & ICH
     MTTD <-->|"Signal Confluence & Validation:<br/>Consensus between 10 Statistical Families<br/>and SuperSmoother Tanh Oscillators"| ICH
 
@@ -180,7 +180,7 @@ flowchart LR
 ```
 
 1. **Valuation $\rightarrow$ LTTD (*Macro Circuit Breaker*):**
-   Ketika `Valuation Composite Score` melampaui `+1.50` (ekstrem overvalued / zona bahaya puncak siklus), LTTD memodulasi batas toleransi *ensemble*-nya. Jika model LTTD memberi sinyal beli saat valuasi sudah di atas `+1.50`, eksekusi dibatasi maksimal 50% atau diblokir seutuhnya untuk mencegah membeli di puncak siklus 4 tahunan.
+   Ketika `Valuation Composite Score` menembus `<= -1.50` (ekstrem overvalued / zona bahaya puncak siklus), LTTD memodulasi batas toleransi *ensemble*-nya. Jika model LTTD memberi sinyal beli saat valuasi sudah di bawah `<= -1.50`, eksekusi dibatasi maksimal 50% atau diblokir seutuhnya untuk mencegah membeli di puncak siklus 4 tahunan.
 2. **LTTD HMM $\rightarrow$ MTTD & Ichimoku (*Regime Override*):**
    Jika Gaussian HMM pada LTTD mendeteksi bahwa pasar berada dalam status **SIDEWAYS** ($P(\text{Sideways}) > 0.60$), maka sistem memberikan *override command* kepada MTTD dan Ichimoku untuk **menonaktifkan seluruh sinyal entry baru**. Ini menghemat biaya *whipsaw* yang menjadi kelemahan utama sistem *trend-following* jangka menengah.
 3. **MTTD $\leftrightarrow$ Ichimoku (*Statistical Confluence*):**

@@ -649,28 +649,20 @@ export const ValuationStudio: React.FC = () => {
 			lineWidth: 2,
 		});
 		valSeries.createPriceLine({
-			price: 1.5,
-			color: "#EF4444",
-			lineWidth: 1,
-			lineStyle: LineStyle.Dashed,
-			axisLabelVisible: true,
-			title: "Bubble +1.50",
-		});
-		valSeries.createPriceLine({
-			price: -1.0,
+			price: 2.0,
 			color: "#22C55E",
 			lineWidth: 1,
 			lineStyle: LineStyle.Dashed,
 			axisLabelVisible: true,
-			title: "Discount -1.00",
+			title: "Extreme Undervalued +2.00",
 		});
 		valSeries.createPriceLine({
-			price: 2.0,
-			color: "#EF4444",
+			price: 1.0,
+			color: "#4ADE80",
 			lineWidth: 1,
 			lineStyle: LineStyle.Dashed,
 			axisLabelVisible: true,
-			title: "Extreme Overvalued +2.00",
+			title: "Discount / Accumulation +1.00",
 		});
 		valSeries.createPriceLine({
 			price: 0,
@@ -681,12 +673,20 @@ export const ValuationStudio: React.FC = () => {
 			title: "Neutral 0.00",
 		});
 		valSeries.createPriceLine({
-			price: -2.0,
-			color: "#22C55E",
+			price: -1.5,
+			color: "#F87171",
 			lineWidth: 1,
 			lineStyle: LineStyle.Dashed,
 			axisLabelVisible: true,
-			title: "Extreme Undervalued -2.00",
+			title: "Bubble Risk -1.50",
+		});
+		valSeries.createPriceLine({
+			price: -2.0,
+			color: "#EF4444",
+			lineWidth: 1,
+			lineStyle: LineStyle.Dashed,
+			axisLabelVisible: true,
+			title: "Extreme Overvalued -2.00",
 		});
 
 		// ── Pane 3: Equity Curve (Cum_Strat vs Cum_Market) ──

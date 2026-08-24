@@ -22,7 +22,7 @@
   "test": {
     "trades": 2,
     "win_rate": 50.0,
-    "sharpe": 0.26,
+    "sharpe": 0.25,
     "cagr": 2.9,
     "max_dd": -17.9,
     "avg_hold": 77,
@@ -32,10 +32,10 @@
     "trades": 12,
     "win_rate": 58.3,
     "sharpe": 1.25,
-    "cagr": 52.9,
+    "cagr": 52.4,
     "max_dd": -35.6,
     "avg_hold": 119,
     "avg_return": 62.69
   },
-  "degradation": -81.3
+  "degradation": -82.0
 }

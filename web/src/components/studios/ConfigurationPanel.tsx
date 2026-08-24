@@ -562,11 +562,11 @@ export const ConfigurationPanel: React.FC = () => {
 							// Determine label and description
 							let desc = "";
 							let score = "";
-							if (field === "t_minus_2") { desc = "Deep Bubble/Overvaluation Floor"; score = "Score = +2.0"; }
-							else if (field === "t_minus_1") { desc = "Warning Bubble/Overvaluation Border"; score = "Score = +1.0"; }
+							if (field === "t_minus_2") { desc = "Deep Bubble/Overvaluation Floor"; score = "Score = -2.0"; }
+							else if (field === "t_minus_1") { desc = "Warning Bubble/Overvaluation Border"; score = "Score = -1.0"; }
 							else if (field === "t_zero") { desc = "Neutral Target Value"; score = "Score = 0.0"; }
-							else if (field === "t_plus_1") { desc = "Undervaluation Floor"; score = "Score = -1.0"; }
-							else if (field === "t_plus_2") { desc = "Deep Undervaluation / Floor Floor"; score = "Score = -2.0"; }
+							else if (field === "t_plus_1") { desc = "Undervaluation Floor"; score = "Score = +1.0"; }
+							else if (field === "t_plus_2") { desc = "Deep Undervaluation / Floor Floor"; score = "Score = +2.0"; }
 
 							return (
 								<div key={field} style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: "10px", alignItems: "center" }}>

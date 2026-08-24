@@ -173,8 +173,8 @@ flowchart LR
     MTTD["3. MTTD SYSTEM v2<br/>Consensus Oscillator<br/><i>ER & Shannon Entropy Gates</i>"]
     ICH["4. ICHIMOKU QUANT<br/>SuperSmoother Tanh<br/><i>5-Gate Confirmation</i>"]
 
-    VAL -->|"Bubble Circuit Breaker:<br/>If Score >= +1.50<br/>Caps LTTD exposure to 50%"| LTTD
-    VAL -->|"Discount Boost:<br/>If Score <= -1.00<br/>Enables aggressive entry"| LTTD
+    VAL -->|"Bubble Circuit Breaker:<br/>If Score <= -1.50<br/>Caps LTTD exposure to 50%"| LTTD
+    VAL -->|"Discount Boost:<br/>If Score >= +1.00<br/>Enables aggressive entry"| LTTD
     LTTD -->|"Regime Override:<br/>If HMM = SIDEWAYS (P_Sideways > 0.6)<br/>Forces 0.0 Position Sizing"| MTTD
     LTTD -->|"Regime Override:<br/>If HMM = SIDEWAYS (P_Sideways > 0.6)<br/>Forces 0.0 Position Sizing"| ICH
     MTTD <-->|"Confluence Gate:<br/>Both must confirm positive<br/>for leverage exposure"| ICH
@@ -189,8 +189,8 @@ flowchart LR
 
 | System Source | Target System | Logic & Condition | Action Taken |
 |---|---|---|---|
-| **Valuation** | LTTD | `valuation_composite >= +1.50` (Extreme Bubble) | Set macro safety valve, cap maximum LTTD target exposure to `0.50`. |
-| **Valuation** | LTTD | `valuation_composite <= -1.00` (Deep Discount) | Enable aggressive scale-in; override short signals. |
+| **Valuation** | LTTD | `valuation_composite <= -1.50` (Extreme Bubble) | Set macro safety valve, cap maximum LTTD target exposure to `0.50`. |
+| **Valuation** | LTTD | `valuation_composite >= +1.00` (Deep Discount) | Enable aggressive scale-in; override short signals. |
 | **LTTD** | MTTD & Ichimoku | `lttd_regime == 'SIDEWAYS'` ($P_{\text{Sideways}} > 0.60$) | Force medium-term target positions (`mttd_position`, `ichimoku_position`) to `0.0` (Return to Cash). |
 | **MTTD** | Ichimoku | `mttd_imo > 0.25` AND `ichimoku_imo > 0.40` | Symmetrical confluence: Unlock maximum target leverage/sizing. |
 
