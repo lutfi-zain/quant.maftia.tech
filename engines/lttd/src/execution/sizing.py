@@ -124,10 +124,14 @@ def calculate_target_exposure(
         effective_days_in_position = days_in_position if days_in_position is not None else MHP_DAYS
         
         # Macro Breakdown Exit / Emergency Gate:
-        # If smoothed_score_exit drops below SCORE_EMERGENCY_EXIT, it indicates structural trend breakdown,
-        # overriding MHP to immediately cut losses and protect capital.
-        is_macro_breakdown = (SCORE_EMERGENCY_EXIT is not None and smoothed_score_exit <= SCORE_EMERGENCY_EXIT)
-        
+        # If smoothed_score_exit drops below SCORE_EMERGENCY_EXIT and HMM confirms structural BEAR regime,
+        # it indicates structural trend breakdown, overriding MHP to immediately cut losses and protect capital
+        # without triggering false exits during normal bull market corrections.
+        is_macro_breakdown = (
+            SCORE_EMERGENCY_EXIT is not None and
+            smoothed_score_exit <= SCORE_EMERGENCY_EXIT and
+            (regime == "BEAR" if regime is not None else True)
+        )
         if is_macro_breakdown:
             exposure = 0.0
         elif effective_days_in_position >= MHP_DAYS:
