@@ -234,9 +234,8 @@ def _run_fold(
     from src.features.processor import FeatureProcessor
     processor = FeatureProcessor()
     
-    # Purge the last train bar where shift(-1) target references the test period
-    effective_train_idx = train_idx[:-1] if len(train_idx) > 0 else train_idx
-
+    # Purge the last 60 train bars where shift(-60) target references the test period
+    effective_train_idx = train_idx[:-60] if len(train_idx) > 60 else train_idx
     valid_train_idx = effective_train_idx[~y.loc[effective_train_idx].isna()]
     X_train = feature_matrix_fold.loc[valid_train_idx]
     y_train = y.loc[valid_train_idx]
@@ -411,10 +410,9 @@ class BacktestRunner:
         y = load_regime_targets(df_merged.index, close_series=df_merged["close"])
         y = y.loc[common_idx]
         
-        # 3. Generate WFO folds (3yr train -> 6mo val -> 6mo test)
-        iterator = WFOIterator(purge_days=14)
+        # 3. Generate WFO folds (3yr train -> 6mo val -> 6mo test) with 60d purge
+        iterator = WFOIterator(purge_days=60)
         folds = list(iterator.generate_wfo_folds(common_idx))
-        
         if not folds:
             # Fallback: single training run on all data if not enough history
             print("⚠ Warning: Insufficient data for 3-year WFO splits. Running fallback single fit.")

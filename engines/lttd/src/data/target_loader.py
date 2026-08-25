@@ -3,14 +3,14 @@ import pandas as pd
 from pathlib import Path
 from src.data.pipeline import ohlcv_pipeline
 
-def compute_forward_returns_target(close_series: pd.Series) -> pd.Series:
+def compute_forward_returns_target(close_series: pd.Series, fwd_days: int = 60) -> pd.Series:
     """
-    Computes 21-day forward log return (weeks hold), z-score normalized using a rolling 252-day window,
-    and clipped to [-1, +1]. 21d matches LTTD MHP 25d / hold 44d.
+    Computes 60-day forward log return (macro quarters hold), z-score normalized using a rolling 252-day window,
+    and clipped to [-1, +1]. Matches LTTD macro horizon (60-90d).
     """
-    # 21-day forward log return: log(close[t+21] / close[t])
+    # 60-day forward log return: log(close[t+fwd_days] / close[t])
     log_close = np.log(close_series)
-    fwd_ret = log_close.shift(-21) - log_close
+    fwd_ret = log_close.shift(-fwd_days) - log_close
     
     # Rolling 252-day window volatility normalization (NO mean subtraction!)
     rolling_std = fwd_ret.rolling(window=252, min_periods=120).std()
@@ -32,10 +32,9 @@ def compute_forward_returns_target(close_series: pd.Series) -> pd.Series:
     # This teaches the model that bounce rallies in a macro bear are not profitable buy signals
     target.loc[macro_bear_mask & (target > 0)] = 0.0
     
-    # Explicitly ensure target for date t is NaN if t+21 is not in the close_series index
-    # (i.e. we don't have price data for t+21)
-    if len(target) >= 21:
-        target.iloc[-21:] = np.nan
+    # Explicitly ensure target for date t is NaN if t+fwd_days is not in the close_series index
+    if len(target) >= fwd_days:
+        target.iloc[-fwd_days:] = np.nan
     else:
         target.iloc[:] = np.nan
             
@@ -61,27 +60,24 @@ def load_regime_targets(index: pd.DatetimeIndex, close_series: pd.Series = None)
     # Align to the requested index
     aligned_targets = targets.reindex(index)
     
-    # Forward fill then backward fill to handle alignment bounds
-    # but only up to the last 21 rows (to avoid leakage/fake data filling)
-    if len(aligned_targets) > 21:
-        non_nan_part = aligned_targets.iloc[:-21].ffill().bfill()
-        aligned_targets.iloc[:-21] = non_nan_part
-        
+    # Forward fill to handle alignment bounds up to last 60 rows
+    if len(aligned_targets) > 60:
+        non_nan_part = aligned_targets.iloc[:-60].ffill()
+        aligned_targets.iloc[:-60] = non_nan_part
     return aligned_targets
 
-def validate_target_alignment(y: pd.Series, X: pd.DataFrame) -> None:
+def validate_target_alignment(y: pd.Series, X: pd.DataFrame, fwd_days: int = 60) -> None:
     """
     Validates that the target series y perfectly aligns with feature dataframe X.
-    NaNs are permitted in the last 21 rows of y (freshness warmup).
+    NaNs are permitted in the last fwd_days rows of y (freshness warmup).
     """
     if not y.index.equals(X.index):
         raise ValueError("Target index does not match Feature index. Misalignment detected.")
         
-    # Check for NaNs except in the last 21 rows of the dataset
-    if len(y) > 21:
-        non_fresh_y = y.iloc[:-21]
+    # Check for NaNs except in the last fwd_days rows of the dataset
+    if len(y) > fwd_days:
+        non_fresh_y = y.iloc[:-fwd_days]
         if non_fresh_y.isnull().any():
             raise ValueError("Target series contains NaN values (gaps) in historical period.")
     else:
-        # If dataset is smaller than 21, all can be NaN
         pass

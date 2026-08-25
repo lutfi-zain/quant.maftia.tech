@@ -10,8 +10,8 @@ LTTD_SRC = os.path.join(BASE, "engines", "lttd")
 if LTTD_SRC not in sys.path:
     sys.path.insert(0, LTTD_SRC)
 DB_PATH = os.path.join(BASE, "data", "maftia_quant.db")
-START="2018-01-01"
-END="2024-12-31"
+START="2016-01-01"
+END="2026-08-25"
 FEE=10
 
 def fallback():

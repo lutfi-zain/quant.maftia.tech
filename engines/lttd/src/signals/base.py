@@ -50,8 +50,8 @@ class CausalFilter(abc.ABC):
         else:
             resolved = pd.Series(self.dynamic_lookback, index=data.index)
 
-        # Clamp to [10, 400] range and round to integer
-        resolved = resolved.clip(10, 400).round().astype(int)
+        # Clamp to [50, 300] range and round to integer (LTTD macro horizon)
+        resolved = resolved.clip(50, 300).round().astype(int)
         return resolved
 
     @abc.abstractmethod
