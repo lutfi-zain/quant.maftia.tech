@@ -262,7 +262,8 @@ class ExecutionEngine:
             ma_val=ma_val,
             entropy_val=entropy_val,
             er_val=er_val,
-            cloud_min=cloud_min
+            cloud_min=cloud_min,
+            past_scores=scores_series,
         )
 
         # 2. Extract posteriors

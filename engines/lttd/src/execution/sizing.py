@@ -2,20 +2,39 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
 
-# Sizing parameters (optimized via search_metrics.py on aligned database)
-# Coherent LTTD weeks clock: HL≈200d — derived horizons, no magic numbers
-SUPERSMOOTHER_PERIOD_ENTRY = 14
-SUPERSMOOTHER_PERIOD_EXIT = 10
-SCORE_ENTRY = 0.28
-SCORE_EXIT = 0.22
+# Sizing parameters — HL-driven LTTD (HL≈200d) with LTTD_MODE flag support ("macro" | "weeks")
+import os
+LTTD_MODE = os.environ.get("LTTD_MODE", "macro").lower()
+HL = 200  # OU half-life proxy
+
+if LTTD_MODE == "weeks":
+    # v2.1 LTTD-M (weeks hold ~44d, ~2.57/yr)
+    SUPERSMOOTHER_PERIOD_ENTRY = 14
+    SUPERSMOOTHER_PERIOD_EXIT = 10
+    SCORE_ENTRY = 0.28
+    SCORE_EXIT = 0.22
+    SCORE_ENTRY_Q = 0.65
+    SCORE_EXIT_Q = 0.35
+    RCO_DAYS = 14
+    MHP_DAYS = 25
+    MA_PERIOD = 226
+else:
+    # v3.0 LTTD-L (macro hold ~60-90d, ~1.60/yr)
+    SUPERSMOOTHER_PERIOD_ENTRY = int(HL * 0.175) # 35
+    SUPERSMOOTHER_PERIOD_EXIT = int(HL * 0.10)   # 20
+    SCORE_ENTRY = 0.30
+    SCORE_EXIT = 0.22
+    SCORE_ENTRY_Q = 0.65
+    SCORE_EXIT_Q = 0.35
+    RCO_DAYS = int(HL * 0.15)  # 30
+    MHP_DAYS = int(HL * 0.30)  # 60
+    MA_PERIOD = int(HL * 1.25)  # 250
+
 CB_ACTIVATE = -2.260661127701853
 CB_COOLOFF = 0.5006400880184867
 COMP_ENTRY_BOOST = 2.000613
 USE_BEAR_OVERRIDE = False
-RCO_DAYS = 14
-MHP_DAYS = 25
 USE_MA_FILTER = True
-MA_PERIOD = 226
 
 # Ichimoku & Noise Gates parameters
 ER_ENTRY = 0.25
@@ -61,12 +80,26 @@ def calculate_target_exposure(
     ma_val: Optional[float] = None,
     entropy_val: Optional[float] = None,
     er_val: Optional[float] = None,
-    cloud_min: Optional[float] = None
+    cloud_min: Optional[float] = None,
+    past_scores: Optional[pd.Series] = None,
 ) -> Tuple[float, bool]:
     """
     Computes target exposure based on tiered state machine using asymmetric spans, RCO, and MHP.
+    HL-driven: thresholds are rolling quantiles 65/35 of past 750d scores if past_scores provided, else fallback to fixed 0.28/0.22.
     Returns (target_exposure, is_circuit_breaker_active).
     """
+    # Dynamic quantile thresholds (no hardcode)
+    entry_thresh = SCORE_ENTRY
+    exit_thresh = SCORE_EXIT
+    if past_scores is not None and len(past_scores) >= 100:
+        # Use last 750d or all if less
+        window = past_scores.tail(750) if len(past_scores) > 750 else past_scores
+        entry_thresh = float(window.quantile(SCORE_ENTRY_Q))
+        exit_thresh = float(window.quantile(SCORE_EXIT_Q))
+        # Clamp to avoid extreme: entry must be > exit
+        if entry_thresh <= exit_thresh:
+            entry_thresh = SCORE_ENTRY
+            exit_thresh = SCORE_EXIT
     prev = prev_exposure if prev_exposure is not None else 0.0
     exposure = prev
     cb_active = prev_circuit_breaker_active
@@ -88,7 +121,7 @@ def calculate_target_exposure(
         # Check Minimum Holding Period: default to MHP_DAYS to allow exit if not tracked
         effective_days_in_position = days_in_position if days_in_position is not None else MHP_DAYS
         if effective_days_in_position >= MHP_DAYS:
-            if smoothed_score_exit <= SCORE_EXIT:
+            if smoothed_score_exit <= exit_thresh:
                 exposure = 0.0
     else:
         # Check Re-entry cool-off: default to RCO_DAYS to allow entry if not tracked
@@ -113,7 +146,7 @@ def calculate_target_exposure(
             if USE_CLOUD_GATE and cloud_min is not None and price is not None:
                 cloud_condition = (price >= cloud_min)
 
-            if smoothed_score_entry >= SCORE_ENTRY and ma_condition and er_condition and entropy_condition and cloud_condition:
+            if smoothed_score_entry >= entry_thresh and ma_condition and er_condition and entropy_condition and cloud_condition:
                 exposure = 1.0
 
     # 3. BEAR regime override

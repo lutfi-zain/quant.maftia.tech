@@ -187,10 +187,10 @@ class LTTDPipeline:
         # 9. Layer 3: Feature Processor (VIF pruning and PCA)
         logger.info("Running VIF/PCA Feature Processor...")
         processor = FeatureProcessor()
-        # Purge training set adjacent to execution date t to prevent target leakage (14 days purge)
-        train_idx_purged = train_idx[train_idx < t - pd.Timedelta(days=14)]
+        # Purge training set adjacent to execution date t to prevent target leakage (60 days purge)
+        train_idx_purged = train_idx[train_idx < t - pd.Timedelta(days=60)]
         
-        # Drop NaN values from training targets (due to 21-day forward return horizon)
+        # Drop NaN values from training targets (due to 60-day forward return horizon)
         valid_train_idx = train_idx_purged[~y.loc[train_idx_purged].isna()]
         
         X_train = feature_matrix.loc[valid_train_idx]
