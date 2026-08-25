@@ -28,11 +28,11 @@ Seluruh dokumentasi telah disusun dengan rapi dalam format Markdown yang interak
 
 | Dokumen | Proyek Sumber | Peran & Deskripsi Singkat | Tautan Langsung |
 |---|---|---|---|
-| **00. Master Unified Architecture** | `quant.maftia.tech` | **[DOKUMEN MASTER]** Rancangan arsitektur terpadu, integrasi data, proposal fitur frontend, rancangan UI/UX, tokens warna HSL (*Obsidian Dark-Tech*), dan *roadmap* migrasi 4 fase. | [UNIFIED_SYSTEM_ARCHITECTURE.md](file:///home/ubuntu/projects/quant.maftia.tech/UNIFIED_SYSTEM_ARCHITECTURE.md) |
-| **01. Valuation System** | `quant-btc-valuation-system` | Arsitektur *Macroeconomic Cycle Valuation Engine* berdasarkan 17 indikator (*Fundamental, Teknikal, Sentimen*) dengan interpolasi linear piecewise `[-2.0, +2.0]`. | [docs/01_quant_btc_valuation_system.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/01_quant_btc_valuation_system.md) |
-| **02. LTTD System** | `quant-btc-lttd-system` | Arsitektur *Orthogonal Regime-Switching Ensemble Engine* (6-Layer Architecture, 3-State Gaussian HMM, PCA, VIF Pruning, dan L1-Lasso/XGBoost WFO). | [docs/02_quant_btc_lttd_system.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/02_quant_btc_lttd_system.md) |
-| **03. MTTD System v2** | `quant-btc-mttd-system` | Arsitektur *Multi-Principle Consensus Strategy* berjangka menengah (6+ Statistical Families, Kaufman Efficiency Ratio Gate, Shannon Entropy Noise Gate). | [docs/03_quant_btc_mttd_system.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/03_quant_btc_mttd_system.md) |
-| **04. Ichimoku Quant** | `quant-lttd-ichimoku` | Arsitektur *Multi-Principle Denoised Framework* yang mengubah pola Ichimoku visual menjadi osilator stasioner bebas noise (*SuperSmoother $\tanh$* + 5-Gate Logic). | [docs/04_quant_lttd_ichimoku.md](file:///home/ubuntu/projects/quant.maftia.tech/docs/04_quant_lttd_ichimoku.md) |
+| **00. Master Unified Architecture** | `quant.maftia.tech` | **[DOKUMEN MASTER]** Rancangan arsitektur terpadu, integrasi data, proposal fitur frontend, rancangan UI/UX, tokens warna HSL (*Obsidian Dark-Tech*), dan *roadmap* migrasi 4 fase. | [docs/architecture/00_unified_architecture.md](docs/architecture/00_unified_architecture.md) |
+| **01. Valuation System** | `quant-btc-valuation-system` | Arsitektur *Macroeconomic Cycle Valuation Engine* (17 indikator, interpolasi linear piecewise `[-2.0, +2.0]`, dan *SDCA Strategy Engine* dengan Bayesian Optuna presets & continuous transaction ledger). | [docs/architecture/01_valuation_system.md](docs/architecture/01_valuation_system.md) |
+| **02. LTTD System** | `quant-btc-lttd-system` | Arsitektur *Orthogonal Regime-Switching Ensemble Engine* (v3.3 HL-driven: SuperSmoother 35/20, MHP 60d, RCO 30d, MA 250d, Macro Breakdown Emergency Exit Gate, dynamic quantile 65/35, 14 clean macro trades, 85.7% winRate, 68.96 PF). | [docs/architecture/02_lttd_system.md](docs/architecture/02_lttd_system.md) |
+| **03. MTTD System v2** | `quant-btc-mttd-system` | Arsitektur *Multi-Principle Consensus Strategy* berjangka menengah (6+ Statistical Families, Kaufman Efficiency Ratio Gate, Shannon Entropy Noise Gate). | [docs/architecture/03_mttd_system.md](docs/architecture/03_mttd_system.md) |
+| **04. Ichimoku Quant** | `quant-lttd-ichimoku` | Arsitektur *Multi-Principle Denoised Framework* yang mengubah pola Ichimoku visual menjadi osilator stasioner bebas noise (*SuperSmoother $\tanh$* + 5-Gate Logic). | [docs/architecture/04_ichimoku_system.md](docs/architecture/04_ichimoku_system.md) |
 
 ---
 
@@ -53,7 +53,7 @@ flowchart TD
 
     MTTD[3. MTTD System v2<br/>ER Gate >= 0.20 & Entropy <= 2.30] <-->|Cross-System Confluence:<br/>Requires Dual-Positive Consensus| ICH[4. Ichimoku Quant<br/>Denoised Tanh & SuperSmoother]
 
-    VAL & LTTD & MTTD & ICH --> API[Unified Hono Bun API Gateway:<br/>api.quant.maftia.tech]
+    VAL & LTTD & MTTD & ICH --> API[Unified Hono Bun API Gateway:<br/>api.quant.maftia.tech:8910]
     API --> UI[Master Executive Dashboard & Deep-Dive Sandboxes:<br/>React 19 + Lightweight Charts v5.2 with 85px Lock]
 
     style DATA fill:#0f172a,stroke:#64748b,color:#f8fafc

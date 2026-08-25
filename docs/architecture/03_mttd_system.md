@@ -1,19 +1,19 @@
 # 03. MTTD System Architecture
 
 > **Navigation:**
-> - [E2E Overview](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/00_end_to_end.md)
-> - [01. Valuation Studio](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/01_valuation_system.md)
-> - [02. LTTD Lab](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/02_lttd_system.md)
-> - [03. MTTD Console](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/03_mttd_system.md)
-> - [04. Ichimoku Terminal](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/04_ichimoku_system.md)
+> - [00. Unified Architecture](00_unified_architecture.md)
+> - [01. Valuation Studio](01_valuation_system.md)
+> - [02. LTTD Lab](02_lttd_system.md)
+> - [03. MTTD Console](03_mttd_system.md)
+> - [04. Ichimoku Terminal](04_ichimoku_system.md)
 
 ---
 
-## 1. System Role
+## 1. System Role & Executive Summary
 
-The **Medium-Term Trend Detection System** (MTTD v2, located under [engines/mttd](file:///home/ubuntu/projects/quant.maftia.tech/engines/mttd)) is a quantitative consensus engine. It combines indicators from **10 statistical families** into a single stationary oscillator, the `MTTDIntegratedOscillator` (scaled between `[-1.0, +1.0]`).
+The **Medium-Term Trend Detection System** (MTTD v2, located under `engines/mttd`) is a quantitative consensus engine. It combines indicators from **10 statistical families** into a single stationary oscillator, the `MTTDIntegratedOscillator` (scaled between `[-1.0, +1.0]`).
 
-Its calculations are governed by three strict gating mechanisms: the **Efficiency Ratio Gate** (`ER >= 0.20`), the **Shannon Entropy Gate** (`Entropy <= 2.30`), and the **Chikou Momentum Exit** (`< -0.30`). These gates check for trend structural strength, information entropy, and momentum breakdowns to optimize trade execution.
+Its calculations are governed by three strict gating mechanisms: the **Efficiency Ratio Gate** (`ER >= 0.20`), the **Shannon Entropy Gate** (`Entropy <= 2.30`), and the **Chikou Momentum Exit** (`< -0.30`). These gates distinguish true trends from random noise, achieving historical performance (2018–2026) of **58.3% Win Rate**, **1.27 Sharpe Ratio**, and a Deflated Sharpe Ratio $z = 7.48$ (100% statistical significance above hurdle).
 
 ---
 
@@ -28,51 +28,52 @@ graph TD
     end
 
     subgraph Families [Layer 1: 10 Statistical Families]
-        F1["Smoothing (Quantile DEMA, Kalman)"]
-        F2["Spectral (Fourier Trend, IIR)"]
-        F3["Fractal (Efficiency Ratio, Hurst)"]
-        F4["Chaos (Lyapunov Exponents)"]
-        F5["Entropy (Shannon Entropy)"]
-        F6["Regression (Causal Linear Z-Score)"]
-        F7["Statistical (Quantiles, Volatility)"]
-        F8["GARCH (Volatility Forecasting)"]
-        F9["Bayesian (Dynamic Probability)"]
-        F10["ML Hybrid (Causal Predictors)"]
+        F1["Smoothing (Quantile DEMA, Tenkan/Kijun)"]
+        F2["Filtering (Ehlers SuperSmoother 2-Pole IIR)"]
+        F3["Spectral (Composite IMO Oscillator)"]
+        F4["Fractal (Kaufman Efficiency Ratio Gate >= 0.20)"]
+        F5["Entropy (Shannon Information Entropy Gate <= 2.30)"]
+        F6["Momentum (Smoothed S_Chikou Exit < -0.30)"]
+        F7["Regression (Causal Linear Z-Score)"]
+        F8["Statistical (Quantile Volatility)"]
+        F9["GARCH (Volatility Forecasting)"]
+        F10["Bayesian & Chaos (Lyapunov Exponents, Regime Posteriors)"]
         
         OHLCV --> F1 & F2 & F3 & F4 & F5 & F6 & F7 & F8 & F9 & F10
     end
 
-    subgraph Aggregation [Layer 2: Signal Aggregation]
-        RawOsc["Aggregate raw consensus score (-1.0 to +1.0)"]
-        F1 & F2 & F3 & F4 & F5 & F6 & F7 & F8 & F9 & F10 --> RawOsc
+    subgraph Aggregation [Layer 2: Signal Aggregation & IMO]
+        F1 & F2 & F3 & F6 --> RawOsc["Stationary Tanh Decomposition & SuperSmoother<br/>Integrated Market Oscillator (IMO) in [-1.0, +1.0]"]
     end
 
     subgraph Gates [Layer 3: Structural Gating]
         ER_Gate{"Kaufman ER >= 0.20?"}
         Ent_Gate{"Shannon Entropy <= 2.30?"}
+        Cloud_Gate{"Close >= min(SenkouA, SenkouB)?"}
         
-        RawOsc --> ER_Gate
-        RawOsc --> Ent_Gate
+        RawOsc --> ER_Gate --> Ent_Gate --> Cloud_Gate
     end
 
     subgraph Output [Layer 4: Position Sizing & Exits]
-        Exit_Eval{"S_Chikou < -0.30<br/>or IMO < -0.30?"}
-        Pos["Position Sizing (0.0 to 1.0)"]
-        CB_Active["Target Position = 0.0<br/>(Gate Block / Exit Triggered)"]
+        Exit_Eval{"Exit Condition Met?<br/>S_Chikou < -0.30 OR IMO < -0.30<br/>OR Max Hold > 60d"}
+        Immunity{"Immunity Active?<br/>IMO >= 0.50 AND ROC_30d >= -0.20"}
+        Pos["Active Long Exposure = 1.0 (2-Bar Confirm)"]
+        CB_Active["Target Position = 0.0 (Cash / Cooldown)"]
         
-        ER_Gate & Ent_Gate -->|Pass| Exit_Eval
-        ER_Gate & Ent_Gate -->|Fail Block| CB_Active
-        Exit_Eval -->|Exit| CB_Active
-        Exit_Eval -->|Hold| Pos
+        Cloud_Gate -->|Pass| Pos
+        Cloud_Gate -->|Fail| CB_Active
+        Pos --> Exit_Eval
+        Exit_Eval -->|Yes| Immunity
+        Immunity -->|Immune| Pos
+        Immunity -->|Not Immune| CB_Active
     end
 
     subgraph Presentation [Layer 5: Database & UI Console]
-        JSON_Out["mttd_data.json"]
         DB_Master["maftia_quant.db (unified_daily_analytics)"]
         API["Hono v4 Gateway Port :8910"]
-        UI["React SPA (MTTD Console Panel)"]
+        UI["React 19 SPA (MTTD Console Panel)"]
         
-        Pos & CB_Active --> JSON_Out --> DB_Master --> API --> UI
+        Pos & CB_Active --> DB_Master --> API --> UI
     end
 ```
 
@@ -82,77 +83,109 @@ graph TD
 
 The consensus engine evaluates market dynamics across ten distinct statistical domains:
 
-| Family | Sub-indicator / Method | Metric Characterization | Output Style |
-|---|---|---|---|
-| **Smoothing** | Double Exponential MA (DEMA) | Attenuates high-frequency noise without lagging | Normalized Line |
-| **Spectral** | Discrete Fourier Transform (DFT) | Resolves cycle harmonics and frequency spectra | Bounded Sinyal |
-| **Fractal** | Kaufman Efficiency Ratio (ER) | Quantifies movement efficiency vs search noise | Ratio `[0.0, 1.0]` |
-| **Chaos** | Local Lyapunov Exponents | Identifies phase space departures and instability | Real Number |
-| **Entropy** | Shannon Information Entropy | Measures probability state dispersion over 15d | Bits `[0.0, ~2.5]` |
-| **Regression** | Causal Linear Regression Z-Score | Computes standardized rate of change z-scores | Z-Score |
-| **Statistical** | Rolling Volatility Quantiles | Standardizes volatility across cycles | Percentile |
-| **GARCH** | GARCH(1,1) Variance Forecast | Projects forward-looking realized volatility | Percentage |
-| **Bayesian** | Recursive Probability Updater | Dynamically adjusts regime probabilities | Probability |
-| **ML Hybrid** | Walk-Forward Ridge Regressor | Learns parameters on rolling historical windows | Score `[-1.0, +1.0]` |
+| No | Statistical Family | Implementation Module | Role in Strategy | Status |
+|---|---|---|---|---|
+| 1 | **Smoothing** | `indicators_helper.py` | Baseline Ichimoku trend structure (Tenkan, Kijun, Senkou A/B) | Active Core |
+| 2 | **Filtering** | `indicators/supersmoother.py` | Zero-lag high-frequency noise attenuation via Ehlers SuperSmoother | Active Core |
+| 3 | **Spectral** | `multi_principle_signals.py` | Normalized cycle harmonics via composite **IMO** calculation | Active Core |
+| 4 | **Fractal** | `indicators/efficiency_ratio.py` | Trend strength confirmation (**Kaufman Efficiency Ratio Gate**) | Active Core Gate |
+| 5 | **Entropy** | `indicators/entropy.py` | Chaos and market randomness detection (**Shannon Entropy Gate**) | Active Core Gate |
+| 6 | **Momentum** | `multi_principle_signals.py` | Exit timing trigger via normalized **Chikou momentum** | Active Exit Core |
+| 7 | **Regression** | `multi_principle_signals.py` | Causal linear regression channel for volatility confirmation | Secondary / Signals |
+| 8 | **GARCH** | `multi_principle_signals.py` | Volatility clustering and dynamic parameter scaling | Secondary / Signals |
+| 9 | **Chaos** | `multi_principle_signals.py` | Phase space analysis and local Lyapunov exponent stability filter | Secondary / Signals |
+| 10 | **Bayesian** | `regime_detector.py` | Dynamic probability updating and macroeconomic regime overlay | Regime Overlay |
 
 ---
 
-## 4. The 3 Core Gating Safeguards
+## 4. Mathematical Formulation of Composite Signal (IMO)
 
-*   **Efficiency Ratio Gate (`ER >= 0.20`):**
-    Evaluates price direction relative to total path noise:
-    $$\text{ER} = \frac{|Close_t - Close_{t-n}|}{\sum_{i=1}^{n} |Close_i - Close_{i-1}|}$$
-    If $\text{ER} < 0.20$, the market is consolidating in a random walk. MTTD blocks new entries.
-*   **Shannon Entropy Gate (`Entropy <= 2.30`):**
-    Calculates statistical uncertainty of returns using a rolling 15-day window segmented into 6 histogram bins:
-    $$H = -\sum_{i=1}^{6} p_i \log_2(p_i)$$
-    If $H > 2.30$, the market is in a chaotic regime, blocking entry executions.
-*   **Chikou Momentum Exit (`S_Chikou < -0.30`):**
-    Monitors normalized 60-day lagging momentum. A drop below `-0.30` closes active positions, returning the portfolio to cash.
+All non-stationary components are mapped to bounded stationary oscillators `[-1.0, +1.0]` using the hyperbolic tangent function ($\tanh$):
+$$S_{TK} = \tanh\left(\frac{\text{Tenkan} - \text{Kijun}}{\text{ATR}}\right), \quad S_{Cloud} = \tanh\left(\frac{\text{Close} - \text{Cloud}}{\text{ATR}}\right)$$
+$$S_{Future} = \tanh\left(\frac{\text{SenkouA} - \text{SenkouB}}{\text{ATR}}\right), \quad S_{Chikou} = \tanh\left(\text{SuperSmoother}\left(\frac{\text{Close}_t - \text{Close}_{t-60}}{\text{ATR}}, l=4\right)\right)$$
+
+**Integrated Market Oscillator (IMO):**
+$$\text{IMO}_t = \text{SuperSmoother}\left(\frac{S_{TK} + S_{Cloud} + S_{Future} + S_{Chikou}}{4}, \, l=7\right)$$
 
 ---
 
-## 5. Storage Schema & Serialization
+## 5. Execution Gates & Dynamic Immunity
 
-The MTTD engine writes execution outputs to `mttd_data.json` before they are synced into the centralized database `maftia_quant.db`:
+### 5.1 Entry Logic (ALL Must Pass)
+1. **Adaptive IMO Threshold:** $\text{IMO} > \text{std}(\text{IMO}, 30d) \times 0.25$
+2. **Fractal Efficiency Gate:** $\text{ER} \ge 0.20$
+3. **Entropy Noise Gate:** $\text{Shannon Entropy} \le 2.30$ (calculated on rolling 15d window with 6 bins: $H = -\sum_{i=1}^6 p_i \log_2 p_i$)
+4. **Cloud Trend Filter:** $\text{Close} \ge \min(\text{SenkouA}, \text{SenkouB})$
+5. **Persistence Confirmation:** Sinyal must persist for **2 consecutive daily bars**.
+
+### 5.2 Exit Logic (ANY Can Trigger)
+1. **Chikou Momentum Breakdown:** $S_{Chikou} < -0.30$
+2. **Trend Breakdown:** $\text{IMO} < -0.30$
+3. **Max Hold Forced Exit:** Forced liquidation after **60 days** with a **5-day cooldown**.
+
+### 5.3 Dynamic Bullish Trend Immunity
+To prevent premature exit during strong parabolic bull trends with sharp shallow pullbacks, exit rules are temporarily suspended if:
+$$\text{Immunity Active} \iff (\text{IMO} \ge 0.50 \lor \text{Close} \ge \text{Cloud}_{\max}) \land (\text{ROC}_{30d} \ge -0.20) \land (\text{IMO} \ge -0.30)$$
+
+---
+
+## 6. Parameters & Backtest Performance
+
+### 6.1 Configuration Parameters (`mttd_ensemble_config.json`)
+```json
+{
+  "t_entry": 0.25,
+  "er_entry": 0.20,
+  "entropy_thresh": 2.30,
+  "min_hold_days": 10,
+  "max_hold_days": 60,
+  "chikou_thresh": -0.30,
+  "immunity_thresh": 0.50,
+  "cooldown": 5
+}
+```
+
+### 6.2 Backtest Performance Summary
+| Metric | Full Period Baseline (2018–2026) | Walk-Forward Out-Of-Sample (2020–2026) |
+|---|---|---|
+| **Total Trades** | 12 | 11 |
+| **Win Rate** | 58.3% | 63.6% |
+| **Sharpe Ratio** | 1.27 | 1.34 |
+| **Deflated Sharpe Ratio** | N/A | **$z = 7.48$ (100% Significant)** |
+
+---
+
+## 7. Storage Schema Excerpt & API Mapping
 
 ```sql
--- SQLite table schema in maftia_quant.db
+-- SQLite schema in maftia_quant.db
 CREATE TABLE unified_daily_analytics (
   date                   TEXT PRIMARY KEY,
-  -- MTTD System v2 columns
-  mttd_imo               REAL,          -- Integrated Market Oscillator [-1.0, +1.0]
-  mttd_efficiency_ratio  REAL,          -- Kaufman ER value
-  mttd_entropy           REAL,          -- Shannon Entropy value
-  mttd_position          REAL,          -- Target position [0.0, 1.0]
-  mttd_immunity_active   INTEGER        -- Hold immunity flag
+  mttd_imo               REAL,
+  mttd_efficiency_ratio  REAL,
+  mttd_entropy           REAL,
+  mttd_position          REAL,
+  mttd_immunity_active   INTEGER,
+  FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 );
 ```
 
----
-
-## 6. API Route Mapping & Frontend
-
 | HTTP Verb | Route | Description |
 |---|---|---|
-| **GET** | `/api/v1/timeseries/master` | Returns timeseries history including `mttd_imo` and `mttd_position`. |
+| **GET** | `/api/v1/system/mttd/details` | Returns daily model details including ER, Entropy, and gate indicators. |
+| **GET** | `/api/v1/timeseries/master` | Returns timeseries history including `mttd_imo`, `mttd_position`, and `mttd_immunity_active`. |
 
 ### Frontend Integration (`MttdConsole.tsx`)
-The **MTTD Console** displays medium-term trend execution indicators:
-*   **Oscillator Panels:** Displays `mttd_imo` relative to buying/selling thresholds (`+0.25` and `-0.25`).
-*   **Gate Panel Widgets:** Shows live lights for the Efficiency Ratio Gate and Shannon Entropy Gate (Green = Open, Red = Blocked).
+* **Gate Visualizer:** Traffic light UI displaying live status for **Efficiency Ratio (`ER >= 0.20`)**, **Shannon Entropy (`<= 2.30`)**, and **Chikou Momentum (`>= -0.30`)**.
+* **Synchronized Subplots:** Stacked IMO line chart with 85px Y-axis lock and vertical crosshair synchronization.
 
 ---
 
-<blockquote>
-  <p><strong>Navigation:</strong></p>
-  <ul>
-    <li><a href="file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/00_end_to_end.md">E2E Overview</a></li>
-    <li><a href="file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/01_valuation_system.md">01. Valuation Studio</a></li>
-    <li><a href="file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/02_lttd_system.md">02. LTTD Lab</a></li>
-    <li><a href="file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/03_mttd_system.md">03. MTTD Console</a></li>
-    <li><a href="file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/04_ichimoku_system.md">04. Ichimoku Terminal</a></li>
-  </ul>
-</blockquote>
+> **Navigation:**
+> - [00. Unified Architecture](00_unified_architecture.md)
+> - [01. Valuation Studio](01_valuation_system.md)
+> - [02. LTTD Lab](02_lttd_system.md)
+> - [03. MTTD Console](03_mttd_system.md)
+> - [04. Ichimoku Terminal](04_ichimoku_system.md)
 
-← [02. LTTD Lab](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/02_lttd_system.md) | ↑ [MTTD Console](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/03_mttd_system.md) | [04. Ichimoku Terminal](file:///home/ubuntu/projects/quant.maftia.tech/docs/architecture/04_ichimoku_system.md) →
+← [02. LTTD Lab](02_lttd_system.md) | ↑ [03. MTTD Console](03_mttd_system.md) | [04. Ichimoku Terminal](04_ichimoku_system.md) →
