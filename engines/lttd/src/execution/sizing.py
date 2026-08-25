@@ -13,6 +13,7 @@ if LTTD_MODE == "weeks":
     SUPERSMOOTHER_PERIOD_EXIT = 10
     SCORE_ENTRY = 0.28
     SCORE_EXIT = 0.22
+    SCORE_EMERGENCY_EXIT = float(os.environ.get("SCORE_EMERGENCY_EXIT", "-0.10"))
     SCORE_ENTRY_Q = 0.65
     SCORE_EXIT_Q = 0.35
     RCO_DAYS = 14
@@ -24,6 +25,7 @@ else:
     SUPERSMOOTHER_PERIOD_EXIT = int(HL * 0.10)   # 20
     SCORE_ENTRY = 0.30
     SCORE_EXIT = 0.22
+    SCORE_EMERGENCY_EXIT = float(os.environ.get("SCORE_EMERGENCY_EXIT", "-0.10"))
     SCORE_ENTRY_Q = 0.65
     SCORE_EXIT_Q = 0.35
     RCO_DAYS = int(HL * 0.15)  # 30
@@ -120,7 +122,15 @@ def calculate_target_exposure(
     if prev >= 0.9:
         # Check Minimum Holding Period: default to MHP_DAYS to allow exit if not tracked
         effective_days_in_position = days_in_position if days_in_position is not None else MHP_DAYS
-        if effective_days_in_position >= MHP_DAYS:
+        
+        # Macro Breakdown Exit / Emergency Gate:
+        # If smoothed_score_exit drops below SCORE_EMERGENCY_EXIT, it indicates structural trend breakdown,
+        # overriding MHP to immediately cut losses and protect capital.
+        is_macro_breakdown = (SCORE_EMERGENCY_EXIT is not None and smoothed_score_exit <= SCORE_EMERGENCY_EXIT)
+        
+        if is_macro_breakdown:
+            exposure = 0.0
+        elif effective_days_in_position >= MHP_DAYS:
             if smoothed_score_exit <= exit_thresh:
                 exposure = 0.0
     else:
@@ -148,7 +158,6 @@ def calculate_target_exposure(
 
             if smoothed_score_entry >= entry_thresh and ma_condition and er_condition and entropy_condition and cloud_condition:
                 exposure = 1.0
-
     # 3. BEAR regime override
     if USE_BEAR_OVERRIDE and regime == "BEAR":
         exposure = 0.0
