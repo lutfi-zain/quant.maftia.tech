@@ -611,7 +611,17 @@ export const MttdConsole: React.FC = () => {
 			});
 		});
 
-		btcChart.timeScale().fitContent();
+		const totalBars = dailyData.length;
+		if (totalBars > 0) {
+			const barsToShow = isMobile ? 90 : 180;
+			const from = Math.max(0, totalBars - barsToShow);
+			const to = totalBars + 2;
+			const initialRange = { from, to };
+			allCharts.forEach(({ chart }) => {
+				chart.timeScale().setVisibleLogicalRange(initialRange);
+				chart.timeScale().scrollToPosition(0, false);
+			});
+		}
 
 		// Sync Y-axis widths after initial render
 		requestAnimationFrame(() => {

@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState, useRef, Fragment } from "react";
+import { useEffect, useState, useRef, useMemo, Fragment } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
@@ -8,6 +8,11 @@ import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 import {
 	createChart,
 	type IChartApi,
+	type ISeriesApi,
+	type CandlestickData,
+	type LineData,
+	type HistogramData,
+	type AreaData,
 	ColorType,
 	CrosshairMode,
 	type Time,
@@ -187,12 +192,12 @@ export const LttdLab: React.FC = () => {
 		eq: IChartApi | null;
 	}>({ btc: null, score: null, exposure: null, regime: null, eq: null });
 	const seriesRef = useRef<{
-		candle: any;
-		score: any;
-		exposure: any;
-		regime: any;
-		cumStrat: any;
-		cumMarket: any;
+		candle: ISeriesApi<"Candlestick"> | null;
+		score: ISeriesApi<"Area"> | null;
+		exposure: ISeriesApi<"Histogram"> | null;
+		regime: ISeriesApi<"Line"> | null;
+		cumStrat: ISeriesApi<"Line"> | null;
+		cumMarket: ISeriesApi<"Line"> | null;
 	}>({
 		candle: null,
 		score: null,
@@ -204,46 +209,61 @@ export const LttdLab: React.FC = () => {
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
-	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => {
-		const regime = d.lttd_regime || "SIDEWAYS";
-		// Use lttd_target_exposure from database directly (no regime fallback recomputation)
-		const rawExposure = d.lttd_target_exposure;
-		const pos =
-			rawExposure !== undefined && rawExposure !== null
-				? Number(rawExposure)
-				: 0.0;
-		if (rawExposure === undefined || rawExposure === null) {
-			console.warn(
-				`lttd_target_exposure is NULL for ${d.date}, defaulting to 0.0`,
-			);
-		}
-		return {
-			date: d.date,
-			close: d.close || d.btc_price || 0,
-			position: pos,
-			lttd_regime: regime,
-			lttd_prob_sideways: d.lttd_prob_sideways,
-		};
-	});
+	const backtestData: StudioDailyRecord[] = useMemo(() => {
+		if (!dailyData.length) return [];
+		return dailyData.map((d: any) => {
+			const rawRegime = d.lttd_regime;
+			const regime =
+				typeof rawRegime === "object" && rawRegime !== null
+					? (rawRegime as { regime?: string }).regime || "SIDEWAYS"
+					: rawRegime || "SIDEWAYS";
+			const rawExposure = d.lttd_target_exposure;
+			const pos =
+				rawExposure !== undefined && rawExposure !== null
+					? Number(rawExposure)
+					: 0.0;
+			return {
+				date: d.date,
+				close: d.close || d.btc_price || 0,
+				position: pos,
+				lttd_regime: regime,
+				lttd_prob_sideways: d.lttd_prob_sideways,
+			};
+		});
+	}, [dailyData]);
 
-	const backtestResult = useStudioBacktest(
-		backtestData,
-		startDate,
-		endDate,
-		feeBps,
+	const backtestResult = useMemo(
+		() => useStudioBacktest(backtestData, startDate, endDate, feeBps),
+		[backtestData, startDate, endDate, feeBps],
 	);
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
-			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+			seriesRef.current.cumStrat.setData(
+				backtestResult.cumStrat.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
 		}
 		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
-			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+			seriesRef.current.cumMarket.setData(
+				backtestResult.cumMarket.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
 			createSeriesMarkers(
 				seriesRef.current.candle,
-				backtestResult.markers as any,
+				backtestResult.markers.map((m) => ({
+					time: m.time as Time,
+					position: m.position,
+					color: m.color,
+					shape: m.shape,
+					text: m.text,
+				})),
 			);
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
@@ -254,19 +274,20 @@ export const LttdLab: React.FC = () => {
 		() => {
 			if (studioContainerRef.current) {
 				gsap.fromTo(
-					studioContainerRef.current.children,
-					{ y: 18, opacity: 0 },
+					studioContainerRef.current.querySelectorAll(
+						".studio-telemetry-banner, .stat-grid-3col, .studio-top-toolbar, .chart-panel",
+					),
+					{ y: 14, opacity: 0 },
 					{
 						y: 0,
 						opacity: 1,
-						duration: 0.55,
-						stagger: 0.08,
-						ease: "power3.out",
+						duration: 0.4,
+						stagger: 0.05,
+						ease: "power2.out",
 					},
 				);
 			}
 		},
-		{ scope: studioContainerRef },
 	);
 
 	useEffect(() => {
@@ -508,44 +529,81 @@ export const LttdLab: React.FC = () => {
 
 		// ── Populate Data ───────────────────────────────────────────────────
 
-		candleSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
+		const candleData: CandlestickData<Time>[] = [];
+		const scoreData: AreaData<Time>[] = [];
+		const exposureData: HistogramData<Time>[] = [];
+		const regimeData: LineData<Time>[] = [];
+
+		for (let i = 0; i < dailyData.length; i++) {
+			const p = dailyData[i];
+			const t = p.date as Time;
+			candleData.push({
+				time: t,
 				open: p.open,
 				high: p.high,
 				low: p.low,
 				close: p.close,
-			})),
-		);
+			});
+			const scoreVal =
+				(p as unknown as Record<string, unknown>).lttd_score ??
+				(p as unknown as Record<string, unknown>).valuation_composite ??
+				0;
+			scoreData.push({
+				time: t,
+				value: Number(scoreVal),
+			});
+			const rawExp =
+				(p as unknown as Record<string, unknown>).lttd_target_exposure ??
+				(p as unknown as Record<string, unknown>).target_exposure ??
+				0;
+			exposureData.push({
+				time: t,
+				value: Number(rawExp) * 100,
+			});
+			const rawRegime = p.lttd_regime;
+			const regime =
+				typeof rawRegime === "object" && rawRegime !== null
+					? (rawRegime as { regime?: string }).regime || "SIDEWAYS"
+					: rawRegime || "SIDEWAYS";
+			regimeData.push({
+				time: t,
+				value: regime === "BULL" ? 1 : regime === "BEAR" ? -1 : 0,
+			});
+		}
 
-		scoreSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
-				value: (p as any).lttd_score ?? (p as any).valuation_composite ?? 0,
-			})),
-		);
+		candleSeries.setData(candleData);
+		scoreSeries.setData(scoreData);
+		exposureSeries.setData(exposureData);
+		regimeSeries.setData(regimeData);
 
-		const exposureArr = dailyData.map((p) => ({
-			time: p.date as Time,
-			value:
-				((p as any).lttd_target_exposure ?? (p as any).target_exposure ?? 0) *
-				100,
-		}));
-		exposureSeries.setData(exposureArr as any);
-
-		regimeSeries.setData(
-			dailyData.map((p) => {
-				const regime =
-					typeof p.lttd_regime === "object" && p.lttd_regime !== null
-						? (p.lttd_regime as any).regime
-						: p.lttd_regime || "SIDEWAYS";
-				let val = 0;
-				if (regime === "BULL") val = 1;
-				else if (regime === "BEAR") val = -1;
-				return { time: p.date as Time, value: val };
-			}),
-		);
-
+		if (backtestResult.cumStrat.length) {
+			cumStratSeries.setData(
+				backtestResult.cumStrat.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
+		}
+		if (backtestResult.cumMarket.length) {
+			cumMarketSeries.setData(
+				backtestResult.cumMarket.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
+		}
+		if (backtestResult.markers.length) {
+			createSeriesMarkers(
+				candleSeries,
+				backtestResult.markers.map((m) => ({
+					time: m.time as Time,
+					position: m.position,
+					color: m.color,
+					shape: m.shape,
+					text: m.text,
+				})),
+			);
+		}
 		// Crosshair sync — 5 charts
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
@@ -585,7 +643,18 @@ export const LttdLab: React.FC = () => {
 			});
 		});
 
-		btcChart.timeScale().fitContent();
+		// ── Initial visible range: default to latest market data on the right ──
+		const totalBars = dailyData.length;
+		if (totalBars > 0) {
+			const barsToShow = isMobile ? 90 : 180;
+			const from = Math.max(0, totalBars - barsToShow);
+			const to = totalBars + 2;
+			const initialRange = { from, to };
+			allCharts.forEach(({ chart }) => {
+				chart.timeScale().setVisibleLogicalRange(initialRange);
+				chart.timeScale().scrollToPosition(0, false);
+			});
+		}
 
 		// Sync Y-axis widths
 		requestAnimationFrame(() => {
@@ -671,23 +740,58 @@ export const LttdLab: React.FC = () => {
 	const diagVif = latestDiag?.vif || {};
 	const diagVariance = latestDiag?.pca_variance_explained ?? 87.6;
 
-	const displayComponents = Object.entries(LTTD_COMPONENT_METADATA).map(
-		([name, meta]) => {
+	const displayComponents = useMemo(() => {
+		return Object.entries(LTTD_COMPONENT_METADATA).map(([name, meta]) => {
 			const signal = components.find((c) => c.component_name === name);
 			const score = signal
 				? toNum(signal.normalized_score)
 				: (diagIndicators[name] ?? Math.cos(name.length) * 0.7);
 			const vifVal = diagVif[name] ?? null;
+			const numScore = toNum(score);
 			return {
 				name,
 				category: meta.category,
 				description: meta.description,
-				score: toNum(score),
+				score: numScore,
 				vif: vifVal,
-				direction: toNum(score) > 0.3 ? 1 : toNum(score) < -0.3 ? -1 : 0,
+				direction: numScore > 0.3 ? 1 : numScore < -0.3 ? -1 : 0,
 			};
-		},
-	);
+		});
+	}, [components, diagIndicators, diagVif]);
+
+	const regimeTransitions = useMemo(() => {
+		if (dailyData.length < 2) return [];
+		const transitions: Array<{
+			date: string;
+			prev: string;
+			curr: string;
+			score: number;
+		}> = [];
+		for (let i = 1; i < dailyData.length; i++) {
+			const prevRaw = dailyData[i - 1].lttd_regime;
+			const currRaw = dailyData[i].lttd_regime;
+			const prev =
+				typeof prevRaw === "object" && prevRaw !== null
+					? (prevRaw as { regime?: string }).regime || "SIDEWAYS"
+					: prevRaw || "SIDEWAYS";
+			const curr =
+				typeof currRaw === "object" && currRaw !== null
+					? (currRaw as { regime?: string }).regime || "SIDEWAYS"
+					: currRaw || "SIDEWAYS";
+			if (prev !== curr) {
+				transitions.push({
+					date: dailyData[i].date,
+					prev,
+					curr,
+					score:
+						Number(
+							(dailyData[i] as unknown as Record<string, unknown>).lttd_score,
+						) || 0,
+				});
+			}
+		}
+		return transitions.reverse();
+	}, [dailyData]);
 
 	const heights = getPanelHeights(maximized, isMobile);
 
@@ -1674,36 +1778,7 @@ export const LttdLab: React.FC = () => {
 							</tr>
 						</thead>
 						<tbody>
-							{(dailyData.length >= 2
-								? (() => {
-										const transitions: any[] = [];
-										const sorted = [...dailyData].sort((a, b) =>
-											a.date.localeCompare(b.date),
-										);
-										for (let i = 1; i < sorted.length; i++) {
-											const prev =
-												typeof sorted[i - 1].lttd_regime === "object" &&
-												sorted[i - 1].lttd_regime !== null
-													? (sorted[i - 1].lttd_regime as any).regime
-													: sorted[i - 1].lttd_regime || "SIDEWAYS";
-											const curr =
-												typeof sorted[i].lttd_regime === "object" &&
-												sorted[i].lttd_regime !== null
-													? (sorted[i].lttd_regime as any).regime
-													: sorted[i].lttd_regime || "SIDEWAYS";
-											if (prev !== curr) {
-												transitions.push({
-													date: sorted[i].date,
-													prev,
-													curr,
-													score: (sorted[i] as any).lttd_score ?? 0,
-												});
-											}
-										}
-										return transitions.reverse();
-									})()
-								: []
-							).length === 0 ? (
+							{regimeTransitions.length === 0 ? (
 								<tr>
 									<td
 										colSpan={4}
@@ -1717,102 +1792,76 @@ export const LttdLab: React.FC = () => {
 									</td>
 								</tr>
 							) : (
-								(() => {
-									const transitions: any[] = [];
-									const sorted = [...dailyData].sort((a, b) =>
-										a.date.localeCompare(b.date),
-									);
-									for (let i = 1; i < sorted.length; i++) {
-										const prev =
-											typeof sorted[i - 1].lttd_regime === "object" &&
-											sorted[i - 1].lttd_regime !== null
-												? (sorted[i - 1].lttd_regime as any).regime
-												: sorted[i - 1].lttd_regime || "SIDEWAYS";
-										const curr =
-											typeof sorted[i].lttd_regime === "object" &&
-											sorted[i].lttd_regime !== null
-												? (sorted[i].lttd_regime as any).regime
-												: sorted[i].lttd_regime || "SIDEWAYS";
-										if (prev !== curr) {
-											transitions.push({
-												date: sorted[i].date,
-												prev,
-												curr,
-												score: (sorted[i] as any).lttd_score ?? 0,
-											});
-										}
-									}
-									return transitions.reverse().map((t: any) => (
-										<tr
-											key={t.date}
-											style={{
-												borderBottom: "1px solid rgba(255,255,255,0.03)",
-											}}
-										>
-											<td style={{ padding: "8px" }}>{t.date}</td>
-											<td style={{ padding: "8px" }}>
-												<span
-													style={{
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontSize: "11px",
-														fontWeight: 700,
-														background:
-															t.prev === "BULL"
-																? "rgba(34,197,94,0.15)"
-																: t.prev === "BEAR"
-																	? "rgba(239,68,68,0.15)"
-																	: "rgba(245,158,11,0.15)",
-														color:
-															t.prev === "BULL"
-																? "#22C55E"
-																: t.prev === "BEAR"
-																	? "#EF4444"
-																	: "#F59E0B",
-													}}
-												>
-													{t.prev}
-												</span>
-											</td>
-											<td style={{ padding: "8px" }}>
-												<span
-													style={{
-														padding: "2px 8px",
-														borderRadius: "4px",
-														fontSize: "11px",
-														fontWeight: 700,
-														background:
-															t.curr === "BULL"
-																? "rgba(34,197,94,0.15)"
-																: t.curr === "BEAR"
-																	? "rgba(239,68,68,0.15)"
-																	: "rgba(245,158,11,0.15)",
-														color:
-															t.curr === "BULL"
-																? "#22C55E"
-																: t.curr === "BEAR"
-																	? "#EF4444"
-																	: "#F59E0B",
-													}}
-												>
-													{t.curr}
-												</span>
-											</td>
-											<td
+								regimeTransitions.map((t) => (
+									<tr
+										key={t.date}
+										style={{
+											borderBottom: "1px solid rgba(255,255,255,0.03)",
+										}}
+									>
+										<td style={{ padding: "8px" }}>{t.date}</td>
+										<td style={{ padding: "8px" }}>
+											<span
 												style={{
-													padding: "8px",
-													textAlign: "right",
-													fontFamily: "Geist Mono, monospace",
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontSize: "11px",
 													fontWeight: 700,
+													background:
+														t.prev === "BULL"
+															? "rgba(34,197,94,0.15)"
+															: t.prev === "BEAR"
+																? "rgba(239,68,68,0.15)"
+																: "rgba(245,158,11,0.15)",
+													color:
+														t.prev === "BULL"
+															? "#22C55E"
+															: t.prev === "BEAR"
+																? "#EF4444"
+																: "#F59E0B",
 												}}
 											>
-												{t.score > 0
-													? `+${t.score.toFixed(4)}`
-													: t.score.toFixed(4)}
-											</td>
-										</tr>
-									));
-								})()
+												{t.prev}
+											</span>
+										</td>
+										<td style={{ padding: "8px" }}>
+											<span
+												style={{
+													padding: "2px 8px",
+													borderRadius: "4px",
+													fontSize: "11px",
+													fontWeight: 700,
+													background:
+														t.curr === "BULL"
+															? "rgba(34,197,94,0.15)"
+															: t.curr === "BEAR"
+																? "rgba(239,68,68,0.15)"
+																: "rgba(245,158,11,0.15)",
+													color:
+														t.curr === "BULL"
+															? "#22C55E"
+															: t.curr === "BEAR"
+																? "#EF4444"
+																: "#F59E0B",
+												}}
+											>
+												{t.curr}
+											</span>
+										</td>
+										<td
+											style={{
+												padding: "8px",
+												textAlign: "right",
+												fontFamily: "Geist Mono, monospace",
+												fontWeight: 700,
+											}}
+										>
+											{t.score > 0
+												? `+${t.score.toFixed(4)}`
+												: t.score.toFixed(4)}
+										</td>
+									</tr>
+								))
 							)}
 						</tbody>
 					</table>

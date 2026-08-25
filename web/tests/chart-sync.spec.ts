@@ -46,4 +46,33 @@ test.describe('Quantitative Terminal Chart Synchronization & Layout Verification
     // Verify rightPriceScale configuration in commonChartOptions
     expect(content).toContain('minimumWidth: 85');
   });
+
+  test('All studios and multi-pane charts default to recent time window and scroll to latest data', async () => {
+    const srcDir = path.resolve(__dirname, '../src');
+    const filesToCheck = [
+      'components/charts/MultiPaneChart.tsx',
+      'components/studios/ValuationStudio.tsx',
+      'components/studios/LttdLab.tsx',
+      'components/studios/MttdConsole.tsx',
+      'components/studios/IchimokuTerminal.tsx',
+    ];
+
+    for (const relPath of filesToCheck) {
+      const fullPath = path.join(srcDir, relPath);
+      const content = fs.readFileSync(fullPath, 'utf-8');
+
+      expect(content, `${relPath} should set initial visible logical range to recent window`).toContain('setVisibleLogicalRange');
+      expect(content, `${relPath} should scroll to latest position`).toContain('scrollToPosition(0, false)');
+    }
+  });
+
+  test('LttdLab memoizes heavy computations (backtest, regime transitions, display components)', async () => {
+    const lttdLabPath = path.resolve(__dirname, '../src/components/studios/LttdLab.tsx');
+    const content = fs.readFileSync(lttdLabPath, 'utf-8');
+
+    expect(content).toContain('const backtestData: StudioDailyRecord[] = useMemo(');
+    expect(content).toContain('const backtestResult = useMemo(');
+    expect(content).toContain('const regimeTransitions = useMemo(');
+    expect(content).toContain('const displayComponents = useMemo(');
+  });
 });

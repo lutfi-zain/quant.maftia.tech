@@ -1,10 +1,13 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { quantClient } from "../../api/client";
 import type { LttdOnchainRecord } from "../../api/types";
 import {
 	createChart,
 	type IChartApi,
+	type ISeriesApi,
+	type LineData,
+	type Time,
 	ColorType,
 	LineSeries,
 	LineStyle,
@@ -39,7 +42,7 @@ const chartOptions = {
 };
 
 interface SimpleChartProps {
-	data: { time: string; value: number }[];
+	data: LineData<Time>[];
 	title: string;
 	color: string;
 	threshold?: { price: number; label: string; color?: string };
@@ -55,18 +58,14 @@ function SimpleLineChart({
 	height,
 }: SimpleChartProps) {
 	const chartRef = useRef<IChartApi | null>(null);
+	const seriesRef = useRef<ISeriesApi<"Line"> | null>(null);
 
 	useEffect(() => {
-		if (!containerRef.current || data.length === 0) return;
-
-		if (chartRef.current) {
-			chartRef.current.remove();
-			chartRef.current = null;
-		}
+		if (!containerRef.current) return;
 
 		const chart = createChart(containerRef.current, {
 			...chartOptions,
-			width: containerRef.current.clientWidth,
+			width: containerRef.current.clientWidth || 280,
 			height,
 			timeScale: {
 				...chartOptions.timeScale,
@@ -79,7 +78,7 @@ function SimpleLineChart({
 			color,
 			lineWidth: 2,
 		});
-		series.setData(data as any);
+		seriesRef.current = series;
 
 		if (threshold) {
 			series.createPriceLine({
@@ -92,7 +91,16 @@ function SimpleLineChart({
 			});
 		}
 
-		chart.timeScale().fitContent();
+		if (data.length > 0) {
+			series.setData(data);
+			const totalBars = data.length;
+			const barsToShow = 180;
+			chart.timeScale().setVisibleLogicalRange({
+				from: Math.max(0, totalBars - barsToShow),
+				to: totalBars + 2,
+			});
+			chart.timeScale().scrollToPosition(0, false);
+		}
 
 		const ro = new ResizeObserver(() => {
 			if (containerRef.current && chartRef.current) {
@@ -101,14 +109,30 @@ function SimpleLineChart({
 				});
 			}
 		});
-		if (containerRef.current) ro.observe(containerRef.current);
+		ro.observe(containerRef.current);
 
 		return () => {
 			ro.disconnect();
 			chart.remove();
 			chartRef.current = null;
+			seriesRef.current = null;
 		};
-	}, [data, color, threshold, containerRef, height]);
+	}, [containerRef, height, color]);
+
+	useEffect(() => {
+		if (seriesRef.current && data.length > 0) {
+			seriesRef.current.setData(data);
+			if (chartRef.current) {
+				const totalBars = data.length;
+				const barsToShow = 180;
+				chartRef.current.timeScale().setVisibleLogicalRange({
+					from: Math.max(0, totalBars - barsToShow),
+					to: totalBars + 2,
+				});
+				chartRef.current.timeScale().scrollToPosition(0, false);
+			}
+		}
+	}, [data]);
 
 	return null;
 }
@@ -132,16 +156,39 @@ export const LttdOnchainPanel: React.FC = () => {
 
 	const latestVal =
 		onchainData.length > 0 ? onchainData[onchainData.length - 1] : null;
+	const mvrvSeries = useMemo<LineData<Time>[]>(
+		() =>
+			onchainData
+				.filter((r) => r.sth_mvrv !== null)
+				.map((r) => ({
+					time: r.date as Time,
+					value: r.sth_mvrv!,
+				})),
+		[onchainData],
+	);
 
-	const mkSeries = (
-		field: "sth_mvrv" | "sth_nupl" | "sth_sopr_24h",
-	): { time: string; value: number }[] =>
-		onchainData
-			.filter((r) => r[field] !== null)
-			.map((r) => ({
-				time: r.date,
-				value: r[field]!,
-			}));
+	const nuplSeries = useMemo<LineData<Time>[]>(
+		() =>
+			onchainData
+				.filter((r) => r.sth_nupl !== null)
+				.map((r) => ({
+					time: r.date as Time,
+					value: r.sth_nupl!,
+				})),
+		[onchainData],
+	);
+
+	const soprSeries = useMemo<LineData<Time>[]>(
+		() =>
+			onchainData
+				.filter((r) => r.sth_sopr_24h !== null)
+				.map((r) => ({
+					time: r.date as Time,
+					value: r.sth_sopr_24h!,
+				})),
+		[onchainData],
+	);
+
 
 	const isMvrvAlert =
 		latestVal && latestVal.sth_mvrv !== null && latestVal.sth_mvrv > 2.0;
@@ -267,7 +314,7 @@ export const LttdOnchainPanel: React.FC = () => {
 						}}
 					>
 						<SimpleLineChart
-							data={mkSeries("sth_mvrv")}
+							data={mvrvSeries}
 							title="STH-MVRV"
 							color="#A78BFA"
 							threshold={{
@@ -302,7 +349,7 @@ export const LttdOnchainPanel: React.FC = () => {
 						}}
 					>
 						<SimpleLineChart
-							data={mkSeries("sth_nupl")}
+							data={nuplSeries}
 							title="STH-NUPL"
 							color="#34D399"
 							threshold={{
@@ -337,7 +384,7 @@ export const LttdOnchainPanel: React.FC = () => {
 						}}
 					>
 						<SimpleLineChart
-							data={mkSeries("sth_sopr_24h")}
+							data={soprSeries}
 							title="STH-SOPR"
 							color="#F59E0B"
 							containerRef={soprRef}
