@@ -5,9 +5,9 @@ from typing import Optional, Tuple
 # Sizing parameters — HL-driven LTTD-L (HL≈200d, 120-350) — no hardcode fossil
 # All horizons = HL × factor, thresholds = rolling quantile 65/35 (750d)
 HL = 200  # OU half-life proxy, will be replaced by dynamic OU estimate
-SUPERSMOOTHER_PERIOD_ENTRY = int(HL * 0.15)  # 30
+SUPERSMOOTHER_PERIOD_ENTRY = int(HL * 0.175) # 35
 SUPERSMOOTHER_PERIOD_EXIT = int(HL * 0.10)   # 20
-SCORE_ENTRY = 0.28  # fallback fixed; live uses quantile 65th of 750d smoothed scores
+SCORE_ENTRY = 0.30  # fallback fixed; live uses quantile 65th of 750d smoothed scores
 SCORE_EXIT = 0.22   # fallback; live uses quantile 35th
 SCORE_ENTRY_Q = 0.65
 SCORE_EXIT_Q = 0.35
