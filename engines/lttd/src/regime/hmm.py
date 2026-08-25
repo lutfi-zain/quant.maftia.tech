@@ -30,9 +30,8 @@ def train_hmm(
 
     # 3-state HMM
     model = hmm.GaussianHMM(
-        n_components=3, covariance_type="diag", n_iter=100, random_state=42
+        n_components=3, covariance_type="diag", n_iter=100, tol=1e-4, random_state=42
     )
-
     # Robust K-Means initialization
     kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
     labels = kmeans.fit_predict(features)
