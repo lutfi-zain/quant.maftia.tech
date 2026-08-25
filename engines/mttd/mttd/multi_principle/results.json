@@ -22,8 +22,8 @@
   "test": {
     "trades": 2,
     "win_rate": 50.0,
-    "sharpe": 0.25,
-    "cagr": 2.9,
+    "sharpe": 0.41,
+    "cagr": 5.7,
     "max_dd": -17.9,
     "avg_hold": 77,
     "avg_return": 3.13
@@ -31,11 +31,11 @@
   "full": {
     "trades": 12,
     "win_rate": 58.3,
-    "sharpe": 1.25,
-    "cagr": 52.4,
+    "sharpe": 1.26,
+    "cagr": 53.1,
     "max_dd": -35.6,
     "avg_hold": 119,
     "avg_return": 62.69
   },
-  "degradation": -82.0
+  "degradation": -70.5
 }
