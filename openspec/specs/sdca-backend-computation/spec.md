@@ -32,7 +32,7 @@ The API gateway SHALL expose `POST /api/v1/sdca/signal` that computes SDCA signa
 
 ### Requirement: SDCA Backtest Endpoint
 
-The API gateway SHALL expose `POST /api/v1/sdca/backtest` that runs a full SDCA backtest server-side.
+The API gateway and Python reporting pipeline SHALL compute identical SDCA backtests using standardized fixed capital pool accounting, causal t-1 signal execution, fee deductions (10 bps default), and identical performance metrics calculation (CAGR, totalReturn, sharpeRatio, sortinoRatio, maxDrawdown, winRate, profitFactor).
 
 #### Scenario: Backtest with default parameters
 
@@ -54,6 +54,11 @@ The API gateway SHALL expose `POST /api/v1/sdca/backtest` that runs a full SDCA 
 - **WHEN** a client provides `buy_threshold: -0.8` and `sell_threshold: +1.2`
 - **THEN** the backtest SHALL use those thresholds instead of defaults
 - **AND** the response SHALL include the resolved `thresholds` object
+
+#### Scenario: Parity between Python batch script and TypeScript API
+
+- **WHEN** `python3 scripts/calculate_sdca_backtest.py` and `POST /api/v1/sdca/backtest` run on the same dataset and thresholds
+- **THEN** both SHALL produce identical equity curve trajectories, trade counts, and performance metrics within 0.01% floating precision
 
 ### Requirement: Shared SDCA Engine Module
 

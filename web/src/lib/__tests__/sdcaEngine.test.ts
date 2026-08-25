@@ -262,7 +262,7 @@ describe("computeSdcaSignals", () => {
 });
 
 describe("Hysteresis State Machine", () => {
-	it("executes state transitions OUT_ALL -> DCA_IN -> ALL_IN -> DCA_OUT -> OUT_ALL", () => {
+	it("executes 4-state cycle rotation: OUT_ALL -> DCA_IN -> ALL_IN -> DCA_OUT -> OUT_ALL", () => {
 		const data: DailyRecord[] = [
 			{ date: "2024-01-01", close: 50000, valuation_composite: 0.0 },
 			{ date: "2024-01-02", close: 40000, valuation_composite: 1.9 }, // comp >= 1.8 -> DCA_IN
@@ -278,7 +278,7 @@ describe("Hysteresis State Machine", () => {
 			all_out_val: 0.0,
 		});
 
-		expect(signals[0].phase).toBe("neutral"); // OUT_ALL
+		expect(signals[0].phase).toBe("neutral"); // t-1 was empty (OUT_ALL)
 		expect(signals[1].phase).toBe("neutral"); // t-1 was 0.0
 		expect(signals[2].phase).toBe("buy_dca"); // t-1 was 1.9 (DCA_IN)
 		expect(signals[3].phase).toBe("buy_all"); // t-1 was 1.4 (ALL_IN)

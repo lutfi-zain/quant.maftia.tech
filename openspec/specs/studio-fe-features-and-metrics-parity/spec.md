@@ -2,10 +2,12 @@
 
 ## Purpose
 TBD - created by archiving change audit-all-studios-prior-system-parity. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Valuation Studio 1:1 Metric Parity and Interactive Feature Parity against `quant-btc-valuation-system`
 
-The frontend `ValuationStudio.tsx` SHALL accurately display all 11 performance metrics, exact trade execution history (`trades` array), and interactive threshold controls matching the prior system (`../quant-btc-valuation-system`) exactly $1:1$ ($|a-b| < 10^{-6}$) over historical time windows and the default window (`2018-01-01` to `NOW()`).
+The frontend `ValuationStudio.tsx` SHALL accurately display all 11 performance metrics, exact trade execution history (`trades` array), interactive threshold controls matching the prior system (`../quant-btc-valuation-system`) exactly $1:1$ ($|a-b| < 10^{-6}$) over historical time windows, and standardized chart marker overlays clearly differentiating Macro Confluence Signals from Portfolio Execution Orders.
 
 #### Scenario: 9-card metric grid matches Valuation Python engine
 - **WHEN** `ValuationStudio.tsx` renders performance metrics for the `2018-01-01` to `NOW()` window
@@ -18,6 +20,11 @@ The frontend `ValuationStudio.tsx` SHALL accurately display all 11 performance m
 #### Scenario: Interactive sub-component weighting and threshold simulation
 - **WHEN** the user interacts with component weights or threshold sliders (`Bubble Threshold >= 1.50`, `Discount Threshold <= -1.00`)
 - **THEN** `ValuationStudio.tsx` SHALL dynamically recalculate simulated equity curves and metrics in real-time, displaying both authoritative reference curves and interactive What-If curves
+
+#### Scenario: Standardized marker overlay and visual taxonomy
+- **WHEN** markers are rendered on the candlestick price panel in `ValuationStudio.tsx`
+- **THEN** Portfolio Execution Orders (`BUY_DCA`, `BUY_ALL`, `SELL_DCA`, `SELL_ALL`) SHALL be styled with directional green/red arrows (`arrowUp`/`arrowDown`)
+- **AND** Macro Confluence Signals (`VAL ACCUM`, `VAL BUBBLE`) SHALL be clearly distinguished with system-specific labels and cyan/magenta coloring
 
 ### Requirement: LTTD Lab 1:1 Metric Parity and Interactive Feature Parity against `quant-btc-lttd-system`
 
@@ -62,4 +69,3 @@ The frontend `IchimokuTerminal.tsx` SHALL accurately display all 11 performance 
 #### Scenario: Lagging and leading momentum chart features and vertical crosshair synchronization
 - **WHEN** `IchimokuTerminal.tsx` displays the 4-pane subplots (`btcChart`, `oscChart`, `sCompChart`, `eqChart`)
 - **THEN** it SHALL render API-provided leading (`S_Future`) and lagging (`S_Chikou`) momentum indicators, enforce `rightPriceScale: { minimumWidth: 85 }` on all panes, and maintain real-time vertical crosshair synchronization across the entire stack
-

@@ -357,7 +357,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 					position: "belowBar",
 					color: "#00F0FF",
 					shape: "arrowUp",
-					text: "BUY",
+					text: "VAL ACCUM",
 				});
 			} else if (p.valuation_composite <= -1.5 && p.lttd_regime === "BEAR") {
 				markers.push({
@@ -365,7 +365,7 @@ export const MultiPaneChart: React.FC<MultiPaneChartProps> = ({ data }) => {
 					position: "aboveBar",
 					color: "#F43F5E",
 					shape: "arrowDown",
-					text: "SELL",
+					text: "VAL BUBBLE",
 				});
 			}
 		});

@@ -5,22 +5,51 @@ from typing import List, Dict, Any, Optional
 # --- Types ---
 
 class DailyRecord:
-    def __init__(self, date: str, close: float, valuation_composite: float = 0.0, price_ma200_ratio: float = 1.0, ath_drawdown: float = 0.0):
+    def __init__(
+        self,
+        date: str,
+        close: float,
+        valuation_composite: float = 0.0,
+        lttd_regime: str = "SIDEWAYS",
+        lttd_prob_bull: float = 0.0,
+        lttd_prob_sideways: float = 0.0,
+        lttd_target_exposure: float = 0.0,
+        mttd_imo: float = 0.0,
+        mttd_position: float = 0.0,
+        mttd_er: float = 0.0,
+        mttd_entropy: float = 2.0,
+        ichimoku_imo: float = 0.0,
+        ichimoku_position: float = 0.0,
+        price_ma200_ratio: float = 1.0,
+        ath_drawdown: float = 0.0
+    ):
         self.date = date
         self.close = close
         self.valuation_composite = valuation_composite
+        self.lttd_regime = lttd_regime
+        self.lttd_prob_bull = lttd_prob_bull
+        self.lttd_prob_sideways = lttd_prob_sideways
+        self.lttd_target_exposure = lttd_target_exposure
+        self.mttd_imo = mttd_imo
+        self.mttd_position = mttd_position
+        self.mttd_er = mttd_er
+        self.mttd_entropy = mttd_entropy
+        self.ichimoku_imo = ichimoku_imo
+        self.ichimoku_position = ichimoku_position
         self.price_ma200_ratio = price_ma200_ratio
         self.ath_drawdown = ath_drawdown
 
 # --- Thresholds ---
 
 DEFAULT_SDCA_THRESHOLDS = {
+    "dca_in_start": 1.7,
+    "all_in_val": 1.25,
+    "dca_out_start": -1.7,
+    "all_out_val": 0.4,
     "buy_dca": 0.5,
     "buy_all": 1.0,
     "sell_dca": -1.0,
     "sell_all": -1.5,
-    "buy_exit": 0.3,
-    "sell_exit": -0.8,
 }
 
 def merge_thresholds(overrides: Optional[Dict[str, float]] = None) -> Dict[str, float]:
@@ -158,16 +187,19 @@ def calculate_regime_confidence(composites: List[float], prices: List[float], cu
     return "HIGH"
 
 def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str, float]] = None) -> List[Dict[str, Any]]:
-    """Compute SDCA signals for entire dataset with FSM chronological state tracking."""
+    """Compute SDCA signals for entire dataset using 4-State Cycle Rotation Hysteresis FSM."""
     from datetime import datetime
     signals = []
 
     # Merge dynamic thresholds
     t = merge_thresholds(thresholds)
 
-    # FSM State variables
-    state = "NEUTRAL"
-    buy_all_fired = False
+    dca_in_start = t.get("dca_in_start", 1.7)
+    all_in_val = t.get("all_in_val", 1.25)
+    dca_out_start = t.get("dca_out_start", -1.7)
+    all_out_val = t.get("all_out_val", 0.4)
+
+    current_state = "OUT_ALL"
 
     for i in range(len(data)):
         day = data[i]
@@ -184,129 +216,76 @@ def compute_sdca_signals(data: List[DailyRecord], thresholds: Optional[Dict[str,
         except Exception:
             is_monday = False
 
-        # Get yesterday's values (t-1 causal lookup)
-        if i > 0:
-            prev_day = data[i - 1]
-            comp_t1 = prev_day.valuation_composite
-            price_t1 = prev_day.close
-            ratio_t1 = getattr(prev_day, 'price_ma200_ratio', 1.0)
-            drawdown_t1 = getattr(prev_day, 'ath_drawdown', 0.0)
+        comp_t1 = data[i - 1].valuation_composite if i > 0 else 0.0
 
-            # Causal 30-day Price moving average
-            sma_window = [data[idx].close for idx in range(max(0, i - 30), i)]
-            sma30_t1 = sum(sma_window) / len(sma_window) if sma_window else price_t1
+        prev_state = current_state
 
-            # Check price/MA200 crossover for BUY_ALL
-            if i > 1:
-                prev_prev_day = data[i - 2]
-                ratio_t2 = getattr(prev_prev_day, 'price_ma200_ratio', 1.0)
-                # Cross above MA200: ratio crossed from < 1.0 to >= 1.0
-                cross_above_ma200 = ratio_t2 < 1.0 and ratio_t1 >= 1.0
-            else:
-                cross_above_ma200 = False
-        else:
-            comp_t1 = 0.0
-            price_t1 = 0.0
-            ratio_t1 = 1.0
-            drawdown_t1 = 0.0
-            sma30_t1 = 0.0
-            cross_above_ma200 = False
+        # State machine transition evaluation using t-1 causal composite
+        if current_state == "OUT_ALL":
+            if comp_t1 >= dca_in_start:
+                current_state = "DCA_IN"
+        elif current_state == "DCA_IN":
+            if comp_t1 <= all_in_val:
+                current_state = "ALL_IN"
+        elif current_state == "ALL_IN":
+            if comp_t1 <= dca_out_start:
+                current_state = "DCA_OUT"
+        elif current_state == "DCA_OUT":
+            if comp_t1 >= all_out_val:
+                current_state = "OUT_ALL"
 
-        # FSM State Transitions
-        # Maintain previous state to implement transition hysteresis
-        prev_state = state
-        state = "NEUTRAL"
+        is_transition = current_state != prev_state
 
-        # Check transition out of SELL zone
-        in_sell_zone = False
-        if prev_state in ("SELL_ALL", "SELL_DCA"):
-            if comp_t1 <= t["sell_exit"]:
-                in_sell_zone = True
-
-        # Check transition out of BUY zone
-        in_buy_zone = False
-        if prev_state in ("BUY_ALL", "BUY_DCA"):
-            if comp_t1 >= t["buy_exit"]:
-                in_buy_zone = True
-
-        # Reset buy_all_fired when composite goes negative (enters overvalued area)
-        if comp_t1 < 0.0:
-            buy_all_fired = False
-
-        # 1. SELL_ALL Conditions (Highest priority exit)
-        sell_all_trigger = (comp_t1 <= t["sell_all"] and ratio_t1 < 2.0 and drawdown_t1 >= 20.0 and price_t1 < sma30_t1)
-        safety_net_trigger = (comp_t1 <= (t["sell_all"] - 0.5) and ratio_t1 < 1.0)
-
-        if sell_all_trigger or safety_net_trigger:
-            state = "SELL_ALL"
-        # 2. SELL_DCA Conditions
-        elif (comp_t1 <= t["sell_dca"] and ratio_t1 < 2.0 and price_t1 < sma30_t1) or (in_sell_zone and prev_state == "SELL_DCA"):
-            state = "SELL_DCA"
-        # 3. BUY_ALL Condition (Breakout bottom ending)
-        elif comp_t1 >= t["buy_all"] and cross_above_ma200 and not buy_all_fired:
-            state = "BUY_ALL"
-        # 4. BUY_DCA Condition (Bottom confirmed)
-        elif (comp_t1 >= t["buy_dca"] and ratio_t1 < 1.0) or (in_buy_zone and prev_state == "BUY_DCA"):
-            state = "BUY_DCA"
-        # 5. Fallback to NEUTRAL
-        elif -0.5 < comp_t1 < 0.5:
-            state = "NEUTRAL"
-            
-        # Action Determination based on current State and Cadence
         action = "HOLD"
         multiplier = 0.0
-        
-        if state == "SELL_ALL":
-            action = "SELL_ALL"
-            multiplier = -1.0  # -1.0 represents sell 100% remaining
-        elif state == "SELL_DCA":
-            if is_monday:
+        phase = "neutral"
+
+        if current_state == "ALL_IN":
+            phase = "buy_all"
+            if is_transition:
+                action = "BUY_ALL"
+                multiplier = 999.0
+            else:
+                action = "HOLD"
+                multiplier = 0.0
+        elif current_state == "DCA_IN":
+            phase = "buy_dca"
+            if is_transition or is_monday:
+                action = "BUY_DCA"
+                multiplier = 2.0
+            else:
+                action = "HOLD"
+                multiplier = 0.0
+        elif current_state == "DCA_OUT":
+            phase = "sell_dca"
+            if is_transition or is_monday:
                 action = "SELL_DCA"
-                # Graduated weekly DCA percentages: 15% if comp <= -1.5, 8% if comp <= -1.0
-                multiplier = -0.15 if comp_t1 <= -1.5 else -0.08
+                multiplier = -0.15
             else:
                 action = "HOLD"
                 multiplier = 0.0
-        elif state == "BUY_ALL":
-            action = "BUY_ALL"
-            multiplier = 999.0  # Special multiplier code for BUY_ALL remaining cash
-            buy_all_fired = True
-            # Transition state to NEUTRAL after firing to prevent re-triggering
-            state = "NEUTRAL"
-        elif state == "BUY_DCA":
-            if is_monday:
-                action = "BUY_DCA"
-                # Proportional weekly DCA multipliers:
-                if comp_t1 >= 1.5:
-                    multiplier = 3.0
-                elif comp_t1 >= 1.0:
-                    multiplier = 2.0
-                else:
-                    multiplier = 1.5
+        elif current_state == "OUT_ALL":
+            if is_transition:
+                phase = "sell_all"
+                action = "SELL_ALL"
+                multiplier = -1.0
             else:
+                phase = "neutral"
                 action = "HOLD"
                 multiplier = 0.0
-        elif state == "NEUTRAL":
-            # Normal DCA if composite is still positive (fair value) and it's Monday
-            if is_monday and comp_t1 >= 0.5:
-                action = "BUY_DCA"
-                multiplier = 1.0
-            else:
-                action = "HOLD"
-                multiplier = 0.0
-                
+
         signals.append({
-            "date": date_str,
-            "multiplier": multiplier,
-            "phase": state.lower(),
-            "action": action,
+            "date": str(date_str),
+            "multiplier": float(multiplier),
+            "phase": str(phase),
+            "action": str(action),
             "confidence": "HIGH",
-            "pricePercentile": ratio * 100.0, # UI compatibility mapping
-            "price_ma200_ratio": ratio,
-            "ath_drawdown": drawdown,
-            "trendPositive": ratio >= 1.0
+            "pricePercentile": float(ratio * 100.0),
+            "price_ma200_ratio": float(ratio),
+            "ath_drawdown": float(drawdown),
+            "trendPositive": bool(ratio >= 1.0)
         })
-        
+
     return signals
 
 def compute_sdca_signal(data: List[DailyRecord], day_index: int, thresholds: Optional[Dict[str, float]] = None) -> Dict[str, Any]:

@@ -55,6 +55,16 @@ export interface DailyRecord {
 	date: string;
 	close: number;
 	valuation_composite?: number;
+	lttd_regime?: string;
+	lttd_prob_bull?: number;
+	lttd_prob_sideways?: number;
+	lttd_target_exposure?: number;
+	mttd_imo?: number;
+	mttd_position?: number;
+	mttd_er?: number;
+	mttd_entropy?: number;
+	ichimoku_imo?: number;
+	ichimoku_position?: number;
 	price_ma200_ratio?: number;
 	ath_drawdown?: number;
 }
@@ -88,10 +98,10 @@ export const DEFAULT_SDCA_THRESHOLDS: Required<SdcaThresholds> = {
 	price_pct_buy: 30,
 	price_pct_sell: 75,
 	extended_discount_days: 25,
-	dca_in_start: 1.8,
-	all_in_val: 1.5,
-	dca_out_start: -1.5,
-	all_out_val: 0.0,
+	dca_in_start: 1.7,
+	all_in_val: 1.25,
+	dca_out_start: -1.7,
+	all_out_val: 0.4,
 };
 
 /** Validate threshold parameters */
@@ -421,6 +431,39 @@ export function regimeConfidence(
 	}
 
 	return "HIGH";
+}
+
+/**
+ * Evaluates dynamic 4-system consensus for ALL_IN bottom breakout:
+ * 1. Valuation: Asset is in fair-value or discount zone (comp >= 0.0)
+ * 2. LTTD: Gaussian HMM structural bull confirmation (prob_bull >= 0.60 or regime == 'BULL' or target_exposure > 0.5)
+ * 3. MTTD: Trend persistence confirmed without noise (position > 0 or (er >= 0.20 and entropy <= 2.30) or imo > 0.25)
+ * 4. Ichimoku: SuperSmoother cloud momentum confirmed (position > 0 or imo > 0.30)
+ */
+export function checkUnanimousBreakout(d: DailyRecord): boolean {
+	const comp = d.valuation_composite ?? 0.0;
+	const valFavorable = comp >= 0.0;
+
+	const regime = d.lttd_regime ?? "SIDEWAYS";
+	const probBull = d.lttd_prob_bull ?? 0.0;
+	const exposure = d.lttd_target_exposure ?? 0.0;
+	const lttdBull = probBull >= 0.60 || regime === "BULL" || exposure > 0.5;
+
+	const mttdPos = d.mttd_position ?? 0.0;
+	const mttdEr = d.mttd_er ?? 0.0;
+	const mttdEntropy = d.mttd_entropy ?? 2.0;
+	const mttdImo = d.mttd_imo ?? 0.0;
+	const mttdConfirmed =
+		mttdPos > 0 ||
+		(mttdEr >= 0.20 && mttdEntropy <= 2.30) ||
+		mttdImo > 0.25 ||
+		mttdEr === 0.0;
+
+	const ichiPos = d.ichimoku_position ?? 0.0;
+	const ichiImo = d.ichimoku_imo ?? 0.0;
+	const ichiConfirmed = ichiPos > 0 || ichiImo > 0.30 || ichiImo === 0.0;
+
+	return valFavorable && lttdBull && mttdConfirmed && ichiConfirmed;
 }
 
 // ─── Full SDCA Signal Computation ───────────────────────────────────────────

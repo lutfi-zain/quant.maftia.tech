@@ -245,7 +245,7 @@ export const ValuationStudio: React.FC = () => {
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 	const markersPrimitiveRef = useRef<any>(null);
-
+	const [markerFilter, setMarkerFilter] = useState<"both" | "strategy" | "confluence" | "none">("both");
 	const [backtestResult, setBacktestResult] = useState<any>({
 		cumStrat: [],
 		cumMarket: [],
@@ -445,16 +445,66 @@ export const ValuationStudio: React.FC = () => {
 			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 		}
 		if (seriesRef.current.candle) {
+			let combinedMarkers: any[] = [];
+			const stratMarkers = (backtestResult.markers || []).map((m: any) => ({
+				time: m.time,
+				position: m.position,
+				color: m.color,
+				shape: m.shape,
+				text: m.text || m.action,
+			}));
+
+			const confluenceMarkers: any[] = [];
+			dailyData.forEach((p) => {
+				if (p.date >= startDate && p.date <= endDate) {
+					const valScore =
+						typeof p.valuation_composite === "object" && p.valuation_composite !== null
+							? Number((p.valuation_composite as any).score ?? 0)
+							: Number(p.valuation_composite ?? 0);
+					const regime = p.lttd_regime || "SIDEWAYS";
+
+					if (valScore >= 1.0 && regime === "BULL") {
+						confluenceMarkers.push({
+							time: p.date as Time,
+							position: "belowBar",
+							color: "#00F0FF",
+							shape: "arrowUp",
+							text: "VAL ACCUM",
+						});
+					} else if (valScore <= -1.5 && regime === "BEAR") {
+						confluenceMarkers.push({
+							time: p.date as Time,
+							position: "aboveBar",
+							color: "#F43F5E",
+							shape: "arrowDown",
+							text: "VAL BUBBLE",
+						});
+					}
+				}
+			});
+
+			if (markerFilter === "strategy") {
+				combinedMarkers = stratMarkers;
+			} else if (markerFilter === "confluence") {
+				combinedMarkers = confluenceMarkers;
+			} else if (markerFilter === "both") {
+				combinedMarkers = [...stratMarkers, ...confluenceMarkers].sort((a, b) =>
+					(a.time as string).localeCompare(b.time as string),
+				);
+			} else {
+				combinedMarkers = [];
+			}
+
 			if (markersPrimitiveRef.current) {
-				markersPrimitiveRef.current.setMarkers(backtestResult.markers as any);
+				markersPrimitiveRef.current.setMarkers(combinedMarkers as any);
 			} else {
 				markersPrimitiveRef.current = createSeriesMarkers(
 					seriesRef.current.candle,
-					backtestResult.markers as any,
+					combinedMarkers as any,
 				);
 			}
 		}
-	}, [backtestResult]);
+	}, [backtestResult, markerFilter, dailyData, startDate, endDate]);
 
 	useGSAP(
 		() => {
@@ -725,6 +775,7 @@ export const ValuationStudio: React.FC = () => {
 				close: p.close,
 			})),
 		);
+		markersPrimitiveRef.current = null;
 		valSeries.setData(
 			dailyData.map((p) => ({
 				time: p.date as Time,
@@ -824,6 +875,9 @@ export const ValuationStudio: React.FC = () => {
 
 		return () => {
 			ro.disconnect();
+			if (markersPrimitiveRef.current) {
+				markersPrimitiveRef.current = null;
+			}
 			btcChart.remove();
 			valChart.remove();
 			eqChart.remove();
@@ -1069,6 +1123,39 @@ export const ValuationStudio: React.FC = () => {
 								onClick={() => setIsLogScale(true)}
 							>
 								LOG
+							</button>
+						</div>
+						<div className="toggle-group" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "4px" }}>
+							<span style={{ fontSize: "10px", color: "var(--text-muted)", marginRight: "2px", fontWeight: 600 }}>
+								MARKERS:
+							</span>
+							<button
+								className={`toggle-btn ${markerFilter === "both" ? "active" : ""}`}
+								onClick={() => setMarkerFilter("both")}
+								title="Show both Strategy Orders and Macro Confluence Signals"
+							>
+								ALL
+							</button>
+							<button
+								className={`toggle-btn ${markerFilter === "strategy" ? "active" : ""}`}
+								onClick={() => setMarkerFilter("strategy")}
+								title="Show SDCA Strategy Orders only"
+							>
+								ORDERS
+							</button>
+							<button
+								className={`toggle-btn ${markerFilter === "confluence" ? "active" : ""}`}
+								onClick={() => setMarkerFilter("confluence")}
+								title="Show Macro Confluence Signals only (VAL ACCUM, VAL BUBBLE)"
+							>
+								MACRO
+							</button>
+							<button
+								className={`toggle-btn ${markerFilter === "none" ? "active" : ""}`}
+								onClick={() => setMarkerFilter("none")}
+								title="Hide all chart markers"
+							>
+								OFF
 							</button>
 						</div>
 					</div>

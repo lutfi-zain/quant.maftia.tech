@@ -20,6 +20,8 @@ export interface SdcaBacktestConfig {
 	end_date: string;
 	fee_bps?: number;
 	base_dca_amount?: number;
+	dca_cash_pct?: number;
+	dca_sell_frac?: number;
 	initial_cash?: number;
 	/** Threshold overrides for buy/sell rules */
 	thresholds?: SdcaThresholds;
@@ -203,8 +205,10 @@ export function computeSdcaBacktest(
 				totalTrades++;
 			}
 		} else if (sdcaAmount > 0) {
-			// Buy DCA
-			const amountToBuy = Math.min(sdcaCash, sdcaAmount);
+			// Proportional Buy DCA (7% base cash deployment per Monday)
+			const dcaCashPct = config.dca_cash_pct ?? 0.07;
+			const targetAmount = sdcaCash * Math.min(1.0, dcaCashPct * multiplier);
+			const amountToBuy = Math.min(sdcaCash, Math.max(baseDcaAmount, targetAmount));
 			if (amountToBuy > 0) {
 				const fee = amountToBuy * feeRate;
 				const netAmount = amountToBuy - fee;
@@ -220,7 +224,7 @@ export function computeSdcaBacktest(
 					id: tradeId,
 					date: day.date,
 					action: "BUY",
-					amount_usd: amountToBuy,
+					amount_usd: Math.round(amountToBuy * 100) / 100,
 					btc_price: price,
 					multiplier,
 					phase: signal.phase,
@@ -230,15 +234,15 @@ export function computeSdcaBacktest(
 				totalTrades++;
 			}
 		} else if (sdcaAmount < 0) {
-			// Sell DCA (negative multiplier = DCA out)
-			const sellAmount = Math.abs(sdcaAmount);
-			const btcToSell = Math.min(sellAmount / price, sdcaBtc);
-			if (btcToSell > 0) {
-				const proceeds = btcToSell * price;
+			// Sell DCA (19% position trimming in DCA_OUT)
+			const dcaSellFrac = config.dca_sell_frac ?? 0.19;
+			const sellBtc = sdcaBtc * dcaSellFrac;
+			if (sellBtc > 0.000001) {
+				const proceeds = sellBtc * price;
 				const fee = proceeds * feeRate;
 				const netProceeds = proceeds - fee;
 				const currentAvgCost = sdcaBtc > 0 ? (weightedCostBasisUsd / sdcaBtc) : price;
-				const costOfSoldBtc = btcToSell * currentAvgCost;
+				const costOfSoldBtc = sellBtc * currentAvgCost;
 				const netPnlUsd = netProceeds - costOfSoldBtc;
 				const returnPct = costOfSoldBtc > 0 ? (netPnlUsd / costOfSoldBtc) * 100 : 0;
 
@@ -250,7 +254,7 @@ export function computeSdcaBacktest(
 					grossLoss += Math.abs(netPnlUsd);
 				}
 
-				sdcaBtc -= btcToSell;
+				sdcaBtc -= sellBtc;
 				sdcaCash += netProceeds;
 				weightedCostBasisUsd = Math.max(0, weightedCostBasisUsd - costOfSoldBtc);
 				totalFees += fee;
@@ -260,7 +264,7 @@ export function computeSdcaBacktest(
 					id: tradeId,
 					date: day.date,
 					action: "SELL",
-					amount_usd: netProceeds,
+					amount_usd: Math.round(netProceeds * 100) / 100,
 					btc_price: price,
 					multiplier,
 					phase: signal.phase,

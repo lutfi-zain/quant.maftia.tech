@@ -118,7 +118,19 @@ sdcaRouter.post("/backtest", async (c) => {
 		const sql = `
 			SELECT date, 
 				btc_price as close,
-				valuation_composite
+				valuation_composite,
+				COALESCE(lttd_regime, 'SIDEWAYS') as lttd_regime,
+				COALESCE(lttd_prob_bull, 0.0) as lttd_prob_bull,
+				COALESCE(lttd_prob_sideways, 0.0) as lttd_prob_sideways,
+				COALESCE(lttd_exposure, 0.0) as lttd_target_exposure,
+				COALESCE(mttd_imo, 0.0) as mttd_imo,
+				COALESCE(mttd_position, 0.0) as mttd_position,
+				COALESCE(mttd_er, 0.0) as mttd_er,
+				COALESCE(mttd_entropy, 2.0) as mttd_entropy,
+				COALESCE(ichimoku_imo, 0.0) as ichimoku_imo,
+				COALESCE(ichimoku_position, 0.0) as ichimoku_position,
+				COALESCE(price_ma200_ratio, 1.0) as price_ma200_ratio,
+				COALESCE(ath_drawdown, 0.0) as ath_drawdown
 			FROM unified_daily_analytics 
 			WHERE date >= ? AND date <= ? AND btc_price IS NOT NULL AND valuation_composite IS NOT NULL
 			ORDER BY date ASC
@@ -132,6 +144,7 @@ sdcaRouter.post("/backtest", async (c) => {
 			end_date: endDate,
 			fee_bps: body.fee_bps,
 			base_dca_amount: body.base_dca_amount,
+			dca_cash_pct: body.dca_cash_pct,
 			initial_cash: body.initial_cash,
 			thresholds: body.thresholds,
 		});
