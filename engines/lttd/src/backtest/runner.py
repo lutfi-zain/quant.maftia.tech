@@ -116,6 +116,10 @@ class MockExecutionAdapter:
             "final_score": final_score,
             "target_exposure": target_exposure,
             "transition_occurred": transition_occurred,
+            "days_in_position": self.days_in_position,
+            "days_since_exit": self.days_since_exit,
+            "is_circuit_breaker_active": is_cb_active,
+            "is_active_trade": 1 if target_exposure > 0.5 else 0,
         }
         self.records.append(record)
         return record
@@ -270,9 +274,8 @@ def _run_fold(
         model.fit(X_train_proc, y_train)
         test_scores = model.predict(X_test_proc)
     
-    # 6. Run simulated daily execution pipeline (MockExecutionAdapter)
-    adapter = MockExecutionAdapter()
-    fold_records = []
+    # 6. Extract out-of-fold prediction records for this fold
+    oof_records = []
     
     # Use annualized returns/volatility from raw data for transitioning telemetry
     log_returns_series = np.log(df_merged["close"] / df_merged["close"].shift(1)).fillna(0.0)
@@ -315,8 +318,6 @@ def _run_fold(
                 onchain_metrics[col] = 0.0
                 
         # Score is already in [-1.0, 1.0] from predict_score
-
-        # Removed score inversion (fixes Hit-Rate Inversion Paradox)
         # Ensure score is strictly within [-1.0, 1.0]
         score = max(-1.0, min(1.0, score))
                 
@@ -332,22 +333,6 @@ def _run_fold(
         er_val = float(er_series.loc[date]) if not pd.isna(er_series.loc[date]) else None
         cloud_min = float(cloud_min_series.loc[date]) if not pd.isna(cloud_min_series.loc[date]) else None
 
-        res_record = adapter.run(
-            date_str=date_str,
-            final_score=score,
-            regime=final_regime,
-            posteriors=overridden_posteriors,
-            onchain_metrics=onchain_metrics,
-            log_return=log_ret,
-            realized_volatility=realized_vol,
-            composite_value=comp_val,
-            price=price,
-            ma_val=ma_val,
-            entropy_val=entropy_val,
-            er_val=er_val,
-            cloud_min=cloud_min
-        )
-        
         # Extract features for telemetry
         indicator_scores = feature_matrix.loc[date, processor.tech_indicators_list].to_dict()
         indicator_scores = {k: float(v) if not pd.isna(v) else 0.0 for k, v in indicator_scores.items()}
@@ -365,16 +350,27 @@ def _run_fold(
         else:
             pca_components["pca_variance_explained"] = 100.0
             
-        res_record["date"] = date
-        res_record["close"] = float(df_merged.loc[date, "close"])
-        res_record["indicator_scores"] = indicator_scores
-        res_record["pca_components"] = pca_components
-        res_record["posteriors"] = overridden_posteriors
+        oof_records.append({
+            "date": date,
+            "date_str": date_str,
+            "close": price,
+            "final_score": score,
+            "regime": final_regime,
+            "posteriors": overridden_posteriors,
+            "onchain_metrics": onchain_metrics,
+            "log_return": log_ret,
+            "realized_volatility": realized_vol,
+            "composite_value": comp_val,
+            "price": price,
+            "ma_val": ma_val,
+            "entropy_val": entropy_val,
+            "er_val": er_val,
+            "cloud_min": cloud_min,
+            "indicator_scores": indicator_scores,
+            "pca_components": pca_components,
+        })
         
-        fold_records.append(res_record)
-        
-    return fold_records
-
+    return oof_records
 
 class BacktestRunner:
     def __init__(self, legacy_fixed_window: bool = False, ensemble_mode: str = "xgboost"):
@@ -416,10 +412,10 @@ class BacktestRunner:
         if not folds:
             # Fallback: single training run on all data if not enough history
             print("⚠ Warning: Insufficient data for 3-year WFO splits. Running fallback single fit.")
-            records = _run_fold(common_idx, common_idx, common_idx, df_merged, feature_matrix, y, ensemble_mode=self.ensemble_mode)
+            raw_records = _run_fold(common_idx, common_idx, common_idx, df_merged, feature_matrix, y, ensemble_mode=self.ensemble_mode)
         else:
             # 4. Parallelize independent WFO fold computations
-            records = []
+            raw_records = []
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = []
                 for train_idx, val_idx, test_idx in folds:
@@ -436,10 +432,45 @@ class BacktestRunner:
                         )
                     )
                 for future in concurrent.futures.as_completed(futures):
-                    records.extend(future.result())
+                    raw_records.extend(future.result())
                     
-        # Sort records chronologically
-        records = sorted(records, key=lambda x: x["date"])
+        # Sort raw records chronologically and deduplicate by date
+        raw_records = sorted(raw_records, key=lambda x: x["date"])
+        seen_dates = set()
+        unique_raw_records = []
+        for r in raw_records:
+            d = r["date"]
+            if d not in seen_dates:
+                seen_dates.add(d)
+                unique_raw_records.append(r)
+
+        # Continuous state machine execution across all out-of-fold daily records
+        adapter = MockExecutionAdapter()
+        executed_records = []
+        for r in unique_raw_records:
+            res_record = adapter.run(
+                date_str=r["date_str"],
+                final_score=r["final_score"],
+                regime=r["regime"],
+                posteriors=r["posteriors"],
+                onchain_metrics=r["onchain_metrics"],
+                log_return=r["log_return"],
+                realized_volatility=r["realized_volatility"],
+                composite_value=r["composite_value"],
+                price=r["price"],
+                ma_val=r["ma_val"],
+                entropy_val=r["entropy_val"],
+                er_val=r["er_val"],
+                cloud_min=r["cloud_min"]
+            )
+            res_record["date"] = r["date"]
+            res_record["close"] = r["close"]
+            res_record["indicator_scores"] = r["indicator_scores"]
+            res_record["pca_components"] = r["pca_components"]
+            res_record["posteriors"] = r["posteriors"]
+            executed_records.append(res_record)
+        
+        records = executed_records
         
         # Convert to DataFrame
         results_df = pd.DataFrame(records).set_index("date")
