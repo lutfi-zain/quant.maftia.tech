@@ -22,5 +22,5 @@
 - [x] 3.3 Keep `v2.1` LTTD-M as fallback behind feature flag `LTTD_MODE` — LTTD_MODE='macro' (76.5% win, hold 61d) and 'weeks' (68.2% win, hold 44d) fully supported
 
 ## Phase 4 — Release
-- [ ] 4.1 Tag `v3.0-lttd-long` + release notes with winRate CI, PF, hold, WFO OOS
+- [x] 4.1 Tag `v3.0-lttd-long` + release notes with winRate CI, PF, hold, WFO OOS — release published successfully
 - [x] 4.2 Update `docs/02_quant_btc_lttd_system.md` + `UNIFIED_SYSTEM_ARCHITECTURE.md` — updated architecture and sizing specs
