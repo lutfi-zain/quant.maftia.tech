@@ -85,7 +85,7 @@ Menggantikan pengambilan data yang berulang di setiap folder proyek dengan satu 
 Menyatukan keempat modul kalkulasi secara modular dan terorkestrasi:
 
 1. **Valuation Engine:** Menghitung 17 komponen dari 3 pilar dan melakukan interpolasi linear piecewise ke rentang `[-2.0, +2.0]`.
-2. **LTTD Engine:** Menerima data OHLCV master, melatih 3-State Gaussian HMM (Log Returns + 20d Vol), melakukan filter VIF & PCA, serta mengevaluasi model ensemble (*XGBoost / L1-Lasso*).
+2. **LTTD Engine:** Menerima data OHLCV master, melatih 3-State Gaussian HMM (Log Returns + 20d Vol), melakukan filter VIF & PCA, serta mengevaluasi model ensemble (*PCAConsensusEnsemble* dengan HL-driven sizing macro 60d / weeks 21d).
 3. **MTTD v2 Engine:** Menerima *output* dari 10 Keluarga Statistik dan mengevaluasi gerbang komposit `IMO`, `Efficiency Ratio (ER)`, dan `Shannon Entropy`.
 4. **Ichimoku Engine:** Melakukan dekomposisi $\tanh$ stasioner dan penyaringan spektral *Ehlers SuperSmoother* pada 5 gerbang konfirmasi.
 

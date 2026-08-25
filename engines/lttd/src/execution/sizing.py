@@ -2,23 +2,39 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
 
-# Sizing parameters — HL-driven LTTD-L (HL≈200d, 120-350) — no hardcode fossil
-# All horizons = HL × factor, thresholds = rolling quantile 65/35 (750d)
-HL = 200  # OU half-life proxy, will be replaced by dynamic OU estimate
-SUPERSMOOTHER_PERIOD_ENTRY = int(HL * 0.175) # 35
-SUPERSMOOTHER_PERIOD_EXIT = int(HL * 0.10)   # 20
-SCORE_ENTRY = 0.30  # fallback fixed; live uses quantile 65th of 750d smoothed scores
-SCORE_EXIT = 0.22   # fallback; live uses quantile 35th
-SCORE_ENTRY_Q = 0.65
-SCORE_EXIT_Q = 0.35
+# Sizing parameters — HL-driven LTTD (HL≈200d) with LTTD_MODE flag support ("macro" | "weeks")
+import os
+LTTD_MODE = os.environ.get("LTTD_MODE", "macro").lower()
+HL = 200  # OU half-life proxy
+
+if LTTD_MODE == "weeks":
+    # v2.1 LTTD-M (weeks hold ~44d, ~2.57/yr)
+    SUPERSMOOTHER_PERIOD_ENTRY = 14
+    SUPERSMOOTHER_PERIOD_EXIT = 10
+    SCORE_ENTRY = 0.28
+    SCORE_EXIT = 0.22
+    SCORE_ENTRY_Q = 0.65
+    SCORE_EXIT_Q = 0.35
+    RCO_DAYS = 14
+    MHP_DAYS = 25
+    MA_PERIOD = 226
+else:
+    # v3.0 LTTD-L (macro hold ~60-90d, ~1.60/yr)
+    SUPERSMOOTHER_PERIOD_ENTRY = int(HL * 0.175) # 35
+    SUPERSMOOTHER_PERIOD_EXIT = int(HL * 0.10)   # 20
+    SCORE_ENTRY = 0.30
+    SCORE_EXIT = 0.22
+    SCORE_ENTRY_Q = 0.65
+    SCORE_EXIT_Q = 0.35
+    RCO_DAYS = int(HL * 0.15)  # 30
+    MHP_DAYS = int(HL * 0.30)  # 60
+    MA_PERIOD = int(HL * 1.25)  # 250
+
 CB_ACTIVATE = -2.260661127701853
 CB_COOLOFF = 0.5006400880184867
 COMP_ENTRY_BOOST = 2.000613
 USE_BEAR_OVERRIDE = False
-RCO_DAYS = int(HL * 0.15)  # 30
-MHP_DAYS = int(HL * 0.30)  # 60
 USE_MA_FILTER = True
-MA_PERIOD = int(HL * 1.25)  # 250
 
 # Ichimoku & Noise Gates parameters
 ER_ENTRY = 0.25

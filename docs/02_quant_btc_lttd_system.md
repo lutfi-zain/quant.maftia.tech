@@ -122,18 +122,18 @@ Karena ke-16 fitur (teknikal + on-chain) mengukur momentum atau sentimen yang se
 
 ### 3.4 Layer 4: Ensemble Aggregation & Walk-Forward Optimization (WFO)
 
-Model klasifikasi (*XGBoostEnsemble* untuk live mode, *L1LassoEnsemble* untuk backfill/pruning) dilatih untuk memprediksi probabilitas tren naik (*uptrend horizon*).
+Model konsensus orthogonal (*PCAConsensusEnsemble* untuk live mode dan backtest causal) menggunakan bobot loading absolut dari Principal Component 1 ($\text{PC}_1$) pada indikator teknikal yang lolos VIF pruning.
 
-- **Walk-Forward Optimization (WFO):** Model tidak dilatih secara statis. Setiap lipatan (*fold*) menggunakan pelatihan bergerak (*rolling window*): **3 Tahun Train $\rightarrow$ 6 Bulan Validation (tuning parameter $\lambda$ L1-Lasso) $\rightarrow$ 6 Bulan Out-of-Sample Test**.
+- **Walk-Forward Optimization (WFO):** Model dievaluasi menggunakan rolling window: **3 Tahun Train $\rightarrow$ 6 Bulan Validation $\rightarrow$ 6 Bulan Out-of-Sample Test** dengan causal 60-day embargo/purge untuk mengeliminasi lookahead bias.
 
-### 3.5 Layer 5: Execution Engine & Sizing
+### 3.5 Layer 5: Execution Engine & Sizing (HL-Driven Horizon Coherence)
 
-Bobot posisi dihitung secara dinamis:
-$$\text{Position Size} = P(\text{Bull}) \times \text{Final Score} \times \text{Vol Target Scalar}$$
-
-- **Hysteresis Circuit Breaker:** Eksekusi hanya memicu *entry/exit* jika terkonfirmasi pada penutupan lilin harian (*daily close*), mencegah *execution fee churn* di pasar yang bergetar.
-
----
+Horizon eksekusi dan sizing diturunkan secara koheren dari estimasi Ornstein-Uhlenbeck Half-Life ($\text{HL} \approx 200\text{ hari}$):
+- **SuperSmoother Entry / Exit:** 35 / 20 hari ($\text{HL} \times 0.175 / 0.10$)
+- **Minimum Holding Period (MHP) / Re-entry Cool-Off (RCO):** 60 / 30 hari ($\text{HL} \times 0.30 / 0.15$)
+- **Trend MA Filter:** 250 hari ($\text{HL} \times 1.25$)
+- **Forward Target Horizon:** 60 hari causal target return
+- **Dual Mode Support (`LTTD_MODE`):** Mendukung mode `'macro'` (LTTD-L, hold 60-90d, 1.60 trade/th, 76.5% win) dan mode `'weeks'` (LTTD-M, hold 44d, 2.57 trade/th, 68.2% win).
 
 ## 4. Skema Database SQLite (`database/lttd.db`)
 
