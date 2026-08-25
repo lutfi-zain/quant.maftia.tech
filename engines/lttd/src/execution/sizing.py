@@ -3,18 +3,19 @@ import pandas as pd
 from typing import Optional, Tuple
 
 # Sizing parameters (optimized via search_metrics.py on aligned database)
-SUPERSMOOTHER_PERIOD_ENTRY = 7
-SUPERSMOOTHER_PERIOD_EXIT = 3
+# Coherent LTTD weeks clock: HL≈200d — derived horizons, no magic numbers
+SUPERSMOOTHER_PERIOD_ENTRY = 14
+SUPERSMOOTHER_PERIOD_EXIT = 10
 SCORE_ENTRY = 0.3057132189206123
 SCORE_EXIT = 0.23605001464720393
 CB_ACTIVATE = -2.260661127701853
 CB_COOLOFF = 0.5006400880184867
 COMP_ENTRY_BOOST = 2.000613
 USE_BEAR_OVERRIDE = False
-RCO_DAYS = 5
-MHP_DAYS = 17
+RCO_DAYS = 21
+MHP_DAYS = 35
 USE_MA_FILTER = True
-MA_PERIOD = 226
+MA_PERIOD = 200
 
 # Ichimoku & Noise Gates parameters
 ER_ENTRY = 0.25
