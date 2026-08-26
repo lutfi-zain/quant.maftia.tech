@@ -609,6 +609,35 @@ export const MttdConsole: React.FC = () => {
 			})),
 		);
 
+		if (backtestResult.cumStrat.length) {
+			cumStratSeries.setData(
+				backtestResult.cumStrat.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
+		}
+		if (backtestResult.cumMarket.length) {
+			cumMarketSeries.setData(
+				backtestResult.cumMarket.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
+		}
+		if (backtestResult.markers.length) {
+			createSeriesMarkers(
+				candleSeries,
+				backtestResult.markers.map((m) => ({
+					time: m.time as Time,
+					position: m.position,
+					color: m.color,
+					shape: m.shape,
+					text: m.text,
+				})),
+			);
+		}
+
 		// Crosshair sync — 4 charts
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },

@@ -465,9 +465,9 @@ export const IchimokuTerminal: React.FC = () => {
 			},
 		});
 
-		// Tenkan-sen (red)
+		// Tenkan-sen (blue)
 		const tenkanSeries = btcChart.addSeries(LineSeries, {
-			color: "#F87171",
+			color: "#3b82f6",
 			lineWidth: 1,
 			priceLineVisible: false,
 			lastValueVisible: false,
@@ -475,9 +475,9 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "Tenkan-sen",
 		});
 
-		// Kijun-sen (blue)
+		// Kijun-sen (amber/coral)
 		const kijunSeries = btcChart.addSeries(LineSeries, {
-			color: "#60A5FA",
+			color: "#f97316",
 			lineWidth: 2,
 			priceLineVisible: false,
 			lastValueVisible: false,
@@ -485,9 +485,9 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "Kijun-sen",
 		});
 
-		// Span A (green, thin)
+		// Span A (vivid bright green)
 		const spanASeries = btcChart.addSeries(LineSeries, {
-			color: "rgba(34,197,94,0.25)",
+			color: "rgba(34, 197, 94, 0.85)",
 			lineWidth: 1,
 			priceLineVisible: false,
 			lastValueVisible: false,
@@ -495,9 +495,9 @@ export const IchimokuTerminal: React.FC = () => {
 			title: "Span A",
 		});
 
-		// Span B (red, thin)
+		// Span B (vivid bright red/coral)
 		const spanBSeries = btcChart.addSeries(LineSeries, {
-			color: "rgba(239,68,68,0.25)",
+			color: "rgba(239, 68, 68, 0.85)",
 			lineWidth: 1,
 			priceLineVisible: false,
 			lastValueVisible: false,
@@ -507,7 +507,7 @@ export const IchimokuTerminal: React.FC = () => {
 
 		// Chikou Span (violet, lagged displacement)
 		const traditionalChikouSeries = btcChart.addSeries(LineSeries, {
-			color: "rgba(168, 85, 247, 0.5)",
+			color: "#a855f7",
 			lineWidth: 1,
 			priceLineVisible: false,
 			lastValueVisible: false,
@@ -712,6 +712,45 @@ export const IchimokuTerminal: React.FC = () => {
 		entropySeries.setData(entropyData);
 		imoSyncAnchorSeries.setData(syncAnchorData);
 		eqSyncAnchorSeries.setData(syncAnchorData);
+
+		if (backtestResult.markers.length) {
+			createSeriesMarkers(
+				candleSeries,
+				backtestResult.markers.map((m) => ({
+					time: m.time as Time,
+					position: m.position,
+					color: m.color,
+					shape: m.shape,
+					text: m.text,
+				})) as unknown as SeriesMarker<Time>[],
+			);
+		}
+
+		if (backtestResult.cumStrat.length) {
+			const stratData: LineData<Time>[] = [];
+			for (const d of backtestResult.cumStrat) {
+				if (d.time >= startDate && d.time <= endDate && d.value != null) {
+					stratData.push({
+						time: d.time as Time,
+						value: parseFloat((d.value * 100).toFixed(2)),
+					});
+				}
+			}
+			refStratSeries.setData(stratData);
+		}
+
+		if (backtestResult.cumMarket.length) {
+			const marketData: LineData<Time>[] = [];
+			for (const d of backtestResult.cumMarket) {
+				if (d.time >= startDate && d.time <= endDate && d.value != null) {
+					marketData.push({
+						time: d.time as Time,
+						value: parseFloat((d.value * 100).toFixed(2)),
+					});
+				}
+			}
+			refMarketSeries.setData(marketData);
+		}
 		// ── Crosshair sync — 3 charts ──
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
