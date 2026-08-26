@@ -182,10 +182,22 @@ export const SdcaChart: React.FC<SdcaChartProps> = ({
 				onCrosshairMove(param.time);
 			}
 		});
+		// Set right-anchored logical range
+		const totalBars = priceData.length;
+		if (totalBars > 0) {
+			const barsToShow = 180;
+			const from = Math.max(0, totalBars - barsToShow);
+			const to = totalBars + 2;
+			chart.timeScale().setVisibleLogicalRange({ from, to });
+			chart.timeScale().scrollToPosition(0, false);
+		}
 
 		// Sync Y-axis width
-		syncYAxisWidth(containerRef.current, [chart], yAxisWidth);
-
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(containerRef.current, [chart], yAxisWidth);
+			});
+		});
 		return () => {
 			chart.remove();
 			chartRef.current = null;

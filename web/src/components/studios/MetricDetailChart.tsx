@@ -25,7 +25,7 @@ import {
 import { quantClient } from "../../api/client";
 import { mapToOscillator } from "../../lib/oscillator";
 import { exportChartsToPng } from "../../lib/exportPng";
-
+import { syncYAxisWidth } from "../../lib/syncYAxisWidth";
 const BG_CHART = "#0B1220";
 const BORDER_COLOR = "rgba(30, 41, 59, 0.8)";
 const TEXT_COLOR = "#94A3B8";
@@ -431,6 +431,16 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 				chart.timeScale().scrollToPosition(0, false);
 			});
 		}
+		// Sync Y-axis widths after initial render
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btcChart, rawChart, oscChart],
+					getChartYAxisWidth(),
+				);
+			});
+		});
 
 		// Resize observer
 		const ro = new ResizeObserver(() => {
@@ -444,6 +454,11 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 			rawChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			oscChart.applyOptions({ width: nw });
 			oscChart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			syncYAxisWidth(
+				btcContainerRef.current,
+				[btcChart, rawChart, oscChart],
+				yWidth,
+			);
 		});
 		if (wrapperRef.current) ro.observe(wrapperRef.current);
 
@@ -649,8 +664,10 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 						: 160
 					: 0;
 
+		const yWidth = getChartYAxisWidth();
 		if (btc) {
 			btc.resize(w, bHeight);
+			btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			btc
 				.timeScale()
 				.applyOptions({
@@ -659,14 +676,22 @@ export const MetricDetailChart: React.FC<MetricDetailChartProps> = ({
 		}
 		if (raw) {
 			raw.resize(w, rHeight);
+			raw.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			raw.timeScale().applyOptions({ visible: rHeight > 0 && oHeight === 0 });
 		}
 		if (osc) {
 			osc.resize(w, oHeight);
+			osc.priceScale("right").applyOptions({ minimumWidth: yWidth });
 			osc.timeScale().applyOptions({ visible: oHeight > 0 });
 		}
+		requestAnimationFrame(() => {
+			syncYAxisWidth(
+				btcContainerRef.current,
+				[btc, raw, osc].filter(Boolean),
+				yWidth,
+			);
+		});
 	}, [maximizedPanel, isMobile]);
-
 	// Apply log scale effect
 	useEffect(() => {
 		const btc = chartsRef.current.btc;

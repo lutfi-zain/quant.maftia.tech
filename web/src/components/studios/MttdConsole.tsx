@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
@@ -7,9 +7,9 @@ import { useTerminal } from "../../context/TerminalContext";
 import {
 	createChart,
 	type IChartApi,
+	type ISeriesApi,
 	ColorType,
 	CrosshairMode,
-	ISeriesApi,
 	type Time,
 	LineStyle,
 	CandlestickSeries,
@@ -19,7 +19,6 @@ import {
 	createSeriesMarkers,
 } from "lightweight-charts";
 import {
-	Activity,
 	ShieldCheck,
 	ShieldAlert,
 	Layers,
@@ -36,6 +35,15 @@ import {
 	type StudioDailyRecord,
 } from "../../lib/studioBacktest";
 
+function toNum(val: unknown): number {
+	if (typeof val === "number") return val;
+	if (typeof val === "object" && val !== null) {
+		const obj = val as Record<string, unknown>;
+		const candidate = obj.score ?? obj.oscillator ?? obj.normalized_score;
+		return typeof candidate === "number" ? candidate : Number(candidate ?? 0);
+	}
+	return Number(val ?? 0);
+}
 type MaximizedPanel = null | "btc" | "imo" | "gates" | "eq";
 
 const BG_CHART = "#0B1220";
@@ -175,7 +183,6 @@ export const MttdConsole: React.FC = () => {
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
 	const [selectedFamily, setSelectedFamily] = useState<string>("All");
 	const [dropdownOpenFamily, setDropdownOpenFamily] = useState(false);
-	const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
 	const [startDate, setStartDate] = useState("2020-01-01");
@@ -196,49 +203,120 @@ export const MttdConsole: React.FC = () => {
 		eq: IChartApi | null;
 	}>({ btc: null, imo: null, gates: null, eq: null });
 	const seriesRef = useRef<{
-		candle: any;
-		cumStrat: any;
-		cumMarket: any;
+		candle: ISeriesApi<"Candlestick"> | null;
+		cumStrat: ISeriesApi<"Line"> | null;
+		cumMarket: ISeriesApi<"Line"> | null;
 	}>({ candle: null, cumStrat: null, cumMarket: null });
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 
-	const backtestData: StudioDailyRecord[] = dailyData.map((d: any) => {
-		// Use mttd_position from database (includes circuit breaker overrides)
-		const dbPos = d.mttd_position;
-		const pos = dbPos !== null && dbPos !== undefined ? Number(dbPos) : 0.0;
-		if (dbPos === null || dbPos === undefined) {
-			console.warn(`mttd_position is NULL for ${d.date}, defaulting to 0.0`);
-		}
-		const er = Number(d.mttd_er ?? d.mttd_er_ratio ?? 0);
-		const entropy = Number(d.mttd_entropy ?? d.mttd_shannon_entropy ?? 0);
-		return {
-			date: d.date,
-			close: d.close || d.btc_price || 0,
-			position: pos,
-			ichimoku_er: er,
-			ichimoku_entropy: entropy,
-		};
-	});
+	const backtestData: StudioDailyRecord[] = useMemo(() => {
+		return dailyData.map((d) => {
+			const dbPos = d.mttd_position;
+			const pos = dbPos !== null && dbPos !== undefined ? Number(dbPos) : 0.0;
+			const er = Number(d.mttd_er ?? d.mttd_er_ratio ?? 0);
+			const entropy = Number(d.mttd_entropy ?? d.mttd_shannon_entropy ?? 0);
+			return {
+				date: d.date,
+				close: d.close || d.btc_price || 0,
+				position: pos,
+				ichimoku_er: er,
+				ichimoku_entropy: entropy,
+			};
+		});
+	}, [dailyData]);
 
-	const backtestResult = useStudioBacktest(
-		backtestData,
-		startDate,
-		endDate,
-		feeBps,
+	const backtestResult = useMemo(() => {
+		return useStudioBacktest(backtestData, startDate, endDate, feeBps);
+	}, [backtestData, startDate, endDate, feeBps]);
+
+	const latestPoint = useMemo(
+		() => (dailyData.length > 0 ? dailyData[dailyData.length - 1] : null),
+		[dailyData],
 	);
 
+	const latestImo = useMemo(
+		() => toNum(latestPoint?.mttd_imo),
+		[latestPoint],
+	);
+
+	const gates = useMemo(() => {
+		return (
+			circuitBreakers?.mttd_consensus_gates || {
+				er_gate_open:
+					latestImo !== 0 && toNum(latestPoint?.mttd_er_ratio ?? 0.28) >= 0.2,
+				shannon_entropy_gate_open:
+					toNum(latestPoint?.mttd_shannon_entropy ?? 2.1) <= 2.3,
+				chikou_momentum_exit: latestImo < -0.3,
+				efficiency_ratio: toNum(latestPoint?.mttd_er_ratio ?? 0.28),
+				shannon_entropy: toNum(latestPoint?.mttd_shannon_entropy ?? 2.1),
+			}
+		);
+	}, [circuitBreakers, latestImo, latestPoint]);
+
+	const allGatesPassed = useMemo(
+		() =>
+			gates.er_gate_open &&
+			gates.shannon_entropy_gate_open &&
+			!gates.chikou_momentum_exit,
+		[gates],
+	);
+
+	const displayFamilies = useMemo(() => {
+		const compMap = new Map(components.map((c) => [c.component_name, c]));
+		return Object.entries(MTTD_STATISTICAL_FAMILIES)
+			.filter(([_, meta]) => {
+				if (selectedFamily === "All") return true;
+				return meta.category === selectedFamily;
+			})
+			.map(([name, meta]) => {
+				const signal = compMap.get(name);
+				const score = signal
+					? toNum(signal.normalized_score)
+					: Math.sin(name.length * 2) * 0.85;
+				const scoreNum = toNum(score);
+				return {
+					name,
+					category: meta.category,
+					description: meta.description,
+					gate: meta.gate,
+					score: scoreNum,
+					direction: scoreNum >= 0.2 ? 1 : scoreNum <= -0.2 ? -1 : 0,
+				};
+			});
+	}, [selectedFamily, components]);
+
+	const heights = useMemo(
+		() => getPanelHeights(maximized, isMobile),
+		[maximized, isMobile],
+	);
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
-			seriesRef.current.cumStrat.setData(backtestResult.cumStrat as any);
+			seriesRef.current.cumStrat.setData(
+				backtestResult.cumStrat.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
 		}
 		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
-			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
+			seriesRef.current.cumMarket.setData(
+				backtestResult.cumMarket.map((p) => ({
+					time: p.time as Time,
+					value: p.value,
+				})),
+			);
 		}
 		if (seriesRef.current.candle && backtestResult.markers.length) {
 			createSeriesMarkers(
 				seriesRef.current.candle,
-				backtestResult.markers as any,
+				backtestResult.markers.map((m) => ({
+					time: m.time as Time,
+					position: m.position,
+					color: m.color,
+					shape: m.shape,
+					text: m.text,
+				})),
 			);
 		} else if (seriesRef.current.candle) {
 			createSeriesMarkers(seriesRef.current.candle, []);
@@ -288,111 +366,72 @@ export const MttdConsole: React.FC = () => {
 	useEffect(() => {
 		const { btc, imo, gates, eq } = chartsRef.current;
 		if (!btc) return;
-		const heights = getPanelHeights(maximized, isMobile);
+		const panelHeights = getPanelHeights(maximized, isMobile);
 		const w = wrapperRef.current?.clientWidth || 900;
 
-		// On mobile maximize, use actual container height so canvas matches CSS precisely
+		const allNonBtcCharts: Array<{
+			chart: IChartApi | null;
+			key: string;
+			h: number;
+		}> = [
+			{ chart: imo, key: "imo", h: panelHeights.imo },
+			{ chart: gates, key: "gates", h: panelHeights.gates },
+			{ chart: eq, key: "eq", h: panelHeights.eq },
+		];
+
+		const resizeFn = (containerH?: number) => {
+			const total =
+				panelHeights.btc +
+				panelHeights.imo +
+				panelHeights.gates +
+				panelHeights.eq;
+			const effectiveH =
+				containerH && total > 0
+					? (h: number) => Math.round(containerH * (h / total))
+					: (h: number) => h;
+
+			const yWidth = getChartYAxisWidth();
+			btc.resize(w, effectiveH(panelHeights.btc));
+			btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
+
+			allNonBtcCharts.forEach(({ chart, h }) => {
+				if (!chart) return;
+				chart.resize(w, effectiveH(h));
+				chart.priceScale("right").applyOptions({ minimumWidth: yWidth });
+			});
+
+			const visiblePanels = allNonBtcCharts.filter((p) => p.h > 0);
+			const bottomId =
+				visiblePanels.length > 0
+					? visiblePanels[visiblePanels.length - 1].key
+					: null;
+
+			btc.timeScale().applyOptions({
+				visible: visiblePanels.length === 0,
+			});
+			allNonBtcCharts.forEach(({ chart, h, key }) => {
+				if (!chart) return;
+				chart.timeScale().applyOptions({ visible: h > 0 && key === bottomId });
+			});
+
+			requestAnimationFrame(() => {
+				syncYAxisWidth(
+					btcContainerRef.current,
+					[btc, imo, gates, eq].filter(Boolean),
+					yWidth,
+				);
+			});
+		};
+
 		if (isMobile && maximized !== null) {
 			const containerH = wrapperRef.current?.clientHeight;
 			if (containerH && containerH > 0) {
-				const total = heights.btc + heights.imo + heights.gates + heights.eq;
-				if (total > 0) {
-					const yWidth = getChartYAxisWidth();
-					btc.resize(w, Math.round(containerH * (heights.btc / total)));
-					btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					if (imo) {
-						imo.resize(w, Math.round(containerH * (heights.imo / total)));
-						imo.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					if (gates) {
-						gates.resize(w, Math.round(containerH * (heights.gates / total)));
-						gates.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					if (eq) {
-						eq.resize(w, Math.round(containerH * (heights.eq / total)));
-						eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
-					}
-					const panels: Array<{
-						chart: IChartApi | null;
-						h: number;
-						id: string;
-					}> = [
-						{ chart: imo, h: heights.imo, id: "imo" },
-						{ chart: gates, h: heights.gates, id: "gates" },
-						{ chart: eq, h: heights.eq, id: "eq" },
-					];
-					const visiblePanels = panels.filter((p) => p.h > 0);
-					const bottomId =
-						visiblePanels.length > 0
-							? visiblePanels[visiblePanels.length - 1].id
-							: null;
-					btc
-						.timeScale()
-						.applyOptions({
-							visible:
-								heights.imo === 0 && heights.gates === 0 && heights.eq === 0,
-						});
-					panels.forEach(({ chart, h, id }) => {
-						if (!chart) return;
-						chart
-							.timeScale()
-							.applyOptions({ visible: h > 0 && id === bottomId });
-					});
-					requestAnimationFrame(() => {
-						syncYAxisWidth(
-							btcContainerRef.current,
-							[btc, imo, gates, eq].filter(Boolean),
-							getChartYAxisWidth(),
-						);
-					});
-					return;
-				}
+				resizeFn(containerH);
+				return;
 			}
 		}
 
-		const yWidth = getChartYAxisWidth();
-		btc.resize(w, heights.btc);
-		btc.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		if (imo) {
-			imo.resize(w, heights.imo);
-			imo.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-		if (gates) {
-			gates.resize(w, heights.gates);
-			gates.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-		if (eq) {
-			eq.resize(w, heights.eq);
-			eq.priceScale("right").applyOptions({ minimumWidth: yWidth });
-		}
-
-		const panels: Array<{ chart: IChartApi | null; h: number; id: string }> = [
-			{ chart: imo, h: heights.imo, id: "imo" },
-			{ chart: gates, h: heights.gates, id: "gates" },
-			{ chart: eq, h: heights.eq, id: "eq" },
-		];
-		const visiblePanels = panels.filter((p) => p.h > 0);
-		const bottomId =
-			visiblePanels.length > 0
-				? visiblePanels[visiblePanels.length - 1].id
-				: null;
-
-		btc
-			.timeScale()
-			.applyOptions({
-				visible: heights.imo === 0 && heights.gates === 0 && heights.eq === 0,
-			});
-		panels.forEach(({ chart, h, id }) => {
-			if (!chart) return;
-			chart.timeScale().applyOptions({ visible: h > 0 && id === bottomId });
-		});
-		requestAnimationFrame(() => {
-			syncYAxisWidth(
-				btcContainerRef.current,
-				[btc, imo, gates, eq].filter(Boolean),
-				yWidth,
-			);
-		});
+		resizeFn();
 	}, [maximized, isMobile]);
 
 	// Initialize 4-pane charts
@@ -583,13 +622,10 @@ export const MttdConsole: React.FC = () => {
 				if (isSyncingRef.current) return;
 				isSyncingRef.current = true;
 				if (param.time) {
-					const timeStr = param.time as string;
-					setHoveredPoint(dailyData.find((p) => p.date === timeStr) || null);
 					allCharts.forEach(({ chart: c, series: s }, i) => {
 						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
 				} else {
-					setHoveredPoint(null);
 					allCharts.forEach(({ chart: c }, i) => {
 						if (i !== idx) c.clearCrosshairPosition();
 					});
@@ -666,53 +702,6 @@ export const MttdConsole: React.FC = () => {
 			seriesRef.current = { candle: null, cumStrat: null, cumMarket: null };
 		};
 	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
-
-	const toNum = (val: any): number =>
-		typeof val === "object" && val !== null
-			? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0)
-			: Number(val ?? 0);
-	const displayPoint =
-		hoveredPoint ||
-		(dailyData.length > 0 ? dailyData[dailyData.length - 1] : null);
-	const latestPoint = dailyData.length ? dailyData[dailyData.length - 1] : null;
-	const latestImo = toNum(latestPoint?.mttd_imo);
-
-	const gates = circuitBreakers?.mttd_consensus_gates || {
-		er_gate_open:
-			latestImo !== 0 && toNum(latestPoint?.mttd_er_ratio ?? 0.28) >= 0.2,
-		shannon_entropy_gate_open:
-			toNum(latestPoint?.mttd_shannon_entropy ?? 2.1) <= 2.3,
-		chikou_momentum_exit: latestImo < -0.3,
-		efficiency_ratio: toNum(latestPoint?.mttd_er_ratio ?? 0.28),
-		shannon_entropy: toNum(latestPoint?.mttd_shannon_entropy ?? 2.1),
-	};
-
-	const allGatesPassed =
-		gates.er_gate_open &&
-		gates.shannon_entropy_gate_open &&
-		!gates.chikou_momentum_exit;
-
-	const displayFamilies = Object.entries(MTTD_STATISTICAL_FAMILIES)
-		.filter(([_, meta]) => {
-			if (selectedFamily === "All") return true;
-			return meta.category === selectedFamily;
-		})
-		.map(([name, meta]) => {
-			const signal = components.find((c) => c.component_name === name);
-			const score = signal
-				? toNum(signal.normalized_score)
-				: Math.sin(name.length * 2) * 0.85;
-			return {
-				name,
-				category: meta.category,
-				description: meta.description,
-				gate: meta.gate,
-				score: toNum(score),
-				direction: toNum(score) >= 0.2 ? 1 : toNum(score) <= -0.2 ? -1 : 0,
-			};
-		});
-
-	const heights = getPanelHeights(maximized, isMobile);
 
 	return (
 		<div

@@ -2,7 +2,7 @@
   "metadata": {
     "source": "bitview.space",
     "description": "BTC daily OHLC + volume, aligned by date",
-    "records": 6446
+    "records": 6447
   },
   "aligned_data": [
     {
@@ -51571,6 +51571,14 @@
       "high": 80435.46,
       "low": 78645.07,
       "close": 80435.46,
+      "volume": 0.0
+    },
+    {
+      "time": "2026-08-26",
+      "open": 78548.0,
+      "high": 78548.0,
+      "low": 78526.0,
+      "close": 78526.0,
       "volume": 0.0
     }
   ]

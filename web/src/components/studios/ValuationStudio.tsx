@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { quantClient } from "../../api/client";
 import type { ComponentSignal } from "../../api/types";
@@ -201,6 +201,87 @@ export const ValuationStudio: React.FC = () => {
 		error: terminalError,
 		refreshData,
 	} = useTerminal();
+
+	const toNum = useCallback((val: any): number =>
+		typeof val === "object" && val !== null
+			? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0)
+			: Number(val ?? 0),
+	[]);
+
+	// Fast O(1) maps for crosshair scrub and indexed lookups
+	const dateToPointMap = useMemo(() => {
+		const map = new Map<string, (typeof dailyData)[0]>();
+		for (let i = 0; i < dailyData.length; i++) {
+			map.set(dailyData[i].date, dailyData[i]);
+		}
+		return map;
+	}, [dailyData]);
+
+	const dateToIndexMap = useMemo(() => {
+		const map = new Map<string, number>();
+		for (let i = 0; i < dailyData.length; i++) {
+			map.set(dailyData[i].date, i);
+		}
+		return map;
+	}, [dailyData]);
+
+	// Memoized bar mappings for 4,500+ daily bars
+	const candleData = useMemo(
+		() =>
+			dailyData.map((p) => ({
+				time: p.date as Time,
+				open: p.open,
+				high: p.high,
+				low: p.low,
+				close: p.close,
+			})),
+		[dailyData],
+	);
+
+	const valSeriesData = useMemo(
+		() =>
+			dailyData.map((p) => ({
+				time: p.date as Time,
+				value:
+					typeof p.valuation_composite === "object" &&
+					p.valuation_composite !== null
+						? Number((p.valuation_composite as any).score ?? 0)
+						: Number(p.valuation_composite ?? 0),
+			})),
+		[dailyData],
+	);
+
+	const sdcaPhaseTimelineData = useMemo(
+		() =>
+			dailyData.map((d) => ({
+				date: d.date,
+				phase: d.sdca_phase || "fair",
+			})),
+		[dailyData],
+	);
+
+	const latestDailyPoint = useMemo(
+		() => (dailyData.length > 0 ? dailyData[dailyData.length - 1] : null),
+		[dailyData],
+	);
+
+	const latestClosePrice = useMemo(
+		() => (latestDailyPoint ? (latestDailyPoint.close as number) : 0),
+		[latestDailyPoint],
+	);
+
+	const latestSdcaPanelSignal = useMemo<SdcaSignal | null>(() => {
+		if (!latestDailyPoint) return null;
+		return {
+			date: latestDailyPoint.date,
+			multiplier: (latestDailyPoint.sdca_multiplier ?? 0) as number,
+			phase: (latestDailyPoint.sdca_phase ?? "fair") as SdcaPhase,
+			action: (latestDailyPoint.sdca_action ?? "HOLD") as SdcaAction,
+			confidence: (latestDailyPoint.sdca_confidence ?? "HIGH") as RegimeConfidence,
+			pricePercentile: 50,
+			trendPositive: true,
+		};
+	}, [latestDailyPoint]);
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
 	const [localLoading, setLocalLoading] = useState(true);
 	const [localError, setLocalError] = useState<string | null>(null);
@@ -239,9 +320,13 @@ export const ValuationStudio: React.FC = () => {
 	});
 	const seriesRef = useRef<{
 		candle: any;
+		val: any;
 		cumStrat: any;
 		cumMarket: any;
-	}>({ candle: null, cumStrat: null, cumMarket: null });
+	}>({ candle: null, val: null, cumStrat: null, cumMarket: null });
+	const lastHoveredDateRef = useRef<string | null>(null);
+	const lastRecalcParamsRef = useRef<string>("");
+	const [activeThresholds, setActiveThresholds] = useState<any>(undefined);
 	const isSyncingRef = useRef(false);
 	const isRangeSyncingRef = useRef(false);
 	const markersPrimitiveRef = useRef<any>(null);
@@ -271,23 +356,30 @@ export const ValuationStudio: React.FC = () => {
 
 	const handleSdcaRecalculate = useCallback(
 		async (thresholds?: any) => {
+			const effectiveThresholds = thresholds ?? activeThresholds;
+			if (thresholds !== undefined) {
+				setActiveThresholds(thresholds);
+			}
+			const paramKey = JSON.stringify({
+				startDate,
+				endDate,
+				feeBps,
+				thresholds: effectiveThresholds,
+			});
+			if (paramKey === lastRecalcParamsRef.current) {
+				return;
+			}
+			lastRecalcParamsRef.current = paramKey;
 			try {
 				const data = await quantClient.postSdcaBacktest({
-					thresholds,
+					thresholds: effectiveThresholds,
 					start_date: startDate,
 					end_date: endDate,
+					fee_bps: feeBps,
 				});
 
 				if (!data || !data.equity_curve) return;
 
-				const cumStrat = data.equity_curve.map((r: any) => ({
-					time: r.date,
-					value: r.sdca,
-				}));
-				const cumMarket = data.equity_curve.map((r: any) => ({
-					time: r.date,
-					value: r.buyHold,
-				}));
 				const rawMarkers =
 					data.signals && data.signals.length > 0
 						? data.signals
@@ -335,7 +427,8 @@ export const ValuationStudio: React.FC = () => {
 
 				let baseStrat = 1;
 				let baseMarket = 1;
-				for (const p of dailyData) {
+				for (let i = 0; i < dailyData.length; i++) {
+					const p = dailyData[i];
 					if (
 						p.date >= startDate &&
 						p.date <= endDate &&
@@ -430,12 +523,83 @@ export const ValuationStudio: React.FC = () => {
 				console.error("Failed to recalculate SDCA backtest", err);
 			}
 		},
-		[startDate, endDate],
+		[startDate, endDate, feeBps, activeThresholds, dailyData],
 	);
 
 	useEffect(() => {
 		handleSdcaRecalculate();
 	}, [handleSdcaRecalculate]);
+
+	// Memoized macro confluence markers
+	const confluenceMarkers = useMemo(() => {
+		const markers: any[] = [];
+		for (let i = 0; i < dailyData.length; i++) {
+			const p = dailyData[i];
+			if (p.date >= startDate && p.date <= endDate) {
+				const valScore =
+					typeof p.valuation_composite === "object" &&
+					p.valuation_composite !== null
+						? Number((p.valuation_composite as any).score ?? 0)
+						: Number(p.valuation_composite ?? 0);
+				const regime = p.lttd_regime || "SIDEWAYS";
+
+				if (valScore >= 1.0 && regime === "BULL") {
+					markers.push({
+						time: p.date as Time,
+						position: "belowBar",
+						color: "#00F0FF",
+						shape: "arrowUp",
+						text: "VAL ACCUM",
+					});
+				} else if (valScore <= -1.5 && regime === "BEAR") {
+					markers.push({
+						time: p.date as Time,
+						position: "aboveBar",
+						color: "#F43F5E",
+						shape: "arrowDown",
+						text: "VAL BUBBLE",
+					});
+				}
+			}
+		}
+		return markers;
+	}, [dailyData, startDate, endDate]);
+
+	// Memoized combined markers filtered by mode
+	const combinedMarkers = useMemo(() => {
+		const stratMarkers = (backtestResult.markers || []).map((m: any) => ({
+			time: m.time,
+			position: m.position,
+			color: m.color,
+			shape: m.shape,
+			text: m.text || m.action,
+		}));
+
+		if (markerFilter === "strategy") {
+			return stratMarkers;
+		}
+		if (markerFilter === "confluence") {
+			return confluenceMarkers;
+		}
+		if (markerFilter === "both") {
+			return [...stratMarkers, ...confluenceMarkers].sort((a, b) =>
+				(a.time as string).localeCompare(b.time as string),
+			);
+		}
+		return [];
+	}, [backtestResult.markers, confluenceMarkers, markerFilter]);
+
+	useEffect(() => {
+		if (seriesRef.current.candle && candleData.length > 0) {
+			seriesRef.current.candle.setData(candleData as any);
+		}
+	}, [candleData]);
+
+	useEffect(() => {
+		if (seriesRef.current.val && valSeriesData.length > 0) {
+			seriesRef.current.val.setData(valSeriesData as any);
+		}
+	}, [valSeriesData]);
 
 	useEffect(() => {
 		if (seriesRef.current.cumStrat && backtestResult.cumStrat.length) {
@@ -444,67 +608,19 @@ export const ValuationStudio: React.FC = () => {
 		if (seriesRef.current.cumMarket && backtestResult.cumMarket.length) {
 			seriesRef.current.cumMarket.setData(backtestResult.cumMarket as any);
 		}
-		if (seriesRef.current.candle) {
-			let combinedMarkers: any[] = [];
-			const stratMarkers = (backtestResult.markers || []).map((m: any) => ({
-				time: m.time,
-				position: m.position,
-				color: m.color,
-				shape: m.shape,
-				text: m.text || m.action,
-			}));
+	}, [backtestResult.cumStrat, backtestResult.cumMarket]);
 
-			const confluenceMarkers: any[] = [];
-			dailyData.forEach((p) => {
-				if (p.date >= startDate && p.date <= endDate) {
-					const valScore =
-						typeof p.valuation_composite === "object" && p.valuation_composite !== null
-							? Number((p.valuation_composite as any).score ?? 0)
-							: Number(p.valuation_composite ?? 0);
-					const regime = p.lttd_regime || "SIDEWAYS";
-
-					if (valScore >= 1.0 && regime === "BULL") {
-						confluenceMarkers.push({
-							time: p.date as Time,
-							position: "belowBar",
-							color: "#00F0FF",
-							shape: "arrowUp",
-							text: "VAL ACCUM",
-						});
-					} else if (valScore <= -1.5 && regime === "BEAR") {
-						confluenceMarkers.push({
-							time: p.date as Time,
-							position: "aboveBar",
-							color: "#F43F5E",
-							shape: "arrowDown",
-							text: "VAL BUBBLE",
-						});
-					}
-				}
-			});
-
-			if (markerFilter === "strategy") {
-				combinedMarkers = stratMarkers;
-			} else if (markerFilter === "confluence") {
-				combinedMarkers = confluenceMarkers;
-			} else if (markerFilter === "both") {
-				combinedMarkers = [...stratMarkers, ...confluenceMarkers].sort((a, b) =>
-					(a.time as string).localeCompare(b.time as string),
-				);
-			} else {
-				combinedMarkers = [];
-			}
-
-			if (markersPrimitiveRef.current) {
-				markersPrimitiveRef.current.setMarkers(combinedMarkers as any);
-			} else {
-				markersPrimitiveRef.current = createSeriesMarkers(
-					seriesRef.current.candle,
-					combinedMarkers as any,
-				);
-			}
+	useEffect(() => {
+		if (!seriesRef.current.candle) return;
+		if (markersPrimitiveRef.current) {
+			markersPrimitiveRef.current.setMarkers(combinedMarkers as any);
+		} else if (combinedMarkers.length > 0) {
+			markersPrimitiveRef.current = createSeriesMarkers(
+				seriesRef.current.candle,
+				combinedMarkers as any,
+			);
 		}
-	}, [backtestResult, markerFilter, dailyData, startDate, endDate]);
+	}, [combinedMarkers]);
 
 	useGSAP(
 		() => {
@@ -761,37 +877,17 @@ export const ValuationStudio: React.FC = () => {
 		chartsRef.current = { btc: btcChart, val: valChart, eq: eqChart };
 		seriesRef.current = {
 			candle: candleSeries,
+			val: valSeries,
 			cumStrat: cumStratSeries,
 			cumMarket: cumMarketSeries,
 		};
 
-		// Populate data
-		candleSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
-				open: p.open,
-				high: p.high,
-				low: p.low,
-				close: p.close,
-			})),
-		);
+		// Populate data using memoized bar arrays
+		candleSeries.setData(candleData as unknown as Parameters<typeof candleSeries.setData>[0]);
 		markersPrimitiveRef.current = null;
-		valSeries.setData(
-			dailyData.map((p) => ({
-				time: p.date as Time,
-				value: p.valuation_composite,
-			})),
-		);
+		valSeries.setData(valSeriesData as unknown as Parameters<typeof valSeries.setData>[0]);
 
-		// Build O(1) lookups for crosshair synchronization
-		const btcDataMap = new Map<string, number>();
-		const valDataMap = new Map<string, number>();
-		for (const p of dailyData) {
-			btcDataMap.set(p.date, p.close);
-			valDataMap.set(p.date, p.valuation_composite);
-		}
-
-		// Crosshair sync
+		// Crosshair sync — O(1) date lookup and guard against redundant setHoveredPoint dispatches
 		const allCharts = [
 			{ chart: btcChart, series: candleSeries },
 			{ chart: valChart, series: valSeries },
@@ -804,21 +900,19 @@ export const ValuationStudio: React.FC = () => {
 				isSyncingRef.current = true;
 				if (param.time) {
 					const timeStr = param.time as string;
-					const hovered = dailyData.find((p) => p.date === timeStr);
-					setHoveredPoint(hovered || null);
+					if (lastHoveredDateRef.current !== timeStr) {
+						lastHoveredDateRef.current = timeStr;
+						const hovered = dateToPointMap.get(timeStr) || null;
+						setHoveredPoint(hovered);
+					}
 					allCharts.forEach(({ chart: c, series: s }, i) => {
-						if (i !== idx) {
-							// Find actual series value at this time for proper crosshair position
-							const data = s.data();
-							const point = data.find((d: any) => d.time === param.time);
-							const price = point
-								? ((point as any).value ?? (point as any).close ?? 0)
-								: 0;
-							c.setCrosshairPosition(price, param.time as Time, s);
-						}
+						if (i !== idx) c.setCrosshairPosition(0, param.time as Time, s);
 					});
 				} else {
-					setHoveredPoint(null);
+					if (lastHoveredDateRef.current !== null) {
+						lastHoveredDateRef.current = null;
+						setHoveredPoint(null);
+					}
 					allCharts.forEach(({ chart: c }, i) => {
 						if (i !== idx) c.clearCrosshairPosition();
 					});
@@ -892,17 +986,11 @@ export const ValuationStudio: React.FC = () => {
 			valChart.remove();
 			eqChart.remove();
 			chartsRef.current = { btc: null, val: null, eq: null };
-			seriesRef.current = { candle: null, cumStrat: null, cumMarket: null };
+			seriesRef.current = { candle: null, val: null, cumStrat: null, cumMarket: null };
 		};
-	}, [dailyData]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dailyData, candleData, valSeriesData, dateToPointMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const toNum = (val: any): number =>
-		typeof val === "object" && val !== null
-			? Number(val.score ?? val.oscillator ?? val.normalized_score ?? 0)
-			: Number(val ?? 0);
-	const displayPoint =
-		hoveredPoint ||
-		(dailyData.length > 0 ? dailyData[dailyData.length - 1] : null);
+	const displayPoint = hoveredPoint || latestDailyPoint;
 	const latestValScore = displayPoint
 		? toNum(displayPoint.valuation_composite)
 		: 0;
@@ -910,58 +998,73 @@ export const ValuationStudio: React.FC = () => {
 	const isBubble = latestValScore <= -1.5;
 	const isDiscount = latestValScore >= 1.0;
 
-	// SDCA signal: map from basic API fields instead of calculating
-	const hoveredIndex = displayPoint
-		? dailyData.findIndex((d) => d.date === displayPoint.date)
-		: -1;
-	const sdcaSignal: SdcaSignal | null =
-		dailyData.length > 0 && hoveredIndex >= 0
-			? {
-					date: dailyData[hoveredIndex].date,
-					multiplier: Number(dailyData[hoveredIndex].sdca_multiplier ?? 0),
-					phase: (dailyData[hoveredIndex].sdca_phase as any) ?? "fair",
-					action: (dailyData[hoveredIndex].sdca_action as any) ?? "HOLD",
-					confidence: (dailyData[hoveredIndex].sdca_confidence as any) ?? "LOW",
-					pricePercentile:
-						(dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) * 100.0,
-					trendPositive:
-						(dailyData[hoveredIndex].price_ma200_ratio ?? 1.0) >= 1.0,
-					price_ma200_ratio: dailyData[hoveredIndex].price_ma200_ratio,
-					ath_drawdown: dailyData[hoveredIndex].ath_drawdown,
-				}
-			: null;
+	// SDCA signal: O(1) index map lookup instead of linear findIndex scan
+	const hoveredIndex = useMemo(() => {
+		if (!displayPoint) return -1;
+		return dateToIndexMap.get(displayPoint.date) ?? -1;
+	}, [displayPoint, dateToIndexMap]);
 
-	const displayIndicators = Object.entries(INDICATOR_METADATA)
-		.filter(([_, meta]) => {
-			if (selectedCategory === "All") return true;
-			return meta.category === selectedCategory;
-		})
-		.map(([key, meta]) => {
-			const metricSignals = components.filter((c) => c.component_name === key);
-			const sortedHistory = [...metricSignals].sort((a, b) =>
-				a.date.localeCompare(b.date),
-			);
+	const sdcaSignal: SdcaSignal | null = useMemo(() => {
+		if (dailyData.length === 0 || hoveredIndex < 0) return null;
+		const pt = dailyData[hoveredIndex];
+		if (!pt) return null;
+		return {
+			date: pt.date,
+			multiplier: Number(pt.sdca_multiplier ?? 0),
+			phase: (pt.sdca_phase as unknown as SdcaPhase) ?? "fair",
+			action: (pt.sdca_action as unknown as SdcaAction) ?? "HOLD",
+			confidence: (pt.sdca_confidence as unknown as RegimeConfidence) ?? "LOW",
+			pricePercentile: (pt.price_ma200_ratio ?? 1.0) * 100.0,
+			trendPositive: (pt.price_ma200_ratio ?? 1.0) >= 1.0,
+			price_ma200_ratio: pt.price_ma200_ratio,
+			ath_drawdown: pt.ath_drawdown,
+		};
+	}, [dailyData, hoveredIndex]);
 
-			const sparklinePoints = sortedHistory.slice(-90).map((s) => ({
-				date: s.date.split("T")[0],
-				value: toNum(s.normalized_score),
-			}));
+	// Memoized indicator transforms — grouped components to eliminate O(17 * N) scans on scrub
+	const displayIndicators = useMemo(() => {
+		const compMap = new Map<string, ComponentSignal[]>();
+		for (let i = 0; i < components.length; i++) {
+			const c = components[i];
+			const existing = compMap.get(c.component_name);
+			if (existing) {
+				existing.push(c);
+			} else {
+				compMap.set(c.component_name, [c]);
+			}
+		}
 
-			const latestSignal = sortedHistory[sortedHistory.length - 1];
-			const score = latestSignal ? toNum(latestSignal.normalized_score) : 0;
-			const direction = latestSignal ? latestSignal.signal_direction : 0;
+		return Object.entries(INDICATOR_METADATA)
+			.filter(([_, meta]) => {
+				if (selectedCategory === "All") return true;
+				return meta.category === selectedCategory;
+			})
+			.map(([key, meta]) => {
+				const metricSignals = compMap.get(key) || [];
+				const sortedHistory = [...metricSignals].sort((a, b) =>
+					a.date.localeCompare(b.date),
+				);
 
-			return {
-				key,
-				name: meta.name,
-				category: meta.category,
-				description: meta.description,
-				score,
-				direction,
-				sparklineData: sparklinePoints,
-			};
-		});
+				const sparklinePoints = sortedHistory.slice(-90).map((s) => ({
+					date: s.date.split("T")[0],
+					value: toNum(s.normalized_score),
+				}));
 
+				const latestSignal = sortedHistory[sortedHistory.length - 1];
+				const score = latestSignal ? toNum(latestSignal.normalized_score) : 0;
+				const direction = latestSignal ? latestSignal.signal_direction : 0;
+
+				return {
+					key,
+					name: meta.name,
+					category: meta.category,
+					description: meta.description,
+					score,
+					direction,
+					sparklineData: sparklinePoints,
+				};
+			});
+	}, [components, selectedCategory, toNum]);
 	const handleExportPng = () => {
 		const chartPanel = document.querySelector(".chart-panel");
 		if (!chartPanel) return;
@@ -2015,36 +2118,11 @@ export const ValuationStudio: React.FC = () => {
 					</div>
 
 					<SdcaPanel
-						signal={
-							dailyData.length > 0
-								? {
-										date: dailyData[dailyData.length - 1].date as string,
-										multiplier: (dailyData[dailyData.length - 1]
-											.sdca_multiplier ?? 0) as number,
-										phase: (dailyData[dailyData.length - 1].sdca_phase ??
-											"fair") as SdcaPhase,
-										action: (dailyData[dailyData.length - 1].sdca_action ??
-											"HOLD") as SdcaAction,
-										confidence: (dailyData[dailyData.length - 1]
-											.sdca_confidence ?? "HIGH") as RegimeConfidence,
-										pricePercentile: 50 as number,
-										trendPositive: true as boolean,
-									}
-								: null
-						}
-						currentPrice={
-							dailyData.length > 0
-								? (dailyData[dailyData.length - 1].close as number)
-								: 0
-						}
+						signal={latestSdcaPanelSignal}
+						currentPrice={latestClosePrice}
 						onRecalculate={handleSdcaRecalculate}
 					/>
-					<SdcaPhaseTimeline
-						data={dailyData.map((d: any) => ({
-							date: d.date,
-							phase: d.sdca_phase || "fair",
-						}))}
-					/>
+					<SdcaPhaseTimeline data={sdcaPhaseTimelineData} />
 
 					{/* Interactive Breakdown Table */}
 					<div className="glass-card" style={{ padding: "14px" }}>

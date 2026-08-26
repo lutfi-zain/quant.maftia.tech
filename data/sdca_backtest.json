@@ -3,15 +3,15 @@
     "sharpeRatio": 1.22,
     "totalReturn": 43154.02,
     "maxDrawdown": 64.5,
-    "annualizedReturn": 61.78,
-    "annualizedVolatility": 50.65,
+    "annualizedReturn": 61.76,
+    "annualizedVolatility": 50.64,
     "winRate": 100.0,
     "profitFactor": 999.0,
     "totalTrades": 227,
     "sortinoRatio": 1.85,
-    "cagr": 62.75,
+    "cagr": 62.73,
     "sharpeRatioMarket": 0.9,
-    "annualizedReturnMarket": 47.6,
+    "annualizedReturnMarket": 47.31,
     "annualizedVolatilityMarket": 71.45,
     "maxDrawdownMarket": 83.2,
     "avgCostBasis": 0.0
@@ -27328,6 +27328,12 @@
       "sdca": 4325401.762533179,
       "simpleDca": 24509628.920221876,
       "buyHold": 1280615.507084859
+    },
+    {
+      "date": "2026-08-26",
+      "sdca": 4325401.762533179,
+      "simpleDca": 23917225.325171225,
+      "buyHold": 1250214.9339277185
     }
   ],
   "trade_log": [
@@ -79901,11 +79907,22 @@
       "price_ma200_ratio": 1.0,
       "ath_drawdown": 0.0,
       "trendPositive": true
+    },
+    {
+      "date": "2026-08-26",
+      "multiplier": 0.0,
+      "phase": "neutral",
+      "action": "HOLD",
+      "confidence": "HIGH",
+      "pricePercentile": 100.0,
+      "price_ma200_ratio": 1.0,
+      "ath_drawdown": 0.0,
+      "trendPositive": true
     }
   ],
   "config": {
     "start_date": "2014-03-10",
-    "end_date": "2026-08-25",
+    "end_date": "2026-08-26",
     "fee_bps": 10,
     "base_dca_amount": 100.0,
     "initial_cash": 10000.0,

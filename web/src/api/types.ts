@@ -14,6 +14,10 @@ export interface DailyAnalyticsPoint {
 	lttd_prob_bear?: number;
 	lttd_prob_sideways?: number;
 	lttd_target_exposure?: number;
+	btc_price?: number;
+	mttd_position?: number | null;
+	mttd_er?: number | null;
+	mttd_entropy?: number | null;
 	mttd_er_ratio?: number;
 	mttd_shannon_entropy?: number;
 	ichimoku_s_tk?: number;
