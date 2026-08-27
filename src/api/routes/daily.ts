@@ -33,7 +33,9 @@ dailyRouter.get("/", (c) => {
       u.ichi_tenkan, u.ichi_kijun, u.ichi_senkou_a, u.ichi_senkou_b, u.ichi_chikou,
       u.ichi_entropy, u.ichi_er, u.ichi_imo_std,
       u.ichi_ref_pos, u.ichi_cum_strat, u.ichi_cum_market,
-      u.ichi_active_pos, u.ichi_strat_net_ret
+      u.ichi_active_pos, u.ichi_strat_net_ret,
+      u.ichi_wave_type, u.ichi_target_v, u.ichi_target_n, u.ichi_target_e, u.ichi_target_nt,
+      u.ichi_kairitsu, u.ichi_cloud_thickness, u.ichi_kihon_score, u.ichi_kumo_twist_flag
     FROM unified_daily_analytics u
     LEFT JOIN master_ohlcv m ON u.date = m.date
     WHERE u.date >= ? AND u.date <= ?
@@ -101,6 +103,15 @@ dailyRouter.get("/", (c) => {
 			cum_market: row.ichi_cum_market ?? null,
 			active_pos: row.ichi_active_pos ?? null,
 			strat_net_ret: row.ichi_strat_net_ret ?? null,
+			wave_type: row.ichi_wave_type ?? "I",
+			target_v: row.ichi_target_v ?? null,
+			target_n: row.ichi_target_n ?? null,
+			target_e: row.ichi_target_e ?? null,
+			target_nt: row.ichi_target_nt ?? null,
+			kairitsu: row.ichi_kairitsu ?? null,
+			cloud_thickness: row.ichi_cloud_thickness ?? null,
+			kihon_score: row.ichi_kihon_score ?? null,
+			kumo_twist_flag: row.ichi_kumo_twist_flag ?? 0,
 		},
 	}));
 

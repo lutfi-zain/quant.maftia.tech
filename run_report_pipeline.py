@@ -228,22 +228,33 @@ def main():
   ichi_cum_market        REAL,
   ichi_active_pos        REAL,
   ichi_strat_net_ret     REAL,
+  ichi_wave_type         TEXT,
+  ichi_target_v          REAL,
+  ichi_target_n          REAL,
+  ichi_target_e          REAL,
+  ichi_target_nt         REAL,
+  ichi_kairitsu          REAL,
+  ichi_cloud_thickness   REAL,
+  ichi_kihon_score       REAL,
+  ichi_kumo_twist_flag   REAL,
   FOREIGN KEY (date) REFERENCES master_ohlcv(date)
 )"""
         )
         # Migration: add missing columns to existing unified_daily_analytics table
         existing_cols = [r[1] for r in master_conn.execute("PRAGMA table_info(unified_daily_analytics)").fetchall()]
         new_cols_to_add = [
-            'lttd_exposure', 'price_ma200_ratio', 'ath_drawdown',
-            'ichi_s_tk', 'ichi_s_cloud', 'ichi_s_future', 'ichi_s_chikou',
-            'ichi_tenkan', 'ichi_kijun', 'ichi_senkou_a', 'ichi_senkou_b', 'ichi_chikou',
-            'ichi_entropy', 'ichi_er', 'ichi_imo_std', 'ichi_active_pos', 'ichi_strat_net_ret'
+            ('lttd_exposure', 'REAL'), ('price_ma200_ratio', 'REAL'), ('ath_drawdown', 'REAL'),
+            ('ichi_s_tk', 'REAL'), ('ichi_s_cloud', 'REAL'), ('ichi_s_future', 'REAL'), ('ichi_s_chikou', 'REAL'),
+            ('ichi_tenkan', 'REAL'), ('ichi_kijun', 'REAL'), ('ichi_senkou_a', 'REAL'), ('ichi_senkou_b', 'REAL'), ('ichi_chikou', 'REAL'),
+            ('ichi_entropy', 'REAL'), ('ichi_er', 'REAL'), ('ichi_imo_std', 'REAL'), ('ichi_active_pos', 'REAL'), ('ichi_strat_net_ret', 'REAL'),
+            ('ichi_wave_type', 'TEXT'), ('ichi_target_v', 'REAL'), ('ichi_target_n', 'REAL'), ('ichi_target_e', 'REAL'), ('ichi_target_nt', 'REAL'),
+            ('ichi_kairitsu', 'REAL'), ('ichi_cloud_thickness', 'REAL'), ('ichi_kihon_score', 'REAL'), ('ichi_kumo_twist_flag', 'REAL')
         ]
-        for col_name in new_cols_to_add:
+        for col_name, col_type in new_cols_to_add:
             if col_name not in existing_cols:
                 try:
-                    master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col_name} REAL")
-                    print(f"  Added column {col_name} to unified_daily_analytics")
+                    master_conn.execute(f"ALTER TABLE unified_daily_analytics ADD COLUMN {col_name} {col_type}")
+                    print(f"  Added column {col_name} ({col_type}) to unified_daily_analytics")
                 except Exception as e:
                     print(f"  Could not add column {col_name}: {e}")
         master_conn.commit()
@@ -501,7 +512,17 @@ def main():
                 "imo_std": float(r["IMO_Std"]) if "IMO_Std" in r and pd.notnull(r["IMO_Std"]) else None,
                 # Causal execution position & daily net returns (from run_backtest)
                 "active_pos": float(r["Active_Pos"]) if "Active_Pos" in r and pd.notnull(r["Active_Pos"]) else None,
-                "strat_net_ret": float(r["Strat_Net_Ret"]) if "Strat_Net_Ret" in r and pd.notnull(r["Strat_Net_Ret"]) else None
+                "strat_net_ret": float(r["Strat_Net_Ret"]) if "Strat_Net_Ret" in r and pd.notnull(r["Strat_Net_Ret"]) else None,
+                # 7-Book extended telemetry
+                "wave_type": str(r["wave_type"]) if "wave_type" in r and pd.notnull(r["wave_type"]) else "I",
+                "target_v": float(r["target_V"]) if "target_V" in r and pd.notnull(r["target_V"]) else None,
+                "target_n": float(r["target_N"]) if "target_N" in r and pd.notnull(r["target_N"]) else None,
+                "target_e": float(r["target_E"]) if "target_E" in r and pd.notnull(r["target_E"]) else None,
+                "target_nt": float(r["target_NT"]) if "target_NT" in r and pd.notnull(r["target_NT"]) else None,
+                "kairitsu": float(r["kairitsu"]) if "kairitsu" in r and pd.notnull(r["kairitsu"]) else None,
+                "cloud_thickness": float(r["cloud_thickness"]) if "cloud_thickness" in r and pd.notnull(r["cloud_thickness"]) else None,
+                "kihon_score": float(r["kihon_suchi_score"]) if "kihon_suchi_score" in r and pd.notnull(r["kihon_suchi_score"]) else None,
+                "kumo_twist_flag": float(r["kumo_twist_flag"]) if "kumo_twist_flag" in r and pd.notnull(r["kumo_twist_flag"]) else 0.0
             }
     except Exception as e:
         print(f"Error fetching full Ichimoku signals: {e}")
@@ -576,6 +597,15 @@ def main():
         ich_cum_market = ich_rec.get("cum_market")
         ich_active_pos = ich_rec.get("active_pos")
         ich_strat_net_ret = ich_rec.get("strat_net_ret")
+        ich_wave_type = ich_rec.get("wave_type", "I")
+        ich_target_v = ich_rec.get("target_v")
+        ich_target_n = ich_rec.get("target_n")
+        ich_target_e = ich_rec.get("target_e")
+        ich_target_nt = ich_rec.get("target_nt")
+        ich_kairitsu = ich_rec.get("kairitsu")
+        ich_cloud_thickness = ich_rec.get("cloud_thickness")
+        ich_kihon_score = ich_rec.get("kihon_score")
+        ich_kumo_twist_flag = ich_rec.get("kumo_twist_flag", 0.0)
 
         sdca_sig = sdca_signals_map.get(dt)
         sdca_mult = sdca_sig["multiplier"] if sdca_sig else 0.0
@@ -598,8 +628,10 @@ def main():
                 ichi_tenkan, ichi_kijun, ichi_senkou_a, ichi_senkou_b, ichi_chikou,
                 ichi_entropy, ichi_er, ichi_imo_std,
                 ichi_ref_pos, ichi_cum_strat, ichi_cum_market,
-                ichi_active_pos, ichi_strat_net_ret
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ichi_active_pos, ichi_strat_net_ret,
+                ichi_wave_type, ichi_target_v, ichi_target_n, ichi_target_e, ichi_target_nt,
+                ichi_kairitsu, ichi_cloud_thickness, ichi_kihon_score, ichi_kumo_twist_flag
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 dt, btc_p, val_comp,
                 sdca_mult, sdca_phase, sdca_action, sdca_conf,
@@ -611,7 +643,9 @@ def main():
                 ich_tenkan, ich_kijun, ich_senkou_a, ich_senkou_b, ich_chikou,
                 ich_entropy, ich_er, ich_imo_std,
                 ich_ref_pos, ich_cum_strat, ich_cum_market,
-                ich_active_pos, ich_strat_net_ret
+                ich_active_pos, ich_strat_net_ret,
+                ich_wave_type, ich_target_v, ich_target_n, ich_target_e, ich_target_nt,
+                ich_kairitsu, ich_cloud_thickness, ich_kihon_score, ich_kumo_twist_flag
             ),
             commit=False
         )
@@ -714,14 +748,17 @@ def main():
     ich_comp_count = 0
     try:
         for dt, ich_rec in ich_data_all.items():
-            for icomp in ["IMO", "S_TK", "S_Cloud", "S_Future", "S_Chikou"]:
+            for icomp in ["IMO", "S_TK", "S_Cloud", "S_Future", "S_Chikou", "Cloud_Thickness", "Kairitsu", "Kihon_Score"]:
                 # Map dict keys to column values
                 val_map = {
                     "IMO": ich_rec.get("imo"),
                     "S_TK": ich_rec.get("s_tk"),
                     "S_Cloud": ich_rec.get("s_cloud"),
                     "S_Future": ich_rec.get("s_future"),
-                    "S_Chikou": ich_rec.get("s_chikou")
+                    "S_Chikou": ich_rec.get("s_chikou"),
+                    "Cloud_Thickness": ich_rec.get("cloud_thickness"),
+                    "Kairitsu": ich_rec.get("kairitsu"),
+                    "Kihon_Score": ich_rec.get("kihon_score"),
                 }
                 ival = val_map.get(icomp)
                 if ival is not None and pd.notnull(ival):

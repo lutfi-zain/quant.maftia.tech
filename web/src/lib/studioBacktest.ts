@@ -209,91 +209,91 @@ export function useStudioBacktest(
 			}
 
 			// Track position transitions and trade compounding matching backtest.py
-			if (activePos !== currentPos) {
-				if (currentPos === 1) {
-					// Trade exited (or flipped)
-					const exitPrice = row.close;
-					const holdDays = Math.max(
-						1,
-						Math.round(
-							(new Date(row.date).getTime() - new Date(entryDate).getTime()) /
-								(1000 * 3600 * 24),
-						),
-					);
-					const netRet = tradeCompoundedReturn - 1.0;
+			const wasInTrade = currentPos > 0;
+			const nowInTrade = activePos > 0;
 
-					let exitReason = "Signal Exit / Neutral";
-					if (
-						prevRow &&
-						prevRow.lttd_regime === "SIDEWAYS" &&
-						(prevRow.lttd_prob_sideways || 0) > 0.6
-					) {
-						exitReason = "Circuit Breaker: LTTD Sideways";
-						// Database convention: negative = overvalued (bubble)
-					} else if (prevRow && (prevRow.valuation_composite || 0) <= -1.5) {
-						exitReason = "Circuit Breaker: Valuation Bubble";
-					} else if (
-						prevRow &&
-						prevRow.ichimoku_er !== undefined &&
-						prevRow.ichimoku_er !== null &&
-						prevRow.ichimoku_er < 0.2
-					) {
-						exitReason = "Gate Exit: Efficiency Ratio (< 0.20)";
-					} else if (
-						prevRow &&
-						prevRow.ichimoku_entropy !== undefined &&
-						prevRow.ichimoku_entropy !== null &&
-						prevRow.ichimoku_entropy > 2.3
-					) {
-						exitReason = "Gate Exit: Shannon Entropy (> 2.30)";
-					} else if (
-						prevRow &&
-						prevRow.ichimoku_chikou !== undefined &&
-						prevRow.ichimoku_chikou !== null &&
-						prevRow.ichimoku_chikou < prevRow.close
-					) {
-						exitReason = "Chikou Momentum Exit (< Price)";
-					}
+			if (wasInTrade && !nowInTrade) {
+				// Trade exited
+				const exitPrice = row.close;
+				const holdDays = Math.max(
+					1,
+					Math.round(
+						(new Date(row.date).getTime() - new Date(entryDate).getTime()) /
+							(1000 * 3600 * 24),
+					),
+				);
+				const netRet = tradeCompoundedReturn - 1.0;
 
-					tradeCount++;
-					trades.push({
-						id: `trade-${tradeCount}`,
-						entryDate,
-						entryPrice,
-						exitDate: row.date,
-						exitPrice,
-						returnPct: netRet * 100,
-						holdDays,
-						exitReason,
-					});
-
-					markers.push({
-						time: row.date,
-						position: "aboveBar",
-						color: "#ef4444",
-						shape: "arrowDown",
-						text: "SELL (Exit)",
-					});
+				let exitReason = "Signal Exit / Neutral";
+				if (
+					prevRow &&
+					prevRow.lttd_regime === "SIDEWAYS" &&
+					(prevRow.lttd_prob_sideways || 0) > 0.6
+				) {
+					exitReason = "Circuit Breaker: LTTD Sideways";
+				} else if (prevRow && (prevRow.valuation_composite || 0) <= -1.5) {
+					exitReason = "Circuit Breaker: Valuation Bubble";
+				} else if (
+					prevRow &&
+					prevRow.ichimoku_er !== undefined &&
+					prevRow.ichimoku_er !== null &&
+					prevRow.ichimoku_er < 0.2
+				) {
+					exitReason = "Gate Exit: Efficiency Ratio (< 0.20)";
+				} else if (
+					prevRow &&
+					prevRow.ichimoku_entropy !== undefined &&
+					prevRow.ichimoku_entropy !== null &&
+					prevRow.ichimoku_entropy > 2.3
+				) {
+					exitReason = "Gate Exit: Shannon Entropy (> 2.30)";
+				} else if (
+					prevRow &&
+					prevRow.ichimoku_chikou !== undefined &&
+					prevRow.ichimoku_chikou !== null &&
+					prevRow.ichimoku_chikou < prevRow.close
+				) {
+					exitReason = "Chikou Momentum Exit (< Price)";
 				}
 
-				if (activePos === 1) {
-					// Trade entered
-					entryDate = row.date;
-					entryPrice = row.close;
-					tradeCompoundedReturn = 1.0;
-					markers.push({
-						time: row.date,
-						position: "belowBar",
-						color: "#22c55e",
-						shape: "arrowUp",
-						text: "BUY (Long)",
-					});
-				}
+				tradeCount++;
+				trades.push({
+					id: `trade-${tradeCount}`,
+					entryDate,
+					entryPrice,
+					exitDate: row.date,
+					exitPrice,
+					returnPct: netRet * 100,
+					holdDays,
+					exitReason,
+				});
 
-				currentPos = activePos;
+				markers.push({
+					time: row.date,
+					position: "aboveBar",
+					color: "#ef4444",
+					shape: "arrowDown",
+					text: "SELL (Exit)",
+				});
 			}
 
-			if (activePos === 1) {
+			if (!wasInTrade && nowInTrade) {
+				// Trade entered
+				entryDate = row.date;
+				entryPrice = row.close;
+				tradeCompoundedReturn = 1.0;
+				markers.push({
+					time: row.date,
+					position: "belowBar",
+					color: "#22c55e",
+					shape: "arrowUp",
+					text: activePos > 1.05 ? `BUY (${activePos.toFixed(2)}x Expansion)` : "BUY (Long)",
+				});
+			}
+
+			currentPos = activePos;
+
+			if (nowInTrade) {
 				tradeCompoundedReturn *= 1.0 + stratRet;
 			}
 

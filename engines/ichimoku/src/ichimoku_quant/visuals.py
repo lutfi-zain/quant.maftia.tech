@@ -64,8 +64,10 @@ def generate_dashboard_html(df: pd.DataFrame, metrics: dict, output_path: str = 
     
     # 3. Extract Trades
     df_temp = df.copy()
-    df_temp['trade_id'] = (df_temp['Active_Pos'].diff().abs() > 0).cumsum()
-    in_trade = df_temp[df_temp['Active_Pos'] == 1.0]
+    is_active = (df_temp['Active_Pos'] > 0).astype(int)
+    trade_start = (is_active == 1) & (is_active.shift(1, fill_value=0) == 0)
+    df_temp['trade_id'] = trade_start.cumsum()
+    in_trade = df_temp[df_temp['Active_Pos'] > 0]
     
     trades_list = []
     if len(in_trade) > 0:
@@ -85,26 +87,20 @@ def generate_dashboard_html(df: pd.DataFrame, metrics: dict, output_path: str = 
             run_up = (max_price - entry_price) / entry_price * 100
             
             sig_exit_row = df.loc[exit_idx]
-            exit_reason = "Signal Exit"
+            exit_reason = "San-Yaku Exit"
             
-            cloud_a = sig_exit_row['senkou_span_a']
-            cloud_b = sig_exit_row['senkou_span_b']
-            cloud_max = max(cloud_a, cloud_b) if not (pd.isna(cloud_a) or pd.isna(cloud_b)) else np.nan
-            is_above_cloud = (not pd.isna(cloud_max) and sig_exit_row['Close'] >= cloud_max)
-            is_not_crashing = (sig_exit_row.get('roc_gate', 0.0) >= -0.20)
+            tenkan = sig_exit_row.get('tenkan_sen', exit_price)
+            kijun = sig_exit_row.get('kijun_sen', exit_price)
+            chikou = sig_exit_row.get('S_Chikou', 0.0)
             
-            is_immune = (sig_exit_row['IMO'] >= 0.50)
-            if is_above_cloud and is_not_crashing:
-                is_immune = is_immune or (sig_exit_row['IMO'] >= -0.30)
-                
-            current_macro_exit_th = 0.0
-            if is_above_cloud and is_not_crashing:
-                current_macro_exit_th = -0.30
-                
-            if sig_exit_row['S_Chikou'] < -0.30 and not is_immune:
-                exit_reason = "Chikou Exit"
-            elif sig_exit_row['IMO'] < current_macro_exit_th:
-                exit_reason = "Macro IMO Exit"
+            if tenkan < kijun and chikou < 0:
+                exit_reason = "San-Yaku Gyakuten"
+            elif exit_price < kijun:
+                exit_reason = "Kijun Breakdown"
+            elif sig_exit_row['S_Chikou'] < -0.30:
+                exit_reason = "Chikou Momentum"
+            elif sig_exit_row['IMO'] < -0.30:
+                exit_reason = "Macro Cloud Exit"
             
             trades_list.append({
                 'num': trade_num,
@@ -117,7 +113,6 @@ def generate_dashboard_html(df: pd.DataFrame, metrics: dict, output_path: str = 
                 'reason': exit_reason
             })
             trade_num += 1
-
     trades_rows = ""
     for t in reversed(trades_list):
         ret_color = "#22c55e" if t['return'] >= 0 else "#ef4444"

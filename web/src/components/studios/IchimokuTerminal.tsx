@@ -105,30 +105,55 @@ const ICHIMOKU_COMPONENTS_METADATA: Record<
 	{ category: string; description: string; formula: string }
 > = {
 	"SuperSmoother Tenkan-Kijun (S_TK)": {
-		category: "Cloud Momentum",
+		category: "Book 1: Equilibrium",
 		description: "Tanh-normalized TK cross delta, ATR-scaled",
 		formula: "tanh((Tenkan - Kijun) / ATR)",
 	},
 	"SuperSmoother Cloud Thickness (S_Cloud)": {
-		category: "Cloud Structure",
+		category: "Book 1: Equilibrium",
 		description: "Tanh-normalized distance from Close to cloud boundary",
 		formula: "tanh((Close - cloud_edge) / ATR)",
 	},
 	"SuperSmoother Future Cloud (S_Future)": {
-		category: "Forward Projection",
+		category: "Book 1: Forward Cloud",
 		description: "Tanh-normalized Senkou A-B spread",
 		formula: "tanh((SenkouA - SenkouB) / ATR)",
 	},
 	"SuperSmoother Chikou Span (S_Chikou)": {
-		category: "Lagging Confirmation",
+		category: "Book 1 & 5: Momentum",
 		description: "Smoothed tanh-normalized 60-bar Chikou displacement",
 		formula: "tanh(SuperSmooth((Close - Close[-60]) / ATR, l=4))",
 	},
 	"Ichimoku Denoised Oscillator (IMO)": {
-		category: "Stationary Output",
+		category: "Book 1: Consensus IMO",
 		description:
 			"SuperSmoother-filtered equal-weight average of all 4 S-components",
 		formula: "SuperSmooth((S_TK + S_Cloud + S_Future + S_Chikou) / 4, l=7)",
+	},
+	"Kihon Suchi Cycle Proximity": {
+		category: "Book 2: Jikan-ron",
+		description: "Proximity to fundamental time numbers (9, 17, 26, 33, 42, 65, 76)",
+		formula: "exp(-min(|dt - K|)^2 / 8)",
+	},
+	"Hado-ron Wave Archetype": {
+		category: "Book 3: Hado-ron",
+		description: "Causal classification into 6 fractal wave structures (I, V, N, P, Y, S)",
+		formula: "Classify(P0, P1, P2, P3)",
+	},
+	"Keisan-chi Price Targets": {
+		category: "Book 4: Keisan-chi-ron",
+		description: "Dynamic swing projection vector: V, N, E, and NT targets",
+		formula: "N = C + (B - A), E = B + (B - A)",
+	},
+	"Kairitsu Rubber Band & Twist": {
+		category: "Book 5: Waga Saiko",
+		description: "Kijun elasticity elasticity ratio and forward Kumo twist inflection",
+		formula: "(Close - Kijun) / Kijun",
+	},
+	"Cloud Mass Density": {
+		category: "Book 6: Sokutei-hen",
+		description: "Cloud boundary mass thickness normalized by 60-period ATR",
+		formula: "|SpanA - SpanB| / ATR",
 	},
 };
 
@@ -137,7 +162,7 @@ export const IchimokuTerminal: React.FC = () => {
 	const [components, setComponents] = useState<ComponentSignal[]>([]);
 	const [isLogScale, setIsLogScale] = useState(true);
 	const [maximized, setMaximized] = useState<MaximizedPanel>(null);
-	const [startDate, setStartDate] = useState("2018-01-01");
+	const [startDate, setStartDate] = useState("2016-01-01");
 	const [endDate, setEndDate] = useState(
 		() => new Date().toISOString().split("T")[0],
 	);
@@ -712,6 +737,38 @@ export const IchimokuTerminal: React.FC = () => {
 		entropySeries.setData(entropyData);
 		imoSyncAnchorSeries.setData(syncAnchorData);
 		eqSyncAnchorSeries.setData(syncAnchorData);
+		// 7-Book Dynamic Target Price Lines on Candlestick Chart (Book 4)
+		const lastPt = dailyData[dailyData.length - 1];
+		if (lastPt?.ichimoku_target_n) {
+			candleSeries.createPriceLine({
+				price: lastPt.ichimoku_target_n,
+				color: "#10B981",
+				lineWidth: 1,
+				lineStyle: LineStyle.Dashed,
+				axisLabelVisible: true,
+				title: "Target N (Continuation)",
+			});
+		}
+		if (lastPt?.ichimoku_target_e) {
+			candleSeries.createPriceLine({
+				price: lastPt.ichimoku_target_e,
+				color: "#8B5CF6",
+				lineWidth: 1,
+				lineStyle: LineStyle.Dashed,
+				axisLabelVisible: true,
+				title: "Target E (Euphoria)",
+			});
+		}
+		if (lastPt?.ichimoku_target_v) {
+			candleSeries.createPriceLine({
+				price: lastPt.ichimoku_target_v,
+				color: "#3B82F6",
+				lineWidth: 1,
+				lineStyle: LineStyle.Dotted,
+				axisLabelVisible: true,
+				title: "Target V (Retrace)",
+			});
+		}
 
 		if (backtestResult.markers.length) {
 			createSeriesMarkers(
@@ -725,7 +782,6 @@ export const IchimokuTerminal: React.FC = () => {
 				})) as unknown as SeriesMarker<Time>[],
 			);
 		}
-
 		if (backtestResult.cumStrat.length) {
 			const stratData: LineData<Time>[] = [];
 			for (const d of backtestResult.cumStrat) {
@@ -1004,17 +1060,17 @@ export const IchimokuTerminal: React.FC = () => {
 				} else if (name === "Ichimoku Denoised Oscillator (IMO)") {
 					score = latestImo;
 				} else {
-					// Use latest daily point's S-component values as fallback
-					const sKey = name.includes("S_TK")
-						? "ichimoku_s_tk"
-						: name.includes("S_Cloud")
-							? "ichimoku_s_cloud"
-							: name.includes("S_Future")
-								? "ichimoku_s_future"
-								: name.includes("S_Chikou")
-									? "ichimoku_s_chikou"
-									: null;
-					score = sKey && latestPoint ? toNum((latestPoint as any)[sKey]) : 0;
+					// Use latest daily point's S-component and 7-book values as fallback
+					let rawVal: number | string | null | undefined = 0;
+					if (name.includes("S_TK")) rawVal = latestPoint?.ichimoku_s_tk;
+					else if (name.includes("S_Cloud")) rawVal = latestPoint?.ichimoku_s_cloud;
+					else if (name.includes("S_Future")) rawVal = latestPoint?.ichimoku_s_future;
+					else if (name.includes("S_Chikou")) rawVal = latestPoint?.ichimoku_s_chikou;
+					else if (name.includes("Kihon")) rawVal = latestPoint?.ichimoku_kihon_score;
+					else if (name.includes("Hado-ron")) rawVal = latestPoint?.ichimoku_wave_type === "N" ? 1.0 : latestPoint?.ichimoku_wave_type === "S" ? -1.0 : 0.0;
+					else if (name.includes("Kairitsu")) rawVal = latestPoint?.ichimoku_kairitsu;
+					else if (name.includes("Cloud Mass")) rawVal = latestPoint?.ichimoku_cloud_thickness;
+					score = toNum(rawVal ?? 0);
 				}
 				const sNum = toNum(score);
 				return {
@@ -1025,7 +1081,7 @@ export const IchimokuTerminal: React.FC = () => {
 					score: sNum,
 					direction: sNum > 0.15 ? 1 : sNum < -0.15 ? -1 : 0,
 				};
-			},
+			}
 		);
 	}, [components, latestImo, latestPoint]);
 
@@ -1070,14 +1126,14 @@ export const IchimokuTerminal: React.FC = () => {
 				<div className="studio-banner-left">
 					<div className="studio-banner-tags">
 						<span className="studio-tag-layer">
-							LAYER 04 · SUPERSMOOTHER IIR
+							LAYER 04 · 7-BOOK CANONICAL QUANT v4.0
 						</span>
 						<span className="studio-tag-fn">
-							dsp.SuperSmootherIIR(cutoff=10)
+							ichimoku.Canonical7Books(p1=20, p2=60, p3=120)
 						</span>
 					</div>
 					<h2 className="studio-banner-title">
-						Ichimoku Denoised SuperSmoother Quantitative Terminal
+						7-Book Canonical Ichimoku Kinko Hyo Quantitative Terminal
 					</h2>
 				</div>
 
@@ -1123,6 +1179,150 @@ export const IchimokuTerminal: React.FC = () => {
 							<span>NEUTRAL KUMO TWIST</span>
 						</>
 					)}
+				</div>
+			</div>
+
+			{/* 7-Book Canonical Cockpit Telemetry Cards (Wave HUD, Price Targets, Cloud Mass, Time Cycles) */}
+			<div
+				style={{
+					display: "grid",
+					gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+					gap: "12px",
+				}}
+			>
+				{/* Card 1: Book 3 Hado-ron Wave Archetype */}
+				<div
+					className="glass-card"
+					style={{
+						padding: "12px 16px",
+						display: "flex",
+						flexDirection: "column",
+						gap: "4px",
+						borderLeft: "3px solid var(--accent)",
+					}}
+				>
+					<span style={{ fontSize: "10px", color: "var(--text-muted)", letterSpacing: "0.5px" }}>
+						BOOK 3 · HADO-RON WAVE
+					</span>
+					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+						<span
+							style={{
+								fontSize: "15px",
+								fontWeight: 700,
+								fontFamily: "Geist Mono, monospace",
+								color:
+									latestPoint?.ichimoku_wave_type === "N"
+										? "var(--signal-bull)"
+										: latestPoint?.ichimoku_wave_type === "P"
+											? "var(--status-warn)"
+											: latestPoint?.ichimoku_wave_type === "S"
+												? "var(--signal-bear)"
+												: "var(--text-main)",
+							}}
+						>
+							{latestPoint?.ichimoku_wave_type === "N"
+								? "N-WAVE (Expansion)"
+								: latestPoint?.ichimoku_wave_type === "P"
+									? "P-WAVE (Chop Triangle)"
+									: latestPoint?.ichimoku_wave_type === "Y"
+										? "Y-WAVE (Megaphone)"
+										: latestPoint?.ichimoku_wave_type === "V"
+											? "V-WAVE (Pullback)"
+											: latestPoint?.ichimoku_wave_type === "S"
+												? "S-WAVE (Breakdown)"
+												: "I-WAVE (Impulse)"}
+						</span>
+					</div>
+					<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+						{latestPoint?.ichimoku_wave_type === "N"
+							? "Confirmed 3-leg bullish breakout"
+							: latestPoint?.ichimoku_wave_type === "P"
+								? "Contracting swings; chop defense active"
+								: "Active swing structure"}
+					</span>
+				</div>
+
+				{/* Card 2: Book 4 Keisan-chi-ron Price Targets */}
+				<div
+					className="glass-card"
+					style={{
+						padding: "12px 16px",
+						display: "flex",
+						flexDirection: "column",
+						gap: "4px",
+						borderLeft: "3px solid #10B981",
+					}}
+				>
+					<span style={{ fontSize: "10px", color: "var(--text-muted)", letterSpacing: "0.5px" }}>
+						BOOK 4 · TARGET PROJECTIONS
+					</span>
+					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Target N:</span>
+						<span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "#10B981" }}>
+							{latestPoint?.ichimoku_target_n ? `$${Math.round(latestPoint.ichimoku_target_n).toLocaleString()}` : "—"}
+						</span>
+					</div>
+					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Target E:</span>
+						<span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "#8B5CF6" }}>
+							{latestPoint?.ichimoku_target_e ? `$${Math.round(latestPoint.ichimoku_target_e).toLocaleString()}` : "—"}
+						</span>
+					</div>
+				</div>
+
+				{/* Card 3: Book 5 & 6 Kairitsu & Cloud Mass */}
+				<div
+					className="glass-card"
+					style={{
+						padding: "12px 16px",
+						display: "flex",
+						flexDirection: "column",
+						gap: "4px",
+						borderLeft: "3px solid #F59E0B",
+					}}
+				>
+					<span style={{ fontSize: "10px", color: "var(--text-muted)", letterSpacing: "0.5px" }}>
+						BOOK 5 & 6 · CLOUD MASS & KAIRITSU
+					</span>
+					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Cloud Mass:</span>
+						<span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "var(--accent)" }}>
+							{latestPoint?.ichimoku_cloud_thickness != null ? `${latestPoint.ichimoku_cloud_thickness.toFixed(2)}x ATR` : "—"}
+						</span>
+					</div>
+					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Kairitsu (Elasticity):</span>
+						<span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: (latestPoint?.ichimoku_kairitsu ?? 0) > 0.30 ? "#F59E0B" : "var(--text-main)" }}>
+							{latestPoint?.ichimoku_kairitsu != null ? `${(latestPoint.ichimoku_kairitsu * 100).toFixed(1)}%` : "—"}
+						</span>
+					</div>
+				</div>
+
+				{/* Card 4: Book 2 Jikan-ron Fundamental Time Cycle */}
+				<div
+					className="glass-card"
+					style={{
+						padding: "12px 16px",
+						display: "flex",
+						flexDirection: "column",
+						gap: "4px",
+						borderLeft: "3px solid #06B6D4",
+					}}
+				>
+					<span style={{ fontSize: "10px", color: "var(--text-muted)", letterSpacing: "0.5px" }}>
+						BOOK 2 · JIKAN-RON TIME CYCLE
+					</span>
+					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+						<span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Kihon Suchi Score:</span>
+						<span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "Geist Mono, monospace", color: "#06B6D4" }}>
+							{latestPoint?.ichimoku_kihon_score != null ? `${(latestPoint.ichimoku_kihon_score * 100).toFixed(0)}%` : "—"}
+						</span>
+					</div>
+					<span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+						{latestPoint?.ichimoku_kumo_twist_flag
+							? "Forward Kumo twist inflection window active"
+							: "Kihon cycle alignment (9, 17, 26, 76)"}
+					</span>
 				</div>
 			</div>
 

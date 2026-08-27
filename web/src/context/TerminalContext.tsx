@@ -116,6 +116,15 @@ export const TerminalProvider: React.FC<{ children: React.ReactNode }> = ({
 			ichimoku_cum_market: newPoint.ichimoku_imo?.cum_market ?? undefined,
 			ichimoku_active_pos: newPoint.ichimoku_imo?.active_pos ?? undefined,
 			ichimoku_strat_net_ret: newPoint.ichimoku_imo?.strat_net_ret ?? undefined,
+			ichimoku_wave_type: newPoint.ichimoku_imo?.wave_type ?? undefined,
+			ichimoku_target_v: newPoint.ichimoku_imo?.target_v ?? undefined,
+			ichimoku_target_n: newPoint.ichimoku_imo?.target_n ?? undefined,
+			ichimoku_target_e: newPoint.ichimoku_imo?.target_e ?? undefined,
+			ichimoku_target_nt: newPoint.ichimoku_imo?.target_nt ?? undefined,
+			ichimoku_kairitsu: newPoint.ichimoku_imo?.kairitsu ?? undefined,
+			ichimoku_cloud_thickness: newPoint.ichimoku_imo?.cloud_thickness ?? undefined,
+			ichimoku_kihon_score: newPoint.ichimoku_imo?.kihon_score ?? undefined,
+			ichimoku_kumo_twist_flag: newPoint.ichimoku_imo?.kumo_twist_flag ?? undefined,
 		};
 		setDailyData((prev) => {
 			const idx = prev.findIndex((item) => item.date === mappedPoint.date);

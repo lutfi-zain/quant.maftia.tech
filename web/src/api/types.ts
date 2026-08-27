@@ -38,6 +38,15 @@ export interface DailyAnalyticsPoint {
 	ichimoku_cum_market?: number;
 	ichimoku_active_pos?: number;
 	ichimoku_strat_net_ret?: number;
+	ichimoku_wave_type?: string;
+	ichimoku_target_v?: number | null;
+	ichimoku_target_n?: number | null;
+	ichimoku_target_e?: number | null;
+	ichimoku_target_nt?: number | null;
+	ichimoku_kairitsu?: number | null;
+	ichimoku_cloud_thickness?: number | null;
+	ichimoku_kihon_score?: number | null;
+	ichimoku_kumo_twist_flag?: number;
 	sdca_multiplier?: number;
 	sdca_phase?: string;
 	sdca_action?: string;
