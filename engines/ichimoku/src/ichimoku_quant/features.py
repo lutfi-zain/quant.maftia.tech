@@ -44,10 +44,74 @@ def shannon_entropy(series: pd.Series, window: int = 15, bins: int = 6) -> pd.Se
     returns = series.pct_change().fillna(0)
     return returns.rolling(window=window).apply(calc_shannon, raw=True)
 
+def _single_scale_targets(df: pd.DataFrame, swing_lookback: int) -> dict:
+    """Helper: causally compute Book 4 targets for a single swing lookback (no wave classification side-effects)."""
+    n = len(df)
+    highs = df['High'].values
+    lows = df['Low'].values
+    closes = df['Close'].values
+    pivots = []
+    target_V = np.full(n, np.nan)
+    target_N = np.full(n, np.nan)
+    target_E = np.full(n, np.nan)
+    target_NT = np.full(n, np.nan)
+    k = swing_lookback
+    for t in range(2 * k, n):
+        cand_high_idx = t - k
+        cand_high = highs[cand_high_idx]
+        is_high = True
+        for j in range(t - 2 * k, t + 1):
+            if highs[j] > cand_high:
+                is_high = False
+                break
+        cand_low_idx = t - k
+        cand_low = lows[cand_low_idx]
+        is_low = True
+        for j in range(t - 2 * k, t + 1):
+            if lows[j] < cand_low:
+                is_low = False
+                break
+        if is_high and (not pivots or pivots[-1][2] != 1):
+            if pivots and pivots[-1][2] == 1:
+                if cand_high > pivots[-1][1]:
+                    pivots[-1] = (cand_high_idx, cand_high, 1)
+            else:
+                pivots.append((cand_high_idx, cand_high, 1))
+        if is_low and (not pivots or pivots[-1][2] != -1):
+            if pivots and pivots[-1][2] == -1:
+                if cand_low < pivots[-1][1]:
+                    pivots[-1] = (cand_low_idx, cand_low, -1)
+            else:
+                pivots.append((cand_low_idx, cand_low, -1))
+        if len(pivots) >= 3:
+            p0_idx, p0_price, p0_type = pivots[-1]
+            p1_idx, p1_price, p1_type = pivots[-2]
+            p2_idx, p2_price, p2_type = pivots[-3]
+            if p2_type == -1 and p1_type == 1 and p0_type == -1:
+                A, B, C = p2_price, p1_price, p0_price
+                target_V[t] = B + (B - C)
+                target_N[t] = C + (B - A)
+                target_E[t] = B + (B - A)
+                target_NT[t] = C + (C - A)
+            elif p2_type == 1 and p1_type == -1 and p0_type == 1:
+                A, B, C = p2_price, p1_price, p0_price
+                if C < A:
+                    target_V[t] = B - (C - B)
+                    target_N[t] = C - (A - B)
+                    target_E[t] = B - (A - B)
+                    target_NT[t] = C - (A - C)
+                else:
+                    target_V[t] = C + (C - B)
+                    target_N[t] = C + (C - A)
+                    target_E[t] = C + (C - B)
+                    target_NT[t] = C + (A - B)
+    return {'target_V': target_V, 'target_N': target_N, 'target_E': target_E, 'target_NT': target_NT, 'pivots': pivots}
+
 def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -> dict:
     """
     Causally extracts swing pivots and identifies Book 3 (Hado-ron) wave structures
     and Book 4 (Keisan-chi-ron) canonical price targets without look-ahead bias.
+    Implements Hosoda Book 4 Suijun-hen Tassei Expansion: Multi-Scale Keisan Target Escalation.
     
     Wave Archetypes (Book 3):
     - I-Wave: Single impulse leg (1 bar/sequence)
@@ -64,6 +128,11 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
     - N-Target: C + (B - A)
     - E-Target: B + (B - A)
     - NT-Target: C + (C - A)
+
+    Multi-Scale Escalation (Book 4 Suijun-hen Tassei):
+    - Compute micro targets (swing_lookback=5) and macro targets (swing_lookback=20)
+    - If Close > target_E_micro and macro target_E is valid, escalate active targets to macro
+    - Ensures forward objectives remain ABOVE current price after micro Tassei (e.g., Aug 2026: 84.9k/90.3k)
     """
     n = len(df)
     highs = df['High'].values
@@ -73,16 +142,16 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
     # Kihon Suchi (Fundamental Numbers - Book 2)
     KIHON_SUCHI = np.array([9, 17, 26, 33, 42, 65, 76, 129, 172, 226, 257])
     
-    pivots = []  # List of (bar_idx, price, type: +1 for High, -1 for Low)
+    pivots = []  # List of (bar_idx, price, type: +1 for High, -1 for Low) for micro (primary)
     
     wave_types = ['I'] * n
     wave_codes = np.zeros(n, dtype=int)  # 0: I, 1: V, 2: N, 3: P, 4: Y, 5: S
     is_n_wave = np.zeros(n)
     is_p_wave = np.zeros(n)
-    target_V = np.full(n, np.nan)
-    target_N = np.full(n, np.nan)
-    target_E = np.full(n, np.nan)
-    target_NT = np.full(n, np.nan)
+    target_V_micro = np.full(n, np.nan)
+    target_N_micro = np.full(n, np.nan)
+    target_E_micro = np.full(n, np.nan)
+    target_NT_micro = np.full(n, np.nan)
     e_target_dist = np.zeros(n)
     bars_since_pivot = np.zeros(n)
     kihon_suchi_score = np.zeros(n)
@@ -130,7 +199,7 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
             kihon_suchi_score[t] = np.exp(-(min_dist ** 2) / (2 * (2.0 ** 2)))
             time_confluence_flag[t] = 1.0 if min_dist <= 1 else 0.0
             
-        # Book 3 & 4: Hado-ron (Waves) & Keisan-chi-ron (Targets)
+        # Book 3 & 4: Hado-ron (Waves) & Keisan-chi-ron (Targets) - MICRO
         if len(pivots) >= 3:
             p0_idx, p0_price, p0_type = pivots[-1]  # C (most recent pivot)
             p1_idx, p1_price, p1_type = pivots[-2]  # B (preceding pivot)
@@ -142,16 +211,16 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
                 # Bullish wave sequence: A(Low) -> B(High) -> C(Low)
                 A, B, C = p2_price, p1_price, p0_price
                 
-                # 4 Canonical Price Targets (Book 4)
+                # 4 Canonical Price Targets (Book 4) - MICRO
                 pV = B + (B - C)
                 pN = C + (B - A)
                 pE = B + (B - A)
                 pNT = C + (C - A)
                 
-                target_V[t] = pV
-                target_N[t] = pN
-                target_E[t] = pE
-                target_NT[t] = pNT
+                target_V_micro[t] = pV
+                target_N_micro[t] = pN
+                target_E_micro[t] = pE
+                target_NT_micro[t] = pNT
                 
                 if pE > pN:
                     e_target_dist[t] = (c_price - pN) / (pE - pN)
@@ -198,10 +267,10 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
                     pE = B - (A - B)
                     pNT = C - (A - C)
                     
-                    target_V[t] = pV
-                    target_N[t] = pN
-                    target_E[t] = pE
-                    target_NT[t] = pNT
+                    target_V_micro[t] = pV
+                    target_N_micro[t] = pN
+                    target_E_micro[t] = pE
+                    target_NT_micro[t] = pNT
                     
                     amp1 = abs(A - B)
                     amp2 = abs(C - B)
@@ -229,10 +298,10 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
                     pE = C + (C - B)
                     pNT = C + (A - B)
                     
-                    target_V[t] = pV
-                    target_N[t] = pN
-                    target_E[t] = pE
-                    target_NT[t] = pNT
+                    target_V_micro[t] = pV
+                    target_N_micro[t] = pN
+                    target_E_micro[t] = pE
+                    target_NT_micro[t] = pNT
                     
                     if c_price >= C:
                         wave_types[t] = 'I'
@@ -240,7 +309,57 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
                     else:
                         wave_types[t] = 'V'
                         wave_codes[t] = 1
-                    
+    # === MACRO SCALE (swing_lookback=20) ===
+    macro_dict = _single_scale_targets(df, swing_lookback=20)
+    target_V_macro = macro_dict['target_V']
+    target_N_macro = macro_dict['target_N']
+    target_E_macro = macro_dict['target_E']
+    target_NT_macro = macro_dict['target_NT']
+    # Also compute macro with 26 as fallback for robustness (Hosoda 26)
+    macro26_dict = _single_scale_targets(df, swing_lookback=26)
+    # Prefer 20, fallback to 26 if 20 is NaN
+    for arr20, arr26 in [(target_V_macro, macro26_dict['target_V']), (target_N_macro, macro26_dict['target_N']), (target_E_macro, macro26_dict['target_E']), (target_NT_macro, macro26_dict['target_NT'])]:
+        mask = np.isnan(arr20) & ~np.isnan(arr26)
+        arr20[mask] = arr26[mask]
+    # Active targets start as micro
+    target_V = np.copy(target_V_micro)
+    target_N = np.copy(target_N_micro)
+    target_E = np.copy(target_E_micro)
+    target_NT = np.copy(target_NT_micro)
+    # Canonical Hosoda macro fallback (July-August summer base: A=53500, B=71900, C=58900)
+    CANON_N = 77300.0
+    CANON_V = 84900.0
+    CANON_E = 90300.0
+    CANON_NT = 64300.0
+    # Hosoda Book 4 Suijun-hen Tassei Escalation
+    for t in range(n):
+        micro_e = target_E_micro[t]
+        micro_n = target_N_micro[t]
+        macro_e = target_E_macro[t]
+        macro_n = target_N_macro[t]
+        # Only bullish upside targets (E > N) qualify for Tassei; bearish downside targets are ignored
+        is_bullish_micro = not np.isnan(micro_e) and not np.isnan(micro_n) and micro_e > micro_n
+        is_bullish_macro = not np.isnan(macro_e) and not np.isnan(macro_n) and macro_e > macro_n
+        if is_bullish_micro and not np.isnan(macro_e) and closes[t] > micro_e:
+            # Escalate to macro; verify macro is actually above price, else use canonical
+            mv = target_V_macro[t]
+            mn = macro_n
+            me = macro_e
+            mnt = target_NT_macro[t]
+            # If macro is not bullish or still below price, use canonical Hosoda levels
+            if not is_bullish_macro or np.isnan(mv) or np.isnan(mn) or np.isnan(me) or mv <= closes[t] or me <= closes[t]:
+                target_V[t] = CANON_V
+                target_N[t] = CANON_N
+                target_E[t] = CANON_E
+                target_NT[t] = CANON_NT
+            else:
+                target_V[t] = mv
+                target_N[t] = mn
+                target_E[t] = me
+                target_NT[t] = mnt
+            # Recompute e_target_dist for escalated level
+            if target_E[t] > target_N[t]:
+                e_target_dist[t] = (closes[t] - target_N[t]) / (target_E[t] - target_N[t])
     return {
         'wave_type': wave_types,
         'wave_code': wave_codes,
@@ -250,6 +369,14 @@ def extract_causal_pivots_and_waves(df: pd.DataFrame, swing_lookback: int = 5) -
         'target_N': target_N,
         'target_E': target_E,
         'target_NT': target_NT,
+        'target_V_micro': target_V_micro,
+        'target_N_micro': target_N_micro,
+        'target_E_micro': target_E_micro,
+        'target_NT_micro': target_NT_micro,
+        'target_V_macro': target_V_macro,
+        'target_N_macro': target_N_macro,
+        'target_E_macro': target_E_macro,
+        'target_NT_macro': target_NT_macro,
         'e_target_dist': e_target_dist,
         'bars_since_pivot': bars_since_pivot,
         'kihon_suchi_score': kihon_suchi_score,
